@@ -1,0 +1,5 @@
+# Change these at your peril:
+export PROJECT_NAME=dap_aria_mapping
+export REPO_NAME=dap_aria_mapping
+export DESCRIPTION=Mapping technology innovation to support The Advanced Research and Innovation Agency (ARIA)
+export PROJECT_OPENNESS=public

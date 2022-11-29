@@ -13,7 +13,8 @@ note:
 import pandas as pd
 from nesta_ds_utils.loading_saving.S3 import download_obj
 from typing import Mapping, Union, Dict
-from dap_aria_mapping import bucket_name
+
+AI_GENOMICS_BUCKET_NAME = "ai-genomics"
 
 
 def get_openalex_ai_genomics_works() -> pd.DataFrame:
@@ -27,8 +28,8 @@ def get_openalex_ai_genomics_works() -> pd.DataFrame:
         - cited_by_count
     """
     return download_obj(
-        bucket_name,
-        "ai_genomics_data/openalex/ai_genomics_openalex_works.csv",
+        AI_GENOMICS_BUCKET_NAME,
+        "outputs/openalex/ai_genomics_openalex_works.csv",
         download_as="dataframe",
     )
 
@@ -37,8 +38,8 @@ def get_openalex_ai_genomics_abstracts() -> Dict[str, str]:
     """Returns a dictionary of AI in genomics OpenAlex abstracts where the key
     is the work_id and the value is the abstract associated to the work id."""
     return download_obj(
-        bucket_name,
-        "ai_genomics_data/openalex/ai_genomics_openalex_abstracts.json",
+        AI_GENOMICS_BUCKET_NAME,
+        "outputs/openalex/ai_genomics_openalex_abstracts.json",
         download_as="dict",
     )
 
@@ -54,8 +55,8 @@ def get_openalex_ai_works() -> pd.DataFrame:
         - cited_by_count
     """
     return download_obj(
-        bucket_name,
-        "ai_genomics_data/openalex/ai_openalex_works.csv",
+        AI_GENOMICS_BUCKET_NAME,
+        "outputs/openalex/ai_openalex_works.csv",
         download_as="dataframe",
     )
 
@@ -64,8 +65,8 @@ def get_openalex_ai_abstracts() -> Dict[str, str]:
     """Returns a dictionary of AI OpenAlex abstracts where the key
     is the work_id and the value is the abstract associated to the work id."""
     return download_obj(
-        bucket_name,
-        "ai_genomics_data/openalex/ai_openalex_abstracts.json",
+        AI_GENOMICS_BUCKET_NAME,
+        "outputs/openalex/ai_openalex_abstracts.json",
         download_as="dict",
     )
 
@@ -81,8 +82,8 @@ def get_openalex_genomics_works() -> pd.DataFrame:
         - cited_by_count
     """
     return download_obj(
-        bucket_name,
-        "ai_genomics_data/openalex/genomics_openalex_works.csv",
+        AI_GENOMICS_BUCKET_NAME,
+        "outputs/openalex/genomics_openalex_works.csv",
         download_as="dataframe",
     )
 
@@ -91,8 +92,8 @@ def get_openalex_genomics_abstracts() -> Dict[str, str]:
     """Returns a dictionary of genomics OpenAlex abstracts where the key
     is the work_id and the value is the abstract associated to the work id."""
     return download_obj(
-        bucket_name,
-        "ai_genomics_data/openalex/genomics_openalex_abstracts.json",
+        AI_GENOMICS_BUCKET_NAME,
+        "outputs/openalex/genomics_openalex_abstracts.json",
         download_as="dict",
     )
 
@@ -100,8 +101,8 @@ def get_openalex_genomics_abstracts() -> Dict[str, str]:
 def get_openalex_entities() -> Mapping[str, Mapping[str, Union[str, str]]]:
     """From S3 loads post-processed openalex DBpedia entities"""
     return download_obj(
-        bucket_name,
-        "ai_genomics_data/openalex/oa_lookup_clean.json",
+        AI_GENOMICS_BUCKET_NAME,
+        "outputs/entity_extraction/oa_lookup_clean.json",
         download_as="dict",
     )
 
@@ -116,8 +117,8 @@ def get_openalex_institutes() -> pd.DataFrame:
     - year
     """
     return download_obj(
-        bucket_name,
-        "ai_genomics_data/openalex/openalex_institutes.csv",
+        AI_GENOMICS_BUCKET_NAME,
+        "outputs/openalex/openalex_institutes.csv",
         download_as="dataframe",
     )
 
@@ -130,7 +131,7 @@ def get_openalex_mesh() -> pd.DataFrame:
     - meSH code;
     """
     return download_obj(
-        bucket_name,
-        "ai_genomics_data/openalex/openalex_mesh.csv",
+        AI_GENOMICS_BUCKET_NAME,
+        "outputs/openalex/openalex_mesh.csv",
         download_as="dataframe",
     )

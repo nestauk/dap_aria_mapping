@@ -1,7 +1,8 @@
 import pandas as pd
 from nesta_ds_utils.loading_saving.S3 import download_obj
-from dap_aria_mapping import bucket_name
 from typing import Mapping, Union
+
+AI_GENOMICS_BUCKET_NAME = "ai-genomics"
 
 
 def get_ai_genomics_patents() -> pd.DataFrame:
@@ -16,8 +17,8 @@ def get_ai_genomics_patents() -> pd.DataFrame:
         - assignee
     """
     return download_obj(
-        bucket_name,
-        "ai_genomics_data/patents/ai_genomics_patents_cpc_codes.csv",
+        AI_GENOMICS_BUCKET_NAME,
+        "inputs/patent_data/processed_patent_data/ai_genomics_patents_cpc_codes.csv",
         download_as="dataframe",
     )
 
@@ -34,8 +35,8 @@ def get_ai_sample_patents() -> pd.DataFrame:
         - assignee
     """
     return download_obj(
-        bucket_name,
-        "ai_genomics_data/patents/ai_sample_patents_cpc_codes.csv",
+        AI_GENOMICS_BUCKET_NAME,
+        "inputs/patent_data/processed_patent_data/ai_sample_patents_cpc_codes.csv",
         download_as="dataframe",
     )
 
@@ -52,8 +53,8 @@ def get_genomics_sample_patents() -> pd.DataFrame:
         - assignee
     """
     return download_obj(
-        bucket_name,
-        "ai_genomics_data/patents/genomics_sample_patents_cpc_codes.csv",
+        AI_GENOMICS_BUCKET_NAME,
+        "inputs/patent_data/processed_patent_data/genomics_sample_patents_cpc_codes.csv",
         download_as="dataframe",
     )
 
@@ -61,8 +62,8 @@ def get_genomics_sample_patents() -> pd.DataFrame:
 def get_ai_genomics_patents_entities() -> Mapping[str, Mapping[str, Union[str, str]]]:
     """From S3 loads post-processed AI in genomics patents DBpedia entities"""
     return download_obj(
-        bucket_name,
-        "ai_genomics_data/patents/ai_genomics_patents_lookup_clean.json",
+        AI_GENOMICS_BUCKET_NAME,
+        "outputs/entity_extraction/ai_genomics_patents_lookup_clean.json",
         download_as="dict",
     )
 
@@ -70,8 +71,8 @@ def get_ai_genomics_patents_entities() -> Mapping[str, Mapping[str, Union[str, s
 def get_ai_patents_entities() -> Mapping[str, Mapping[str, Union[str, str]]]:
     """From S3 loads post-processed AI patents DBpedia entities"""
     return download_obj(
-        bucket_name,
-        "ai_genomics_data/patents/ai_patents_lookup_clean.json",
+        AI_GENOMICS_BUCKET_NAME,
+        "outputs/entity_extraction/ai_patents_lookup_clean.json",
         download_as="dict",
     )
 
@@ -79,7 +80,7 @@ def get_ai_patents_entities() -> Mapping[str, Mapping[str, Union[str, str]]]:
 def get_genomics_patents_entities() -> Mapping[str, Mapping[str, Union[str, str]]]:
     """From S3 loads post-processed genomics patents DBpedia entities"""
     return download_obj(
-        bucket_name,
-        "ai_genomics_data/patents/genomics_patents_lookup_clean.json",
+        AI_GENOMICS_BUCKET_NAME,
+        "outputs/entity_extraction/genomics_patents_lookup_clean.json",
         download_as="dict",
     )

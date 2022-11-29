@@ -6,7 +6,9 @@ from typing import Optional
 
 import yaml
 
-bucket_name = "aria-mapping"
+BUCKET_NAME = "aria-mapping"
+AI_GENOMICS_BUCKET_NAME = "ai-genomics"
+
 
 def get_yaml_config(file_path: Path) -> Optional[dict]:
     """Fetch yaml config and return as dict if it exists."""

@@ -1,8 +1,7 @@
 import pandas as pd
 from nesta_ds_utils.loading_saving.S3 import download_obj
+from dap_aria_mapping import AI_GENOMICS_BUCKET_NAME
 from typing import Mapping, Union
-
-AI_GENOMICS_BUCKET_NAME = "ai-genomics"
 
 
 def get_ai_genomics_patents() -> pd.DataFrame:

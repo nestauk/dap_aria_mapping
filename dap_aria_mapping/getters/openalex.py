@@ -13,8 +13,7 @@ note:
 import pandas as pd
 from nesta_ds_utils.loading_saving.S3 import download_obj
 from typing import Mapping, Union, Dict
-
-AI_GENOMICS_BUCKET_NAME = "ai-genomics"
+from dap_aria_mapping import AI_GENOMICS_BUCKET_NAME
 
 
 def get_openalex_ai_genomics_works() -> pd.DataFrame:

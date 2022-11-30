@@ -1,6 +1,7 @@
+<<<<<<< HEAD
 nesta_ds_utils @ git+https://github.com/nestauk/nesta_ds_utils.git
 spacy==3.4.0
-pandas
+pandas==1.5.1
 metaflow==2.7.14
 toolz==0.12.0
 boto3==1.24.93

@@ -38,7 +38,7 @@ def get_openalex_works() -> pd.DataFrame:
     """
     return download_obj(
         "aria-mapping",
-        "inputs/data_collection/processed_openalex/works.json",
+        "inputs/data_collection/processed_openalex/works.parquet",
         download_as="dataframe",
     )
 
@@ -56,7 +56,7 @@ def get_openalex_authorships() -> pd.DataFrame:
     """From S3 loads openalex authorships information"""
     return download_obj(
         "aria-mapping",
-        "outputs/openalex/openalex_authorships.csv",
+        "inputs/data_collection/processed_openalex/authorships.parquet",
         download_as="dataframe",
     )
 
@@ -65,7 +65,7 @@ def get_openalex_citations() -> pd.DataFrame:
     """From S3 loads openalex citations information"""
     return download_obj(
         "aria-mapping",
-        "outputs/openalex/openalex_citations.json",
+        "inputs/data_collection/processed_openalex/citations.json",
         download_as="list",
     )
 

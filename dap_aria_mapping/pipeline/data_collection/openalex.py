@@ -51,10 +51,10 @@ class OpenAlexWorksFlow(FlowSpec):
         """
         Starts the flow.
         """
-        self.next(self.generate_api_calls)
+        self.next(self.generate_year_list)
 
     @step
-    def generate_api_calls(self):
+    def generate_year_list(self):
         """Defines the years to be used"""
         # If production, generate all pages
         if self.production:

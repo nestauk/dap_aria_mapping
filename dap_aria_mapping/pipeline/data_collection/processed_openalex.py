@@ -301,14 +301,14 @@ class OpenAlexProcessedWorksFlow(FlowSpec):
         authorships_df = make_work_authorships(works)
         s3_url = f"s3://aria-mapping/{OUTPUT_LOCATION}authorships_{self.input}.parquet"
         authorships_df.to_parquet(s3_url)
-        # # Citations
+        # Citations
         citations_dict = make_citations(works)
         s3object = s3.Object('aria-mapping',
             f"{OUTPUT_LOCATION}citations_{self.input}.json")
         s3object.put(
             Body=(bytes(json.dumps(citations_dict).encode("UTF-8")))
         )
-        # # Deinverted abstracts
+        # Deinverted abstracts
         deinverted_abstracts_dict = make_deinverted_abstracts(works)
         s3object = s3.Object('aria-mapping',
             f"{OUTPUT_LOCATION}abstracts_{self.input}.json")
@@ -351,7 +351,7 @@ class OpenAlexProcessedWorksFlow(FlowSpec):
             ]
             all_lists = list(itertools.chain(all_outputs))
             s3object = s3_resources.Object('aria-mapping',
-                f"s3://aria-mapping/inputs/data_collection/processed_openalex/{item}.parquet")
+                f"inputs/data_collection/processed_openalex/{item}.json")
             s3object.put(
                 Body=(bytes(json.dumps(all_lists).encode("UTF-8")))
             )

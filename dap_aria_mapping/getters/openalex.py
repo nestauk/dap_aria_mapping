@@ -16,6 +16,60 @@ from typing import Mapping, Union, Dict
 from dap_aria_mapping import AI_GENOMICS_BUCKET_NAME
 
 
+def get_openalex_abstracts() -> list:
+    """Returns a dictionary of AI in genomics OpenAlex abstracts where the key
+    is the work_id and the value is the abstract associated to the work id."""
+    return download_obj(
+        "aria-mapping",
+        "inputs/data_collection/processed_openalex/abstracts.json",
+        download_as="list",
+    )
+
+
+def get_openalex_works() -> pd.DataFrame:
+    """Returns dataframe of OpenAlex works. Abstracts are NOT included.
+    Works data includes:
+        - work_id;
+        - doi;
+        - display_name;
+        - publication_year;
+        - publication_date;
+        - cited_by_count
+    """
+    return download_obj(
+        "aria-mapping",
+        "inputs/data_collection/processed_openalex/works.json",
+        download_as="dataframe",
+    )
+
+
+def get_openalex_concepts() -> pd.DataFrame:
+    """Returns dataframe of concepts related to works in OpenAlex."""
+    return download_obj(
+        "aria-mapping",
+        "inputs/data_collection/processed_openalex/concepts.parquet",
+        download_as="dataframe",
+    )
+
+
+def get_openalex_authorships() -> pd.DataFrame:
+    """From S3 loads openalex authorships information"""
+    return download_obj(
+        "aria-mapping",
+        "outputs/openalex/openalex_authorships.csv",
+        download_as="dataframe",
+    )
+
+
+def get_openalex_citations() -> pd.DataFrame:
+    """From S3 loads openalex citations information"""
+    return download_obj(
+        "aria-mapping",
+        "outputs/openalex/openalex_citations.json",
+        download_as="list",
+    )
+
+
 def get_openalex_ai_genomics_works() -> pd.DataFrame:
     """Returns dataframe of AI in genomics OpenAlex works. Abstracts are NOT included.
     Works data includes:

@@ -7,12 +7,17 @@ A pipeline that takes a list of years, and outputs OpenAlex API results.
 The thought behind this is to break the results into manageable yearly chunks. For a given year,
 the output works may be well over 2GB in size when saved to json.
 """
+
+import boto3
+import io
 import json
 import requests
+
 from metaflow import FlowSpec, S3, step, Parameter, retry, batch
 
 
 YEARS = [
+    2007,
     2022,
     2021,
     2020,
@@ -28,7 +33,6 @@ YEARS = [
     2010,
     2009,
     2008,
-    2007
 ]
 
 API_ROOT = "https://api.openalex.org/works?filter="
@@ -96,11 +100,10 @@ class OpenAlexWorksFlow(FlowSpec):
             except:
                 pass
         # Define a filename and save to S3
-        year = self.input
-        filename = f"openalex-works_production-{self.production}_year-{year}.json"
-        with S3(run=self) as s3:
-            data = json.dumps(outputs)
-            s3.put(filename, data)
+        filename = f"openalex-gb-publications_year-{self.input}.json"
+        obj = io.BytesIO(json.dumps(outputs).encode("utf-8"))
+        s3 = boto3.client("s3")
+        s3.upload_fileobj(obj, "aria-mapping", f"inputs/data_collection/openalex/{filename}")
         self.next(self.dummy_join)
 
     @step

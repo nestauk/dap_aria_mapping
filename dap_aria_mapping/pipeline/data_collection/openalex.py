@@ -2,10 +2,10 @@
 works pipeline
 --------------
 
-A pipeline that takes a list of concept IDs and years, and outputs OpenAlex API results.
+A pipeline that takes a list of years, and outputs OpenAlex API results.
 
-The thought behind this is to break the results into manageable yearly chunks. For a given year
-and high level concept, the output works may be well over 2GB in size when saved to json.
+The thought behind this is to break the results into manageable yearly chunks. For a given year,
+the output works may be well over 2GB in size when saved to json.
 """
 import json
 import requests
@@ -34,13 +34,13 @@ YEARS = [
 API_ROOT = "https://api.openalex.org/works?filter="
 
 
-def api_generator(api_root: str, year: str) -> list:
+def api_generator(api_root: str, year: int) -> list:
     """Generates a list of all URLs needed to completely collect
     all works relating to the list of concepts.
 
     Args:
         api_root : root URL of the OpenAlex API
-        concept_ids : list of concept IDs to be queried
+        year : year to be queried against
 
     Returns:
         all_pages: list of pages required to return all results
@@ -69,7 +69,7 @@ class OpenAlexWorksFlow(FlowSpec):
 
     @step
     def generate_api_calls(self):
-        """Generates all API calls, if test, just one page"""
+        """Defines the years to be used"""
         # If production, generate all pages
         if self.production:
             self.year_list = YEARS
@@ -96,8 +96,7 @@ class OpenAlexWorksFlow(FlowSpec):
             except:
                 pass
         # Define a filename and save to S3
-        year = self.input.split(":")[-1] # not ideal for multiple concepts, but works for now
-        # concept_length = self.input.split(",")[0].count("|")
+        year = self.input
         filename = f"openalex-works_production-{self.production}_year-{year}.json"
         with S3(run=self) as s3:
             data = json.dumps(outputs)
@@ -106,10 +105,12 @@ class OpenAlexWorksFlow(FlowSpec):
 
     @step
     def dummy_join(self, inputs):
+        """Dummy join step"""
         self.next(self.end)
 
     @step
     def end(self):
+        """Ends the flow"""
         pass
 
 

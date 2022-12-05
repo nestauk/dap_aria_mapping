@@ -11,5 +11,6 @@ metaflow==2.7.14
 s3fs==0.4.2
 google-cloud-bigquery==3.4.0
 google-cloud-bigquery-storage==2.16.2
+<<<<<<< HEAD
 db-dtypes
 scipy==1.9.3

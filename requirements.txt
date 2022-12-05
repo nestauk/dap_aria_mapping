@@ -11,8 +11,16 @@ metaflow==2.7.14
 s3fs==2021.11.0
 =======
 pandas==1.5.1
+<<<<<<< HEAD
 git+https://github.com/nestauk/nesta_ds_utils.git
 >>>>>>> 2428cbd (Adding processing for raw openalex data)
 google-cloud-bigquery==3.4.0
 google-cloud-bigquery-storage==2.16.2
+<<<<<<< HEAD
 db-dtypes
+=======
+=======
+nesta_ds_utils @ git+https://github.com/nestauk/nesta_ds_utils.git
+metaflow==2.7.14
+>>>>>>> ab54125 (Update requirements format)
+>>>>>>> c0f683b (Update requirements format)

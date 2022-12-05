@@ -19,9 +19,6 @@ COLS_TO_UNNEST = ["inventor_harmonized", "assignee_harmonized"]
 def unnest_column(nested_col: str) -> Union[List[str], List[str]]:
     """Unnests country code and name from nested column
     of list of dictionaries with keys 'country_code' and 'name'
-
-    If country_code or name only contains 1 code or name,
-        return country_code or name string.
     """
     country_code = [col["country_code"] for col in nested_col]
     name = [col["name"] for col in nested_col]

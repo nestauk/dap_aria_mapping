@@ -20,7 +20,7 @@ def patents_query(production=False) -> str:
         patents, deduplicated on family ID, of inventors based
         in the UK filed between 2016 and 2021.
 
-        If production is true, query for 10 publication numbers,
+        If production is false, query for 10 publication numbers,
             else query for all publication numbers.
 
     Returns query string.

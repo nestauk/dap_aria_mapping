@@ -28,7 +28,7 @@ Note: The `openalex.py` and `processed_openalex.py` pipelines are set up to run 
 
 We have also included pytest unit tests for relevant functions in the tests directory.
 
-Output data from these pipelines is stored on S3 in the inputs/data_collection directory. Getters for these datasets have been added to the getters section of the repository.
+Output data from these pipelines is stored on S3 in the `inputs/data_collection` directory. Getters for these datasets have been added to the getters section of the repository.
 
 ## Getting Up and Running With Batch on Metaflow
 

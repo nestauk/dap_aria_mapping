@@ -20,8 +20,6 @@ This flow joins all the outputs of the previous flow and saves them as a single 
 
 This will collect all UK publications from the past 16 years and save them as a single file in the S3 bucket. There is also a level of normalisation; works, concepts, abstracts, authorships and citations are saved separately. If the `--production=true` flag is not set, the script will run in test mode and only collect publications from a single year, for debugging and testing purposes.
 
-Note: 
-
 ## Getting Up and Running With Batch on Metaflow
 
 If you haven't used batch processing with Metaflow before and want to run any of the flows that make use of batch (e.g. `openalex.py`), you'll need to ensure a few things are set up first:

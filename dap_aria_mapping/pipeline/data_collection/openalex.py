@@ -32,9 +32,7 @@ def api_generator(api_root: str, year: int) -> list:
         all_pages: list of pages required to return all results
     """
     page_one = f"{api_root}institutions.country_code:gb,publication_year:{year}"
-    print(page_one)
     total_results = requests.get(page_one).json()["meta"]["count"]
-    print(total_results)
     number_of_pages = -(total_results // -200)  # ceiling division
     all_pages = [
         f"{api_root}institutions.country_code:gb,publication_year:{year}&per-page=200&cursor="

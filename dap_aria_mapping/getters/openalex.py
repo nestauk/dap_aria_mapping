@@ -16,13 +16,13 @@ from typing import Mapping, Union, Dict
 from dap_aria_mapping import AI_GENOMICS_BUCKET_NAME
 
 
-def get_openalex_abstracts() -> list:
+def get_openalex_abstracts() -> Dict:
     """Returns a dictionary of AI in genomics OpenAlex abstracts where the key
     is the work_id and the value is the abstract associated to the work id."""
     return download_obj(
         "aria-mapping",
         "inputs/data_collection/processed_openalex/abstracts.json",
-        download_as="list",
+        download_as="dict",
     )
 
 
@@ -61,12 +61,12 @@ def get_openalex_authorships() -> pd.DataFrame:
     )
 
 
-def get_openalex_citations() -> pd.DataFrame:
+def get_openalex_citations() -> Dict:
     """From S3 loads openalex citations information"""
     return download_obj(
         "aria-mapping",
         "inputs/data_collection/processed_openalex/citations.json",
-        download_as="list",
+        download_as="dict",
     )
 
 

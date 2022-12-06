@@ -55,7 +55,11 @@ class PatentsProcessedFlow(FlowSpec):
         """
         Loads raw patents parquet file from S3
         """
-        self.patents = pd.read_parquet(f"s3://{BUCKET_NAME}/{self.raw_patents_path}")
+        from nesta_ds_utils.loading_saving.S3 import download_obj
+
+        self.patents = download_obj(
+            BUCKET_NAME, self.raw_patents_path, download_as="dataframe"
+        )
         self.next(self.convert_dates)
 
     @step
@@ -137,7 +141,7 @@ class PatentsProcessedFlow(FlowSpec):
         upload_obj(
             self.patents_lookup,
             BUCKET_NAME,
-            "inputs/data_collection/patents/patents_lookup.json",
+            "inputs/data_collection/patents/patents_for_annotation.json",
         )
 
         self.next(self.end)

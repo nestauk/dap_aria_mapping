@@ -15,8 +15,10 @@ def get_patents() -> pd.DataFrame:
     - inventor
     - assignee
     """
-    return pd.read_parquet(
-        f"s3://{BUCKET_NAME}/inputs/data_collection/patents/patents_clean.parquet"
+    return download_obj(
+        BUCKET_NAME,
+        "inputs/data_collection/patents/patents_clean.parquet",
+        download_as="dataframe",
     )
 
 

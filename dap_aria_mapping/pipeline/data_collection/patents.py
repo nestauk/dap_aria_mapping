@@ -53,7 +53,7 @@ def patents_query(production=False) -> str:
 
 
 class PatentsFlow(FlowSpec):
-    production = Parameter("production", help="Run in production?", default=True)
+    production = Parameter("production", help="Run in production?", default=False)
 
     @step
     def start(self):
@@ -78,11 +78,14 @@ class PatentsFlow(FlowSpec):
         from nesta_ds_utils.loading_saving.S3 import upload_obj
         from dap_aria_mapping import BUCKET_NAME
 
-        upload_obj(
-            self.results,
-            BUCKET_NAME,
-            "inputs/data_collection/patents/patents_raw.parquet",
-        )
+        if self.production:
+            upload_obj(
+                self.results,
+                BUCKET_NAME,
+                "inputs/data_collection/patents/patents_raw.parquet",
+            )
+        else:
+            pass
 
         self.next(self.end)
 

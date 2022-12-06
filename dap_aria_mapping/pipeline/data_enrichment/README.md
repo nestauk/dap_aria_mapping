@@ -13,3 +13,5 @@ To run data enrichement, execute the following:
 `python dap_aria_mapping/pipeline/data_enrichment/processed_entities.py run`
 
 We have also included pytest unit tests for relevant functions in the tests directory.
+
+Output data from this pipeline is stored on S3 in the inputs/data_enrichment/extracted_entities directory. Getters for these datasets have been added to the getters section of the repository.

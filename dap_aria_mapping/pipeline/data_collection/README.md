@@ -2,23 +2,31 @@
 
 ## Overview
 
-Here you will find files related to the collection of data for the DAP ARIA Mapping project.
+This directory contains code for collecting and processing data from OpenAlex and Google Patents for UK academic publications and patents.
 
-## OpenAlex
+## Raw Data Collection
 
-OpenAlex is a tool that allows you to search for publications on the web and download them. To run the collection, execute the following:
+The `openalex.py` file contains the pipeline for collecting raw publication data from OpenAlex. The `patents.py` file contains the pipeline for collecting raw patent data from Google Patents.
+
+To run the raw collection, execute the following:
 
 ```python dap_aria_mapping/pipeline/data_collection/openalex.py --package-suffixes=.txt --datastore=s3 run --production=True```
+```python dap_aria_mapping/pipeline/data_collection/patents.py run --production=True```
 
-This will collect all UK publications from the past 16 years and save each year as a file in the S3 bucket. If the `--production=true` flag is not set, the script will run in test mode and only collect publications from a single year, for debugging and testing purposes.
+The `processed_openalex.py` file contains the pipeline for processing the raw publication data and the `processed_patents.py` file contains the pipeline for processing the raw patent data.
 
-## Processed OpenAlex
+## Raw Data Processing
 
-This flow joins all the outputs of the previous flow and saves them as a single file in the S3 bucket. To run the collection, execute the following:
+To run the processed collection, execute the following:
 
 ```python dap_aria_mapping/pipeline/data_collection/processed_openalex.py --datastore=s3 run --production=True```
+```python dap_aria_mapping/pipeline/data_collection/processed_patents.py run```
 
-This will collect all UK publications from the past 16 years and save them as a single file in the S3 bucket. There is also a level of normalisation; works, concepts, abstracts, authorships and citations are saved separately. If the `--production=true` flag is not set, the script will run in test mode and only collect publications from a single year, for debugging and testing purposes.
+Note: The `openalex.py` and `processed_openalex.py` pipelines are set up to run in batch mode. This means that they will run on AWS Batch, and require some configuration. Please see below for further details if you want to run these flows.
+
+We have also included pytest unit tests for relevant functions in the tests directory.
+
+Output data from these pipelines is stored on S3 in the inputs/data_collection directory. Getters for these datasets have been added to the getters section of the repository.
 
 ## Getting Up and Running With Batch on Metaflow
 

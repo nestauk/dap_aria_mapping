@@ -1,2 +1,6 @@
-pandas
+pandas==1.5.1
 git+https://github.com/nestauk/nesta_ds_utils.git
+metaflow==2.7.14
+google-cloud-bigquery==3.4.0
+google-cloud-bigquery-storage==2.16.2
+db-dtypes

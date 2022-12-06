@@ -53,7 +53,7 @@ def patents_query(production=False) -> str:
 
 
 class PatentsFlow(FlowSpec):
-    production = Parameter("production", help="Run in production?", default=False)
+    production = Parameter("production", help="Run in production?", default=True)
 
     @step
     def start(self):

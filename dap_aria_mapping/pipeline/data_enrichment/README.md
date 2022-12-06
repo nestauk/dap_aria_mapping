@@ -11,3 +11,5 @@ The `processed_entities.py` file contains the pipeline for post-processing extra
 To run data enrichement, execute the following:
 
 `python dap_aria_mapping/pipeline/data_enrichment/processed_entities.py run`
+
+We have also included pytest unit tests for relevant functions in the tests directory.

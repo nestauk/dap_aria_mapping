@@ -10,7 +10,7 @@ inventors based in the UK, filed between 2016 and 2021.
 python dap_aria_mapping/pipeline/data_collection/patents.py run
 
 NOTE: If the flow is in production, it will cost money to run this flow.
-Do NOT run this flow unless you have explicitly confirmed with Genna and India.
+DO NOT run this flow unless you have explicitly confirmed with Genna or India.
 """
 from metaflow import FlowSpec, step, Parameter
 
@@ -25,9 +25,26 @@ def patents_query(production=False) -> str:
 
     Returns query string.
     """
-    filter_q = "select ANY_VALUE(publication_number) publication_number from `patents-public-data.patents.publications` , unnest(inventor_harmonized) as inventor, unnest(abstract_localized) as abstract where cast(filing_date as string) between '20160101' and '20211231' and inventor.country_code = 'GB' and abstract.language = 'en' GROUP BY family_id"
-    columns_q = "publication_number, application_number, country_code, family_id, title_localized, abstract_localized, publication_date, filing_date, grant_date, priority_date, cpc, inventor_harmonized, assignee_harmonized"
-    q = f"with filtered_ids as ({filter_q}) select {columns_q} from `patents-public-data.patents.publications` INNER JOIN filtered_ids USING(publication_number)"
+    filter_q = (
+        "select ANY_VALUE(publication_number) publication_number ",
+        "from `patents-public-data.patents.publications`, ",
+        "unnest(inventor_harmonized) as inventor, unnest(abstract_localized) as abstract ",
+        "where cast(filing_date as string) between '20160101' and '20211231' ",
+        "and inventor.country_code = 'GB' and abstract.language = 'en' ",
+        "GROUP BY family_id",
+    )
+    columns_q = (
+        "publication_number, application_number, country_code, ",
+        "family_id, title_localized, abstract_localized, ",
+        "publication_date, filing_date, grant_date, priority_date, cpc, ",
+        "inventor_harmonized, assignee_harmonized",
+    )
+    q = "".join(
+        (
+            f"with filtered_ids as ({''.join(filter_q)}) select {''.join(columns_q)} ",
+            "from `patents-public-data.patents.publications` INNER JOIN filtered_ids USING(publication_number)",
+        )
+    )
 
     if production:
         return q
@@ -36,7 +53,7 @@ def patents_query(production=False) -> str:
 
 
 class PatentsFlow(FlowSpec):
-    production = Parameter("production", help="Run in production?", default=False)
+    production = Parameter("production", help="Run in production?", default=True)
 
     @step
     def start(self):
@@ -53,7 +70,7 @@ class PatentsFlow(FlowSpec):
         conn = est_conn()
         patents_q = patents_query(production=self.production)
         self.results = conn.query(patents_q).to_dataframe()
-        self.next(self.clean_data)
+        self.next(self.save_data)
 
     @step
     def save_data(self):
@@ -62,7 +79,9 @@ class PatentsFlow(FlowSpec):
         from dap_aria_mapping import BUCKET_NAME
 
         upload_obj(
-            self.results, BUCKET_NAME, "inputs/data_collection/patents/patents.parquet"
+            self.results,
+            BUCKET_NAME,
+            "inputs/data_collection/patents/patents_raw.parquet",
         )
 
         self.next(self.end)

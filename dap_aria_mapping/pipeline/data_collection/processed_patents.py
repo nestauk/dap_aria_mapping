@@ -4,6 +4,9 @@ process patents pipeline
 A pipeline that processes fetched patents from Google Bigquery and
 saves processed patents results as a parquet file to s3.
 
+It also generates and saves a patents look up file to be used for entity
+extraction.
+
 python dap_aria_mapping/pipeline/data_collection/processed_patents.py run
 """
 import pandas as pd
@@ -34,7 +37,6 @@ def extract_english_text(text_col: str) -> str:
 
 
 class PatentsProcessedFlow(FlowSpec):
-    production = Parameter("production", help="Run in production?", default=False)
     raw_patents_path = Parameter(
         "raw_patents_path",
         help="s3 location of raw patents path",
@@ -98,17 +100,44 @@ class PatentsProcessedFlow(FlowSpec):
         self.patents["cpc"] = self.patents["cpc"].apply(
             lambda x: [c["code"] for c in x]
         )
+        self.next(self.generate_lookup)
+
+    @step
+    def generate_lookup(self):
+        """
+        Create patent abstract look up for entity extraction
+        """
+        self.patents["abstract_localized"] = self.patents[
+            "abstract_localized"
+        ].str.replace("\n", "")
+        self.patents_lookup = list(
+            self.patents.rename(
+                columns={"publication_number": "id", "abstract_localized": "abstract"}
+            )[["id", "abstract"]]
+            .T.to_dict()
+            .values()
+        )
         self.next(self.save_data)
 
     @step
     def save_data(self):
-        """Saves clean patents data as parquet file to s3"""
+        """Saves clean patents data as parquet file to s3
+
+        Also saves patents look up as json to s3 for
+            entity extraction
+        """
         from nesta_ds_utils.loading_saving.S3 import upload_obj
 
         upload_obj(
             self.patents,
             BUCKET_NAME,
             "inputs/data_collection/patents/patents_clean.parquet",
+        )
+
+        upload_obj(
+            self.patents_lookup,
+            BUCKET_NAME,
+            "inputs/data_collection/patents/patents_lookup.json",
         )
 
         self.next(self.end)

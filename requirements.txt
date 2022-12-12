@@ -10,25 +10,4 @@ metaflow==2.7.14
 s3fs==2021.11.0
 google-cloud-bigquery==3.4.0
 google-cloud-bigquery-storage==2.16.2
-<<<<<<< HEAD
-<<<<<<< HEAD
 db-dtypes
-=======
-=======
-nesta_ds_utils @ git+https://github.com/nestauk/nesta_ds_utils.git
-metaflow==2.7.14
->>>>>>> ab54125 (Update requirements format)
->>>>>>> c0f683b (Update requirements format)
-=======
-nesta_ds_utils @ git+https://github.com/nestauk/nesta_ds_utils.git
-metaflow==2.7.14
-boto3==1.24.93
-toolz==0.12.0
-pyarrow==10.0.0
-fsspec==2021.11.0
-s3fs==2021.11.0
-<<<<<<< HEAD
->>>>>>> 1b71e58 (Update requirements)
-=======
-db-dtypes
->>>>>>> 2087680 (final fixes)

@@ -16,22 +16,22 @@
 # - [ ] Comment exploratory jupytext file.
 # - [ ] SPECTER embeddings.
 # %%
+import warnings
+
+warnings.simplefilter(action="ignore", category=FutureWarning)
+from IPython.display import display
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import umap.umap_ as umap
-import re, os, json
-from sentence_transformers import SentenceTransformer
-from typing import Union, Dict, Sequence, Callable, Tuple, Generator
+import json
 from sklearn.metrics import silhouette_score
 from sklearn.cluster import KMeans, AgglomerativeClustering, DBSCAN, OPTICS
 from hdbscan import HDBSCAN
 from itertools import product
-from tqdm import tqdm
 from toolz import pipe
-from copy import deepcopy
-from collections import Counter, defaultdict
-from itertools import chain, count
+from collections import defaultdict
+from itertools import chain
 from functools import partial
 from dap_aria_mapping.getters.openalex import get_openalex_entities
 from exploration_utils import (
@@ -77,8 +77,6 @@ for perm in param_perms:
     plt.scatter(embeddings_2d[:, 0], embeddings_2d[:, 1], s=1)
     fig.suptitle(f"{perm}")
     plt.show()
-
-
 # %% [markdown]
 # ### Strictly hierarchical clustering
 # %%
@@ -88,7 +86,7 @@ cluster_configs = [
         [
             {"n_clusters": 3, "n_init": 2},
             {"n_clusters": 2, "n_init": 2},
-            {"n_clusters": 2, "n_init": 2},
+            {"n_clusters": 10, "n_init": 2},
         ],
     ],
     [
@@ -245,25 +243,29 @@ def make_analysis_dicts_alt(cluster_outputs, model_module_name):
 
 
 def make_analysis_dataframe(analysis_dicts, coltype=""):
-    return pd.concat(
-        [
-            pd.DataFrame.from_dict(
-                dictionary[0],
-                orient="index",
-                columns=[
-                    "{}_{}_{}".format(
-                        dictionary[1].__module__.replace(".", ""), idx, coltype
-                    )
-                ],
-            )
-            for idx, dictionary in enumerate(analysis_dicts)
-        ],
-        axis=1,
+    return (
+        pd.concat(
+            [
+                pd.DataFrame.from_dict(
+                    dictionary[0],
+                    orient="index",
+                    columns=[
+                        "{}_{}{}".format(
+                            dictionary[1].__module__.replace(".", ""), idx, coltype
+                        )
+                    ],
+                )
+                for idx, dictionary in enumerate(analysis_dicts)
+            ],
+            axis=1,
+        )
+        # .reset_index()
+        # .rename(columns={"index": "tag"})
     )
 
 
 def make_plots(analysis_df):
-    return alt.concat(
+    return alt.hconcat(
         *[
             (
                 alt.Chart(analysis_df)
@@ -279,6 +281,7 @@ def make_plots(analysis_df):
                 )
             )
             for column in analysis_df.columns
+            if column != "tag"
         ]
     )
 
@@ -286,7 +289,7 @@ def make_plots(analysis_df):
 # %% Strictly hierarchical clustering KMEANS
 make_plots(
     make_analysis_dataframe(
-        make_analysis_dicts(cluster_outputs_s, "sklearn.cluster._kmeans")
+        make_analysis_dicts(cluster_outputs_s, "sklearn.cluster._kmeans"), "_s"
     )
 )
 # %% Strictly hierarchical clustering Agglomerative
@@ -302,7 +305,7 @@ make_plots(
     )
 )
 # %% Dendrograms
-ls = []
+ls, silhs = [], {}
 for i, tree_split in enumerate(dendrogram[-7:-1]):
     tags = [
         [tag for tag in cluster_tags if tag < embeddings.shape[0]]
@@ -321,7 +324,9 @@ for i, tree_split in enumerate(dendrogram[-7:-1]):
     ls.append(
         pd.DataFrame({"tree_lvl_{}".format(6 - i): label_clust}, index=embeddings.index)
     )
-analysis_df_d = pd.concat(ls, axis=1)
+    silhs[str(6 - i)] = silhouette_score(embeddings, label_clust)
+
+analysis_df_d = pd.concat(ls, axis=1)  # .reset_index().rename(columns={"index": "tag"})
 
 make_plots(analysis_df_d)
 
@@ -331,42 +336,173 @@ make_plots(
         make_analysis_dicts_alt(cluster_outputs_c, "sklearn.cluster._kmeans")
     )
 )
-# %%
-meta_cluster_df = [
-    make_analysis_dataframe(  # strict kmeans
-        make_analysis_dicts_alt(cluster_outputs_s, "sklearn.cluster._kmeans"), "s"
-    ),
-    make_analysis_dataframe(  # strict agglomerative
-        make_analysis_dicts_alt(cluster_outputs_s, "sklearn.cluster._agglomerative"),
-        "s",
-    ),
-    make_analysis_dataframe(  # f kmeans
-        make_analysis_dicts(cluster_outputs_f, "sklearn.cluster._kmeans"), "f"
-    ),
-    make_analysis_dataframe(  # f agglomerative
-        make_analysis_dicts(cluster_outputs_f, "sklearn.cluster._agglomerative"), "f"
-    ),
-    analysis_df_d,
-    make_analysis_dataframe(
-        make_analysis_dicts_alt(cluster_outputs_c, "sklearn.cluster._kmeans"), "c"
-    ),
-]
-cooccur_dict = {
-    idx: {id: 0 for id in meta_cluster_df[0].index} for idx in meta_cluster_df[0].index
-}
-for df in meta_cluster_df:
-    df.index = df.index.set_names(["tag"])
-    df.reset_index(inplace=True)
-    for col in [x for x in df.columns if x != "tag"]:
-        df_tmp = df[[col, "tag"]]
-        df_tmp = df_tmp.merge(df_tmp, on=col).reset_index()
-        di = df_tmp.groupby("tag_x")["tag_y"].apply(list).to_dict()
-        for k, v in di.items():
-            for m in v:
-                cooccur_dict[k][m] += 1
-# %%
-cooccur_df = pd.DataFrame.from_dict(cooccur_dict)
-cooccur_df.to_parquet("cooccur_df.parquet")
-# %%
-cooccur_df.head(10)
 # %% [markdown]
+# #### Silhouette Scores
+# %%
+results = defaultdict(list)
+for idx, clust in enumerate(cluster_outputs_s):
+    idx = divmod(idx, 3)[1]
+    results[
+        "{}_c{}_strict".format(clust["model"].__module__.replace(".", ""), idx)
+    ] = clust["silhouette"]
+for idx, clust in enumerate(cluster_outputs_f[:7]):
+    idx = divmod(idx, 3)[1]
+    results[
+        "{}_c{}_fuzzy".format(clust["model"].__module__.replace(".", ""), idx)
+    ] = clust["silhouette"]
+for key, value in silhs.items():
+    results["dendrogram_{}".format(int(key) - 1)] = value
+for idx, clust in enumerate(cluster_outputs_s):
+    idx = divmod(idx, 3)[1]
+    results[
+        "{}_c{}_centroids".format(clust["model"].__module__.replace(".", ""), idx)
+    ] = clust["silhouette"]
+
+silhouette_df = pd.DataFrame(results, index=["silhouette"]).T.sort_values(
+    "silhouette", ascending=False
+)
+display(silhouette_df)
+# %% [markdown]
+# ### Meta Clustering
+# %%
+meta_cluster_df = (
+    pd.concat(
+        [
+            make_analysis_dataframe(  # strict kmeans
+                make_analysis_dicts(cluster_outputs_s, "sklearn.cluster._kmeans"), "_s"
+            ),
+            make_analysis_dataframe(  # strict agglomerative
+                make_analysis_dicts(
+                    cluster_outputs_s, "sklearn.cluster._agglomerative"
+                ),
+                "_s",
+            ),
+            make_analysis_dataframe(  # f kmeans
+                make_analysis_dicts(cluster_outputs_f, "sklearn.cluster._kmeans"), "_f"
+            ),
+            make_analysis_dataframe(  # f agglomerative
+                make_analysis_dicts(
+                    cluster_outputs_f, "sklearn.cluster._agglomerative"
+                ),
+                "_f",
+            ),
+            analysis_df_d,  # dendrograms
+            make_analysis_dataframe(  # centroids
+                make_analysis_dicts(cluster_outputs_c, "sklearn.cluster._kmeans"), "_c"
+            ),
+        ],
+        axis=1,
+    )
+    .reset_index()
+    .rename(columns={"index": "tag"})
+)
+
+# Create dictionary of co-occurrences
+dfnp = meta_cluster_df[[x for x in meta_cluster_df.columns if x != "tag"]].to_numpy()
+m1 = np.tile(dfnp.T, (1, dfnp.shape[0])).flatten()
+m2 = np.repeat(dfnp.T, dfnp.shape[0])
+mf = np.where(m1 == m2, 1, 0)
+cooccur_dict = np.sum(mf.reshape((dfnp.shape[1], dfnp.shape[0], dfnp.shape[0])), axis=0)
+cooccur_dict = {
+    k: {e: int(v) for e, v in zip(meta_cluster_df["tag"], cooccur_dict[i])}
+    for i, k in enumerate(meta_cluster_df["tag"])
+}
+# %% Exports
+with open("tmp/cooccurrences.json", "w") as f:
+    json.dump(cooccur_dict, f)
+
+cooccur_df = pd.DataFrame.from_dict(cooccur_dict)
+cooccur_df.to_parquet("tmp/cooccur_df.parquet")
+cooccur_df.head(10)
+
+# %% Export Lists of Lists #[HACK]
+def get_next_repeated_level(label_lists, level, parent_list):
+    return [
+        [
+            [i for i in value if i in label_lists[level][k]]
+            for k in set(label_lists[level].keys())
+        ]
+        for value in parent_list
+    ]
+
+
+def get_next_unique_level(label_lists, level, parent_list):
+    z = []
+    for value in parent_list:
+        zf = []
+        for k in set(
+            label_lists[level].keys()
+        ):  # ie loops over 0,1,2.. in child groups
+            li = []
+            for i in value:
+                if i in label_lists[level][k]:
+                    li.append(i)
+            if len(li) > 0:
+                zf.append(li)
+        if len(zf) > 0:
+            z.append(zf)
+    return z
+
+
+list_labels = {}
+# Strict hierarchical
+for idx, label in zip([2, -1], ["strict_kmeans", "strict_agglomerative"]):
+    labels = {
+        i: {k: v[i] for k, v in cluster_outputs_s[idx]["labels"].items()}
+        for i in range(3)
+    }
+    label_lists = {
+        i: {
+            group: [i for i, j in labels[i].items() if j == group]
+            for group in set(labels[i].values())
+        }
+        for i in range(3)
+    }
+    list_labels[label] = [
+        get_next_repeated_level(label_lists, 2, valuelist)
+        for valuelist in get_next_repeated_level(
+            label_lists, 1, label_lists[0].values()
+        )
+    ]
+
+# Dendogram
+cluster_outputs_dendrogram = dict(
+    zip(analysis_df_d.index, analysis_df_d.values.tolist())
+)
+labels = {i: {k: v[i] for k, v in cluster_outputs_dendrogram.items()} for i in range(6)}
+label_lists = {
+    i: {
+        group: [i for i, j in labels[i].items() if j == group]
+        for group in set(labels[i].values())
+    }
+    for i in range(6)
+}
+m0 = get_next_unique_level(label_lists, 4, label_lists[5].values())
+m1 = [get_next_unique_level(label_lists, 3, g) for g in m0]
+m2 = [[get_next_unique_level(label_lists, 2, i) for i in g] for g in m1]
+m3 = [[[get_next_unique_level(label_lists, 1, j) for j in i] for i in g] for g in m2]
+list_labels["dendrogram"] = [
+    [[[get_next_unique_level(label_lists, 0, e) for e in j] for j in i] for i in g]
+    for g in m3
+]
+
+# Centroid clustering
+labels = {
+    i: {k: v[i] for k, v in cluster_outputs_c[-1]["labels"].items()} for i in range(3)
+}
+label_lists = {
+    i: {
+        group: [i for i, j in labels[i].items() if j == group]
+        for group in set(labels[i].values())
+    }
+    for i in range(3)
+}
+list_labels["centroid_kmeans"] = [
+    get_next_unique_level(label_lists, 0, valuelist)
+    for valuelist in get_next_unique_level(label_lists, 1, label_lists[2].values())
+]
+
+# Export
+with open("tmp/list_labels.json", "w") as f:
+    json.dump(list_labels, f)
+# %%

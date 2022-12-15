@@ -6,20 +6,48 @@ This one-off script generates a validation sample of entities extracted
 python dap_aria_mapping/pipeline/entity_processing/evaluation/generate_validation_sample.py
 """
 from dap_aria_mapping import BUCKET_NAME
-from dap_aria_mapping.pipeline.entity_processing.process_entities import (
-    predict_entity_type,
-)
 from dap_aria_mapping.getters.patents import get_patents
 
 from nesta_ds_utils.loading_saving.S3 import download_obj, upload_obj
 import random
 from typing import List
 import pandas as pd
+import spacy
+import os
+
+# given we won't use this, just adding it one off here
+os.system("python -m spacy download en_core_web_sm")
 
 ANNOTATED_PATENTS_PATH = (
     "inputs/data_collection/patents/preprocessed_annotated_patents.json"
 )
 VALIDATION_SAMPLE_PATH = "inputs/data_collection/entity_validation_sample.csv"
+
+BAD_ENTS = ["ORG", "GPE", "MONEY", "LOC", "PERSON"]
+NER = spacy.load("en_core_web_sm")
+
+
+def predict_entity_type(entities_list: List[str]) -> List[int]:
+    """Predicts whether an entity type contains
+    bad entites (==1) or not (==0) for a given entities list
+
+    Returns a list of predictions.
+    """
+    labels = []
+    for i, ent in enumerate(entities_list):
+        bad_ents = []
+        doc = NER(ent)
+        if doc.ents:
+            for tok in doc.ents:
+                if tok.label_ in BAD_ENTS:
+                    bad_ents.append(entities_list[i])
+        bad_ents_deduped = list(set(bad_ents))
+        if bad_ents_deduped != []:
+            labels.append(1)
+        else:
+            labels.append(0)
+
+    return labels
 
 
 def _make_entity_sample(dict_list: List[dict]) -> List[dict]:

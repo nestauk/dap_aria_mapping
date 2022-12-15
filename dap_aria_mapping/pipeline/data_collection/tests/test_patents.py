@@ -22,8 +22,8 @@ def test_patents():
 
     # make sure the filing date is between 2016-01-01 and 2021-12-31
     assert (
-        (patents_sample["filing_date"] < "2021-12-31")
-        & (patents_sample["filing_date"] > "2016-01-01")
+        (patents_sample["filing_date"] < "2022-12-31")
+        & (patents_sample["filing_date"] > "2007-01-01")
     ).all() == True
     # make sure at least one inventor is from the UK
     assert (

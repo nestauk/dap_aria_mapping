@@ -8,12 +8,6 @@
   - Setup the conda environment
   - Configure `pre-commit`
 
-## spaCy requirements
-
-Once you've set up your conda environment and the libraries in requirements.txt, you will need to install spaCy's en_core_web_sm model:
-
-`python -m spacy download en_core_web_sm`
-
 ## Contributor guidelines
 
 [Technical and working style guidelines](https://github.com/nestauk/ds-cookiecutter/blob/master/GUIDELINES.md)

@@ -90,15 +90,16 @@ def get_entity_sample(dict_list: List[dict], data_source: str) -> pd.DataFrame:
     )
 
 
-if __name__ == "main":
+if __name__ == "__main__":
 
     random.seed(42)
 
-    patent_ents = download_obj(BUCKET_NAME, ANNOTATED_PATENTS_PATH, download_as="dict")
+    patent_ents = download_obj(
+        bucket=BUCKET_NAME, path_from=ANNOTATED_PATENTS_PATH, download_as="dict"
+    )
     nonempty_patents = [ent for ent in patent_ents if ent["dbpedia_entities"] != []]
     random.shuffle(nonempty_patents)
     nonempty_patents_sample = nonempty_patents[:100]
-
     patents = get_patents()
     patents_sample_df = get_entity_sample(
         nonempty_patents_sample, data_source="patents"
@@ -108,7 +109,7 @@ if __name__ == "main":
     ].to_dict()
     patents_sample_df["abstract"] = patents_sample_df.id.map(publication_abstract_dict)
     upload_obj(
-        patents_sample_df,
-        BUCKET_NAME,
-        VALIDATION_SAMPLE_PATH,
+        obj=patents_sample_df,
+        bucket=BUCKET_NAME,
+        path_to=VALIDATION_SAMPLE_PATH,
     )

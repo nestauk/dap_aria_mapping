@@ -5,7 +5,7 @@ A pipeline that queries patents from Google Bigquery and
 saves patents results as a parquet file to s3.
 
 The pipeline collect all patents, deduplicated on family ID, of
-inventors based in the UK, filed between 2016 and 2021.
+inventors based in the UK, filed between 2007 and 2023.
 
 python dap_aria_mapping/pipeline/data_collection/patents.py run
 
@@ -18,7 +18,7 @@ from metaflow import FlowSpec, step, Parameter
 def patents_query(production=False) -> str:
     """Generates patents query that collects information on
         patents, deduplicated on family ID, of inventors based
-        in the UK filed between 2016 and 2021.
+        in the UK filed between 2007 and 2023.
 
         If production is false, query for 10 publication numbers,
             else query for all publication numbers.
@@ -29,7 +29,7 @@ def patents_query(production=False) -> str:
         "select ANY_VALUE(publication_number) publication_number ",
         "from `patents-public-data.patents.publications`, ",
         "unnest(inventor_harmonized) as inventor, unnest(abstract_localized) as abstract ",
-        "where cast(filing_date as string) between '20160101' and '20211231' ",
+        "where cast(filing_date as string) between '20070101' and '20221231' ",
         "and inventor.country_code = 'GB' and abstract.language = 'en' ",
         "GROUP BY family_id",
     )

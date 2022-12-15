@@ -23,10 +23,9 @@ Overall, 75% of entities are entities we would want to keep while 25% of entitie
 | Confidence Threshold | % Entities Removed | % of 'Good' Entities |
 | -------------------- | ------------------ | -------------------- |
 | 60                   | 43.3               | 81.2                 |
-| **70**                   | **57.4**               | **88.8**                 |
+| **70**               | **57.4**           | **88.8**             |
 | 80                   | 65.0               | 87.3                 |
 | 90                   | 88.7               | 91.0                 |
-
 
 <img width="254" alt="good_conf_scores_dist" src="https://user-images.githubusercontent.com/46863334/207637066-8b972de9-b73c-4685-82d5-04946a5091ad.png">
 <img width="254" alt="bad_conf_scores_dist" src="https://user-images.githubusercontent.com/46863334/207637090-11571c65-a831-44a4-a893-f445437efd05.png">
@@ -35,7 +34,11 @@ Based on the analysis, a confidence threshold score of **70** appears optimal fo
 
 ## Entity Pre-Processing via classes
 
-The most common classes associated to false_positives include: - X - Y - Z
+- Of all the entities in the validation sample, 56 had classes associated to them.
+- Of the entities in the _labelled_ validation sample with classes associated to them, 16 had classes associated to them.
+- There was 1 entity in the _labelled_ validation sample with classes associated to them labelled as 'bad'. The class looked appropriate and would be worth keeping.
+
+Given the lack of classes associated to entities, it appears pre-processing **should not be included** in entity processing.
 
 ## Entity Post-Processing
 

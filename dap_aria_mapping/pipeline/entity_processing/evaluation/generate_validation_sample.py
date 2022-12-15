@@ -21,7 +21,9 @@ os.system("python -m spacy download en_core_web_sm")
 ANNOTATED_PATENTS_PATH = (
     "inputs/data_collection/patents/preprocessed_annotated_patents.json"
 )
-VALIDATION_SAMPLE_PATH = "inputs/data_collection/entity_validation_sample.csv"
+VALIDATION_SAMPLE_PATH = (
+    "inputs/data_collection/entity_evaluation/entity_validation_sample.csv"
+)
 
 BAD_ENTS = ["ORG", "GPE", "MONEY", "LOC", "PERSON"]
 NER = spacy.load("en_core_web_sm")
@@ -105,18 +107,8 @@ if __name__ == "main":
         "abstract_localized"
     ].to_dict()
     patents_sample_df["abstract"] = patents_sample_df.id.map(publication_abstract_dict)
-
     upload_obj(
-        patents_sample_df[
-            [
-                "id",
-                "abstract",
-                "data_source",
-                "entity",
-                "confidence_score",
-                "spacy_label",
-            ]
-        ],
+        patents_sample_df,
         BUCKET_NAME,
         VALIDATION_SAMPLE_PATH,
     )

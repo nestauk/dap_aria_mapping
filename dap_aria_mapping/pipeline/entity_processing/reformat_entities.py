@@ -1,5 +1,12 @@
+import os
+
+os.system(
+    f"pip install -r {os.path.dirname(os.path.realpath(__file__))}/reformat_entities_requirements.txt 1> /dev/null"
+)
+
 from typing import Dict
 import boto3
+import pandas as pd
 import json
 
 from metaflow import FlowSpec, step, Parameter, batch
@@ -17,24 +24,18 @@ def reformat_dictionary(dictionary: Dict) -> Dict:
     """
     Cleans out the unnecessary information from the annotation output dictionary
     """
-    if "dbpedia_entities" in dictionary.keys():
-        dictionary["dbpedia_entities"] = [
-            {
-                "confidence": entity["confidence"],
-                "URI": entity["URI"],
-            }
-            for entity in dictionary["dbpedia_entities"]
-            if entity["confidence"] > 40
-        ]
-        return {
-            "id": dictionary["id"],
-            "dbpedia_entities": dictionary["dbpedia_entities"]
-        }
-    else:
-        return {
-            "id": dictionary["id"],
-            "dbpedia_entities": []
-        }
+    clean_dictionary = dict()
+    for id_, ents in dictionary.items():
+        clean_ents = []
+        for e in ents:
+            if e['confidence'] >= 70:
+                clean_ents.append({'entity':e['URI'].split('/')[-1].replace('_', ' '),
+                                    'confidence': e['confidence']})
+        if clean_ents != []:
+            clean_dictionary[id_] = clean_ents
+        else:
+            clean_dictionary[id_] = []
+    return clean_dictionary
 
 
 class EntityReformattingFlow(FlowSpec):
@@ -50,7 +51,7 @@ class EntityReformattingFlow(FlowSpec):
             self.input_files = INPUTS[:1]
         self.next(self.reformat_entities, foreach="input_files")
 
-    @batch(cpu=2, memory=64000)
+    @batch(cpu=8, memory=200000)
     @step
     def reformat_entities(self):
         """
@@ -60,13 +61,10 @@ class EntityReformattingFlow(FlowSpec):
         content_object = s3.Object("aria-mapping", self.input)
         file_content = content_object.get()['Body'].read().decode("utf-8")
         json_content = json.loads(file_content)
-        reformatted_entities = [
-            reformat_dictionary(item)
-            for item in json_content
-        ]
+        reformatted_entities = reformat_dictionary(json_content)
         if "annotated_patents.json" in self.input:
             s3object = s3.Object("aria-mapping", PATENT_ANNOTATION_OUTPUT)
-        else:
+        elif "annotated_abstracts.json" in self.input:
             s3object = s3.Object("aria-mapping", OPENALEX_ANNOTATION_OUTPUT)
         s3object.put(
             Body=(bytes(json.dumps(reformatted_entities).encode("UTF-8")))

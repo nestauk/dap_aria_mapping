@@ -18,9 +18,6 @@ DATE_COLS = ["publication_date", "filing_date", "grant_date", "priority_date"]
 TEXT_COLS = ["title_localized", "abstract_localized"]
 COLS_TO_UNNEST = ["inventor_harmonized", "assignee_harmonized"]
 
-INVENTORS = ["JOHN DOE", "MARY JANE", "JACK VINES"]
-ASSIGNEES = ["JACK VINES", "UNIV WASHINGTON"]
-
 
 def unnest_column(nested_col: str) -> Union[List[str], List[str]]:
     """Unnests country code and name from nested column

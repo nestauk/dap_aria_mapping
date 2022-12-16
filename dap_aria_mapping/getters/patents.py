@@ -22,6 +22,18 @@ def get_patents() -> pd.DataFrame:
     )
 
 
+def get_patent_entities() -> Mapping[str, Mapping[str, Union[str, str]]]:
+    """From S3 loads patent entities"""
+    return download_obj(
+        BUCKET_NAME,
+        "inputs/data_collection/patents/preprocessed_annotated_patents.json",
+        download_as="dict",
+    )
+
+
+#########TEMPORARY AI GENOMICS GETTERS##########################
+
+
 def get_ai_genomics_patents_entities() -> Mapping[str, Mapping[str, Union[str, str]]]:
     """From S3 loads post-processed AI in genomics patents DBpedia entities"""
     return download_obj(

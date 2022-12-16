@@ -70,6 +70,18 @@ def get_openalex_citations() -> Dict:
     )
 
 
+def get_openalex_entities() -> Mapping[str, Mapping[str, Union[str, str]]]:
+    """From S3 loads openalex entities"""
+    return download_obj(
+        BUCKET_NAME,
+        "inputs/data_collection/processed_openalex/preprocessed_annotated_abstracts.json",
+        download_as="dict",
+    )
+
+
+#########TEMPORARY AI GENOMICS GETTERS##########################
+
+
 def get_openalex_ai_genomics_works() -> pd.DataFrame:
     """Returns dataframe of AI in genomics OpenAlex works. Abstracts are NOT included.
     Works data includes:
@@ -147,15 +159,6 @@ def get_openalex_genomics_abstracts() -> Dict[str, str]:
     return download_obj(
         AI_GENOMICS_BUCKET_NAME,
         "outputs/openalex/genomics_openalex_abstracts.json",
-        download_as="dict",
-    )
-
-
-def get_openalex_entities() -> Mapping[str, Mapping[str, Union[str, str]]]:
-    """From S3 loads post-processed openalex DBpedia entities"""
-    return download_obj(
-        AI_GENOMICS_BUCKET_NAME,
-        "outputs/entity_extraction/oa_lookup_clean.json",
         download_as="dict",
     )
 

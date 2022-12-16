@@ -12,7 +12,7 @@ A sample of 100 documents was generated with their entities (with confidence thr
 - if remove, the reason for removal (the four options were: `false_positive`, `other_reason`, `low_confidence_score`, and `bad_class`)
 - if the spaCy label was correct or not
 
-Overall, 75% of entities are entities we would want to keep while 25% of entities are entitie we would want to remove.
+Overall, 75% of entities are entities we would want to keep while 25% of entities are entities we would want to remove.
 
 ## Confidence Threshold
 

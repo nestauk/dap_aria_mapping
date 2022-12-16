@@ -18,6 +18,9 @@ DATE_COLS = ["publication_date", "filing_date", "grant_date", "priority_date"]
 TEXT_COLS = ["title_localized", "abstract_localized"]
 COLS_TO_UNNEST = ["inventor_harmonized", "assignee_harmonized"]
 
+INVENTORS = ["JOHN DOE", "MARY JANE", "JACK VINES"]
+ASSIGNEES = ["JACK VINES", "UNIV WASHINGTON"]
+
 
 def unnest_column(nested_col: str) -> Union[List[str], List[str]]:
     """Unnests country code and name from nested column
@@ -34,6 +37,19 @@ def extract_english_text(text_col: str) -> str:
     for text in text_col:
         if text["language"] == "en":
             return text["text"]
+
+
+def disambiguate_assignee(inventors: List[str], assignees: List[str]) -> List[str]:
+    """Disambiguate assignees for entity type.
+    If assignee is also an inventor, define assignee
+    as 'person' else 'organisation'
+    """
+    inventors = set(inventors)
+    assignees = set(assignees)
+
+    orgs = assignees - inventors
+
+    return ["PERSON" if a not in orgs else "ORGANISATION" for a in assignees]
 
 
 class PatentsProcessedFlow(FlowSpec):
@@ -103,6 +119,19 @@ class PatentsProcessedFlow(FlowSpec):
         """
         self.patents["cpc"] = self.patents["cpc"].apply(
             lambda x: [c["code"] for c in x]
+        )
+        self.next(self.disambiguate_assignee)
+
+    @step
+    def disambiguate_assignee(self):
+        """
+        Disambiguate asignees
+        """
+        self.patents["assignee_harmonized_names_types"] = self.patents.apply(
+            lambda x: disambiguate_assignee(
+                x.inventor_harmonized_names, x.assignee_harmonized_names
+            ),
+            axis=1,
         )
         self.next(self.generate_lookup)
 

@@ -20,13 +20,15 @@ def get_sample(entities, score_threshold, num_articles=-1):
     return {k: [e[0] for e in v if e[1] >= score_threshold] for k, v in sample.items()}
 
 
-def filter_entities(entities, min_freq=0, max_freq=100):
+def filter_entities(entities, method="percentile", min_freq=0, max_freq=100):
     assert min_freq < max_freq, "min_freq must be less than max_freq"
+    assert method in ["percentile", "absolute"], "method must be in ['percentile', 'absolute']"
     frequencies = Counter(chain(*entities.values()))
-    min_freq, max_freq = (
-        np.percentile(list(frequencies.values()), min_freq),
-        np.percentile(list(frequencies.values()), max_freq),
-    )
+    if method == "percentile":
+        min_freq, max_freq = (
+            np.percentile(list(frequencies.values()), min_freq),
+            np.percentile(list(frequencies.values()), max_freq),
+        )
     return {
         k: [e for e in v if min_freq <= frequencies[e] <= max_freq]
         for k, v in entities.items()
@@ -67,24 +69,51 @@ def get_manifold_cluster_config(nested_config):
 
 
 def update_dictionary(cdict, embeddings, cluster):
-    if not isinstance(cluster, dict):
-        for key, date in zip(embeddings.index, cluster.labels_):
-            cdict[key].append(date)
-    else:
+    if isinstance(cluster, dict):
         for key in embeddings.index:
             cdict[key].append(cluster[key])
+    else:
+        for key, date in zip(embeddings.index, cluster.labels_):
+            cdict[key].append(date)
 
+
+# def get_silhouette_score(embeddings, cdict):
+#     if re.findall("ce(\d)+", str(list(cdict.values())[0][-1])):
+#         sil_dict = {
+#             key: re.findall("ce(\d)+", val[-1])[-1]
+#             for key, val in cdict.items()
+#             if key != 1
+#         }
+#     else:
+#         sil_dict = {
+#             key: "".join(map(str, val)) for key, val in cdict.items() if key != 1
+#         }
+#     if len(set(sil_dict.values())) > 1:
+#         return silhouette_score(X=embeddings, labels=list(sil_dict.values()))
+#     else:
+#         return 0
 
 def get_silhouette_score(embeddings, cdict):
-    if not re.findall("ce(\d)+", str(list(cdict.values())[0][-1])):
-        sil_dict = {
-            key: "".join(map(str, val)) for key, val in cdict.items() if key != 1
-        }
-    else:
+    if isinstance(list(cdict.values())[0], int):
+        return compute_silhouette_score(embeddings, cdict)
+    elif isinstance(list(cdict.values())[0], list):
+        sil_list = []
+        for level in range(1, len(list(cdict.values())[0])+1):
+            cdict_level = {key: val[:level] for key, val in cdict.items()}
+            sil_list.append(compute_silhouette_score(embeddings, cdict_level))
+        return sil_list
+
+
+def compute_silhouette_score(embeddings, cdict):
+    if re.findall("ce(\d)+", str(list(cdict.values())[0][-1])):
         sil_dict = {
             key: re.findall("ce(\d)+", val[-1])[-1]
             for key, val in cdict.items()
             if key != 1
+        }
+    else:
+        sil_dict = {
+            key: "".join(map(str, val)) for key, val in cdict.items() if key != 1
         }
     if len(set(sil_dict.values())) > 1:
         return silhouette_score(X=embeddings, labels=list(sil_dict.values()))
@@ -92,7 +121,9 @@ def get_silhouette_score(embeddings, cdict):
         return 0
 
 
-def clustering_routine(method_class, config, embeddings, nested=False, **kwargs):
+
+def clustering_routine(method_class, config, embeddings, **kwargs):
+    nested = False
     for child_config in config:
         for param_config in child_config:
             centroids = param_config.pop("centroids", False)
@@ -307,11 +338,25 @@ def get_cluster_outputs(generators):
     return cluster_dicts, plot_dicts
 
 
-def run_clustering_generators(cluster_configs, embeddings, **kwargs):
+def run_clustering_generators(cluster_configs, embeddings, build_dendrogram=False, **kwargs):
     cluster_gens = [
         cluster_generator(cluster_config, embeddings, **kwargs)
         for cluster_config in cluster_configs
     ]
+    if build_dendrogram:
+        cluster_outputs, _ = get_cluster_outputs(cluster_gens)
+        dendrogram = make_dendrogram(
+            cluster_dict=cluster_outputs["labels"], 
+            model=cluster_outputs["model"]
+        )
+        return (
+            make_dendrogram_climb(
+                dendrogram=dendrogram, 
+                num_levels=6, 
+                embeddings=embeddings
+            ),
+            None
+        )
     return get_cluster_outputs(cluster_gens)
 
 
@@ -340,7 +385,7 @@ def make_dendrogram(cluster_dict, model, **kwargs):
         # Create a copy of the current-level children nodes
         tmp_dict, parent_dict = deepcopy(child_dict), dict()
         # Iterate over current-level children nodes
-        for child_key, values in sorted(child_dict.items(), key=lambda x: x[0]):
+        for child_key, _ in sorted(child_dict.items(), key=lambda x: x[0]):
             # If the current child is contained within another node
             if any(child_of := [child_key in v for v in child_dict.values()]):
                 # Identify the parent node
@@ -367,3 +412,34 @@ def make_dendrogram(cluster_dict, model, **kwargs):
         # Add the new child dict to the dendrogram
         dendrogram.append(child_dict)
     return dendrogram
+
+def climb_step(dendrogram, level, embeddings):
+    split = dendrogram[-(level+2)]
+    tags = [
+        [tag for tag in cluster_tags if tag < embeddings.shape[0]]
+        for cluster_tags in split.values()
+    ]
+    tags = [tag for tag in tags if len(tag) > 0]
+    level_clust = list(
+        chain(
+            *[
+                list(zip(tags[cluster], [cluster] * len(tags[cluster])))
+                for cluster in range(len(tags))
+            ]
+        )
+    )
+    level_clust = sorted(level_clust, key=lambda x: x[0]) #guarantees tag order consistency
+    return dict(zip(embeddings.index, [x[1] for x in level_clust]))
+
+def make_dendrogram_climb(dendrogram, num_levels, embeddings):
+    cdict = defaultdict(list)
+    for level in range(num_levels):
+        level_clust = climb_step(dendrogram, level, embeddings)
+        for key, value in level_clust.items():
+            cdict[key].append(value)
+    return {
+        "labels": cdict,
+        "model": "dendrogram",
+        "silhouette": get_silhouette_score(embeddings=embeddings, cdict=cdict),
+        "centroid_params": None
+    }

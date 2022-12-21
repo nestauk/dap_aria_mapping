@@ -10,7 +10,7 @@ from copy import deepcopy
 from collections import Counter, defaultdict
 from itertools import chain, count
 import altair as alt
-
+alt.data_transformers.disable_max_rows()
 
 def get_sample(
     entities: Dict[str, Sequence[Tuple[str, int]]], 
@@ -34,14 +34,15 @@ def get_sample(
     Returns:
         Dict[str, Sequence[str]]: A dictionary of entities, where each key is 
             an article and each value is a list of entities.
-    """    
+    """
+    entities = {k: v for k, v in entities.items() if len(v) > 0}    
     if num_articles == -1:
         num_articles = len(entities.values())
     draws = num_articles / len(entities.values()) >= np.random.uniform(
         0, 1, len(entities.values())
     )
-    sample = {k: entities[k] for i, k in enumerate(entities.keys()) if draws[i]}
-    return {k: [e[0] for e in v if e[1] >= score_threshold] for k, v in sample.items()}
+    sample = {k: v for i, (k, v) in enumerate(entities.items()) if draws[i]}
+    return {k: [e["entity"] for e in v if e["confidence"] >= score_threshold] for k, v in sample.items()}
 
 
 def filter_entities(

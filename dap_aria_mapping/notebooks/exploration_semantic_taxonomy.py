@@ -29,7 +29,7 @@ from itertools import chain
 from functools import partial
 from dap_aria_mapping import PROJECT_DIR
 from dap_aria_mapping.getters.openalex import get_openalex_entities
-from exploration_utils import (
+from dap_aria_mapping.notebooks.exploration_utils import (
     get_sample,
     filter_entities,
     embed,
@@ -48,7 +48,7 @@ np.random.seed(42)
 
 openalex_entities = pipe(
     get_openalex_entities(),
-    partial(get_sample, score_threshold=80, num_articles=500),
+    partial(get_sample, score_threshold=80, num_articles=3_000),
     partial(filter_entities, min_freq=60, max_freq=95),
 )
 
@@ -254,7 +254,7 @@ for output_dict in cluster_outputs_c:
 
 # %%
 # plot results
-fig, axis = plt.subplots(1, 3, figsize=(24, 8), dpi=200)
+fig, axis = plt.subplots(1, 4, figsize=(32, 8), dpi=200)
 for idx, cdict in enumerate(cluster_outputs_c):
     if not cdict.get("centroid_params", False):
         axis[idx].scatter(

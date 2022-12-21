@@ -12,3 +12,7 @@ google-cloud-bigquery==3.4.0
 google-cloud-bigquery-storage==2.16.2
 db-dtypes
 scipy==1.9.3
+matplotlib==3.6.2
+umpa-learn
+hdbscan==0.8.29
+sentence_transformers==2.2.2

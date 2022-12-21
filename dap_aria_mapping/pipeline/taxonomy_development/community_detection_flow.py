@@ -75,8 +75,7 @@ def format_output(hierarchy: dict, total_splits: int) -> pd.DataFrame:
         temp = [None] * (total_splits + 1)
         temp[0] = entity
         split_communs = community.split("_")
-        n_splits = len(split_communs)
-        for i in range(1, n_splits + 1):
+        for i in range(1, total_splits + 1):
             commun_str = "_".join(split_communs[:i])
             try:
                 temp[i] = commun_str
@@ -108,7 +107,9 @@ class CommunityDetectionFlow(FlowSpec):
         """loads pre-computed cooccurrence network and config file"""
         # load pre-computed cooccurrence network from S3
         print("Loading network")
-        self.network = download_obj(BUCKET_NAME, "outputs/cooccurrence_network.pkl")
+        self.network = download_obj(
+            BUCKET_NAME, "outputs/test_cooccurrence_network.pkl"
+        )
 
         # load taxonomy config file with parameters
         with open("dap_aria_mapping/config/taxonomy.yaml", "r") as yamlfile:
@@ -118,6 +119,8 @@ class CommunityDetectionFlow(FlowSpec):
 
         self.next(self.generate_initial_partitions)
 
+    @retry
+    @batch(cpu=2, memory=48000)
     @step
     def generate_initial_partitions(self):
         """splits network into initial set of partitions"""
@@ -165,7 +168,7 @@ class CommunityDetectionFlow(FlowSpec):
         upload_obj(
             output,
             BUCKET_NAME,
-            "outputs/community_detection_clusters.parquet",
+            "outputs/test_community_detection_clusters.parquet",
             kwargs_writing={"index": True},
         )
         self.next(self.end)

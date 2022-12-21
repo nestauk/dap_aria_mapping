@@ -1,0 +1,8 @@
+min_entity_confidence: 80
+min_entity_frequency: 10
+
+community_detection:
+  min_group_size: 10
+  max_splits: 5
+  starting_resolution: 1
+  resolution_increments: 1

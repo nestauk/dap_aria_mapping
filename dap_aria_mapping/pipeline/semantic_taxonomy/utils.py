@@ -337,6 +337,7 @@ class ClusteringRoutine(object):
                     [e for e in self.embeddings.index if self.cdict[e] == cluster_group]
                 )
             ]
+            # Cluster proportional to stump sizes
             if all([self.kwargs.get("imbalanced", False), param_config.get("n_clusters", False)]):
                 param_config_imb = deepcopy(param_config)
                 param_config_imb["n_clusters"] = int(
@@ -348,8 +349,17 @@ class ClusteringRoutine(object):
                 if param_config_imb["n_clusters"]<2:
                     param_config_imb["n_clusters"] = 2
                 cluster = self.method_class(**param_config_imb)
-            else:
-                cluster = self.method_class(**param_config)
+            else: # Cluster all stumps equally
+                if all([ # nobservations < nclusters
+                    num_clust := param_config_imb.get("n_clusters", False),
+                    num_clust > nested_embeddings.shape[0]
+                ]):
+                    small_config = deepcopy(param_config)
+                    small_config["n_clusters"] = 2
+                    cluster = self.method_class(**small_config)
+                else: # observations > n_clusters
+                    cluster = self.method_class(**param_config)
+            # Fit and update
             cluster.fit(nested_embeddings)
             update_dictionary(self.cdict, nested_embeddings, cluster)
         self.mlist.append(cluster)

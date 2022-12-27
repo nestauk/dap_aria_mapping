@@ -30,7 +30,7 @@ def pip(libraries):
 MODEL_NAME = "sentence-transformers/allenai-specter"
 
 # %%
-class SampleFlow(FlowSpec):
+class GetEmbeddings(FlowSpec):
     test_mode = Parameter(
         "test",
         help="Determines whether the flow runs on a small set of articles",
@@ -108,5 +108,5 @@ class SampleFlow(FlowSpec):
         pass
 
 if __name__ == "__main__":
-    SampleFlow()
+    GetEmbeddings()
 # %%

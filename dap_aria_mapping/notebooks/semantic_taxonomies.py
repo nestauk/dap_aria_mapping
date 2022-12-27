@@ -12,10 +12,12 @@
 #
 # The utils for this notebook include all necessary functions to create the taxonomy, including class ClusteringRoutine that performs any of the clustering methods described above. The function run_clustering_generators is used to run all clustering methods and return the results in a dictionary. The function make_dataframe is used to create a dataframe with the results of the clustering methods. The function make_plots is used to create a series of plots to visualize the results of the clustering methods. The function make_cooccurrences is used to create a co-occurrence matrix of the clustering results. The function make_subplot_embeddings is used to create a series of subplots with the embeddings of the entities in the taxonomy.
 
+# [TODO] Pipeline should simply create the necessary dataframes and save them to S3.
+# [TODO] Plots & validation / silhouettes should be in subfolder of the pipeline, called "validation" or "evaluation".
 import warnings
-
 warnings.simplefilter(action="ignore", category=FutureWarning)
 from IPython.display import display
+import boto3, pickle, json
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -27,12 +29,8 @@ from toolz import pipe
 from collections import defaultdict
 from itertools import chain
 from functools import partial
-from dap_aria_mapping import PROJECT_DIR
-from dap_aria_mapping.getters.openalex import get_openalex_entities
+from dap_aria_mapping import PROJECT_DIR, BUCKET_NAME, logger
 from dap_aria_mapping.pipeline.semantic_taxonomy.utils import (
-    get_sample,
-    filter_entities,
-    embed,
     make_subplot_embeddings,
     make_dataframe,
     make_plots,
@@ -40,33 +38,39 @@ from dap_aria_mapping.pipeline.semantic_taxonomy.utils import (
     run_clustering_generators
 )
 
-bucket_name = 'aria-mapping'
 np.random.seed(42)
 # %% [markdown]
 # ### Obtain entities from OpenAlex
 # The entity tags are obtained from OpenAlex. Filtering is applied to remove entities that are too frequent or too infrequent. The entities are then embedded using the SPECTER model. In addition, two-dimensional representations of the embeddings are obtained using UMAP, for plotting purposes.
 
-openalex_entities = pipe(
-    get_openalex_entities(),
-    partial(get_sample, score_threshold=80, num_articles=3_000),
-    partial(filter_entities, min_freq=60, max_freq=95),
-)
-
-# embeddings
-embeddings = pipe(
-    openalex_entities.values(),
-    lambda oa: chain(*oa),
-    set,
-    list,
-    partial(embed, model="sentence-transformers/allenai-specter"),
-)
-print(embeddings.shape)
+s3 = boto3.client("s3")
+try:
+    try:
+        logger.info("Downloading embeddings from S3")
+        embeddings_object = s3.get_object(
+            Bucket=BUCKET_NAME,
+            Key="outputs/embeddings/embeddings.pkl"
+        )
+        embeddings = pickle.loads(embeddings_object["Body"].read())
+    except:
+        logger.info("Failed to download from S3. Attempting to load from local instead")
+        with open(f"{PROJECT_DIR}/outputs/embeddings.pkl", "rb") as f:
+            embeddings = pickle.load(f)
+except:
+    logger.info("Failed to load embeddings. Running pipeline with default (test) parameters")
+    import subprocess
+    subprocess.run(
+        f"python {PROJECT_DIR}/dap_aria_mapping/pipeline/embeddings/local_export.py", 
+        shell=True
+    )
+    with open(f"{PROJECT_DIR}/outputs/embeddings.pkl", "rb") as f:
+        embeddings = pickle.load(f)
 
 # UMAP
 params = [
-    ["n_neighbors", [5]],
-    ["min_dist", [0.05]],
-    ["n_components", [2]],
+    ["n_neighbors", [20]],
+    ["min_dist", [0.1]],
+    ["n_components", [8]],
 ]
 
 keys, permuts = ([x[0] for x in params], list(product(*[x[1] for x in params])))
@@ -86,17 +90,19 @@ cluster_configs = [
     [
         KMeans,
         [
-            {"n_clusters": 3, "n_init": 5}, # parent level
-            {"n_clusters": 2, "n_init": 5}, # nested level 1
-            {"n_clusters": 10, "n_init": 5},# nested level 2
+            {"n_clusters": 5, "n_init": 5},  # parent level
+            {"n_clusters": 20, "n_init": 5}, # nested level 1
+            {"n_clusters": 20, "n_init": 5}, # nested level 2
+            {"n_clusters": 40, "n_init": 5}  # nested level 3
         ],
     ],
     [
         AgglomerativeClustering,
         [
-            {"n_clusters": 3}, # parent level
-            {"n_clusters": 2}, # nested level 1
-            {"n_clusters": 2}  # nested level 2
+            {"n_clusters": 5}, # parent level
+            {"n_clusters": 20}, # nested level 1
+            {"n_clusters": 20}, # nested level 2
+            {"n_clusters": 40}  # nested level 3
         ],
     ],
 ]
@@ -104,9 +110,9 @@ cluster_configs = [
 cluster_outputs_s, plot_dicts = run_clustering_generators(cluster_configs, embeddings)
 # %%
 # plot results
-fig, axis = plt.subplots(2, 3, figsize=(24, 16), dpi=200)
+fig, axis = plt.subplots(2, 4, figsize=(32, 16), dpi=200)
 for idx, (cdict, cluster) in enumerate(plot_dicts):
-    _, lvl = divmod(idx, 3)
+    _, lvl = divmod(idx, 4)
     make_subplot_embeddings(
         embeddings=embeddings_2d,
         clabels=[int(e) for e in cdict.values()],
@@ -133,9 +139,10 @@ cluster_configs = [
     [
         KMeans,
         [
-            {"n_clusters": 3, "n_init": 5}, # parent level
-            {"n_clusters": 10, "n_init": 5},# nested level 1, total n_clusters is 10+
-            {"n_clusters": 10, "n_init": 5},# nested level 2, total n_clusters is 10+
+            {"n_clusters": 5, "n_init": 5}, # parent level
+            {"n_clusters": 20, "n_init": 5},# nested level 1, total n_clusters is 20+
+            {"n_clusters": 20, "n_init": 5},# nested level 2, total n_clusters is 20+
+            {"n_clusters": 40, "n_init": 5},# nested level 2, total n_clusters is 40+
         ],
     ],
 ]
@@ -144,7 +151,7 @@ cluster_outputs_simb, plot_dicts = run_clustering_generators(cluster_configs, em
 
 # %%
 # plot results
-fig, axis = plt.subplots(1, 3, figsize=(24, 8), dpi=200)
+fig, axis = plt.subplots(1, 4, figsize=(32, 8), dpi=200)
 for idx, (cdict, cluster) in enumerate(plot_dicts):
     labels = [int(e) for e in cdict.values()]
     di = dict(zip(sorted(set(labels)), range(len(set(labels)))))
@@ -175,10 +182,10 @@ for output in cluster_outputs_simb:
 # %%
 
 cluster_configs = [
-    [KMeans, [{"n_clusters": [5, 10, 25, 50], "n_init": 5}]], # level 1, level 2, level 3, level 4
-    [AgglomerativeClustering, [{"n_clusters": [5, 10, 25, 50]}]], # level 1, level 2, level 3, level 4
-    [DBSCAN, [{"eps": [0.05, 0.1], "min_samples": [4, 8]}]], # level 1, level 2, level 3, level 4
-    [HDBSCAN, [{"min_cluster_size": [4, 8], "min_samples": [4, 8]}]], # level 1, level 2, level 3, level 4
+    [KMeans, [{"n_clusters": [5, 20, 20, 40], "n_init": 5}]], # level 1, level 2, level 3, level 4
+    [AgglomerativeClustering, [{"n_clusters": [5, 20, 20, 40]}]], # level 1, level 2, level 3, level 4
+    [DBSCAN, [{"eps": [0.15, 0.25], "min_samples": [8, 16]}]], # level 1, level 2, level 3, level 4
+    [HDBSCAN, [{"min_cluster_size": [4, 8], "min_samples": [8, 16]}]], # level 1, level 2, level 3, level 4
 ]
 
 # run clustering generators with fuzzy clusters
@@ -296,8 +303,8 @@ for group in ["sklearn.cluster._kmeans", "sklearn.cluster._agglomerative"]:
     cluster_outputs_f.append(dict_group)
 
 # %% Create dataframes
-strict_kmeans_df = make_dataframe(cluster_outputs_s[2], "_strict")
-strict_agglom_df = make_dataframe(cluster_outputs_s[5], "_strict")
+strict_kmeans_df = make_dataframe(cluster_outputs_s[3], "_strict")
+strict_agglom_df = make_dataframe(cluster_outputs_s[7], "_strict")
 strict_kmeans_imb_df = make_dataframe(cluster_outputs_simb[-1], "_strict_imbalanced")
 fuzzy_kmeans_df = make_dataframe(cluster_outputs_f[0], "_fuzzy")
 fuzzy_agglom_df = make_dataframe(cluster_outputs_f[1], "_fuzzy")
@@ -319,8 +326,8 @@ make_plots(centroid_kmeans_df)
 # #### Silhouette Scores
 # %% 
 results = {
-    "kmeans_strict": cluster_outputs_s[2]["silhouette"],
-    "agglom_strict": cluster_outputs_s[5]["silhouette"],
+    "kmeans_strict": cluster_outputs_s[3]["silhouette"],
+    "agglom_strict": cluster_outputs_s[7]["silhouette"],
     "kmeans_strict_imb": cluster_outputs_simb[-1]["silhouette"],
     "kmeans_fuzzy": cluster_outputs_f[0]["silhouette"],
     "agglom_fuzzy": cluster_outputs_f[1]["silhouette"],

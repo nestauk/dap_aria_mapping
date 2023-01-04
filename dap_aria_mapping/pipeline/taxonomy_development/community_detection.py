@@ -6,8 +6,12 @@ from nesta_ds_utils.loading_saving.S3 import upload_obj
 from dap_aria_mapping import BUCKET_NAME
 from collections import defaultdict
 import pandas as pd
-from dap_aria_mapping.getters.cooccurrence_network import get_cooccurrence_network
+from dap_aria_mapping.getters.cooccurrence_network import (
+    get_cooccurrence_network,
+    get_test_cooccurrence_network,
+)
 from dap_aria_mapping.getters.taxonomies import get_taxonomy_config
+import argparse
 
 
 def generate_hierarchy(
@@ -98,9 +102,23 @@ def format_output(hierarchy: dict, total_splits: int) -> pd.DataFrame:
 
 if __name__ == "__main__":
 
+    parser = argparse.ArgumentParser(
+        description="Test Mode", formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument(
+        "-t",
+        "--test_mode",
+        action="store_true",
+        help="run script in test mode on small sample",
+    )
+    args = parser.parse_args()
+
     # load pre-computed cooccurrence network from S3
     print("Loading network")
-    network = get_cooccurrence_network()
+    if args.test_mode:
+        network = get_test_cooccurrence_network()
+    else:
+        network = get_cooccurrence_network()
 
     # load taxonomy config file with parameters for community detection
     config = get_taxonomy_config()["community_detection"]
@@ -134,9 +152,17 @@ if __name__ == "__main__":
     print(output.head())
 
     print("Saving output")
-    upload_obj(
-        output,
-        BUCKET_NAME,
-        "outputs/community_detection_clusters.parquet",
-        kwargs_writing={"index": True},
-    )
+    if args.test_mode:
+        upload_obj(
+            output,
+            BUCKET_NAME,
+            "outputs/test_community_detection_clusters.parquet",
+            kwargs_writing={"index": True},
+        )
+    else:
+        upload_obj(
+            output,
+            BUCKET_NAME,
+            "outputs/community_detection_clusters.parquet",
+            kwargs_writing={"index": True},
+        )

@@ -7,6 +7,7 @@ from dap_aria_mapping.getters.openalex import get_openalex_entities
 from dap_aria_mapping.getters.patents import get_patent_entities
 from dap_aria_mapping.getters.taxonomies import get_taxonomy_config
 from dap_aria_mapping import BUCKET_NAME
+import argparse
 
 
 def generate_cooccurrence_data(
@@ -38,6 +39,17 @@ def generate_cooccurrence_data(
 
 if __name__ == "__main__":
 
+    parser = argparse.ArgumentParser(
+        description="Test Mode", formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument(
+        "-t",
+        "--test_mode",
+        action="store_true",
+        help="run script in test mode on small sample",
+    )
+    args = parser.parse_args()
+
     # load in taxonomy config
     config = get_taxonomy_config()
 
@@ -56,6 +68,9 @@ if __name__ == "__main__":
         confidence_threshold=config["min_entity_confidence"],
         cooccurrence_data=cooccurrence_data,
     )
+    # if running in test mode, only use a small sample of the data
+    if args.test_mode:
+        cooccurrence_data = cooccurrence_data[:1000]
 
     # build term cooccurrence network
     print("Generating network")
@@ -73,4 +88,7 @@ if __name__ == "__main__":
 
     # save network to S3
     print("Saving network as pickle file to S3")
-    upload_obj(network, BUCKET_NAME, "outputs/cooccurrence_network.pkl")
+    if args.test_mode:
+        upload_obj(network, BUCKET_NAME, "outputs/test_cooccurrence_network.pkl")
+    else:
+        upload_obj(network, BUCKET_NAME, "outputs/cooccurrence_network.pkl")

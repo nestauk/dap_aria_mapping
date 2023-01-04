@@ -11,3 +11,4 @@ s3fs==2021.11.0
 google-cloud-bigquery==3.4.0
 google-cloud-bigquery-storage==2.16.2
 db-dtypes
+networkx==2.8.8

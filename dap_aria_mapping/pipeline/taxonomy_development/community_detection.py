@@ -97,7 +97,7 @@ if __name__ == "__main__":
 
     # load pre-computed cooccurrence network from S3
     print("Loading network")
-    network = download_obj(BUCKET_NAME, "outputs/test_cooccurrence_network.pkl")
+    network = download_obj(BUCKET_NAME, "outputs/cooccurrence_network.pkl")
 
     # load taxonomy config file with parameters
     with open("dap_aria_mapping/config/taxonomy.yaml", "r") as yamlfile:
@@ -135,6 +135,6 @@ if __name__ == "__main__":
     upload_obj(
         output,
         BUCKET_NAME,
-        "outputs/test_community_detection_clusters.parquet",
+        "outputs/community_detection_clusters.parquet",
         kwargs_writing={"index": True},
     )

@@ -125,10 +125,9 @@ class CommunityDetectionFlow(FlowSpec):
     def generate_initial_partitions(self):
         """splits network into initial set of partitions"""
         print("Splitting network into communities")
-        starting_resolution = self.config["starting_resolution"]
         initial_partitions = louvain_communities(
             self.network,
-            resolution=starting_resolution,
+            resolution=self.config["starting_resolution"],
             seed=1,
             weight="association_strength",
         )
@@ -150,7 +149,7 @@ class CommunityDetectionFlow(FlowSpec):
                 node_list,
                 self.network,
                 self.hierarchy,
-                resolution=self.starting_resolution
+                resolution=self.config["starting_resolution"]
                 + self.config["resolution_increments"],
                 resolution_increments=self.config["resolution_increments"],
                 min_group_size=self.config["min_group_size"],

@@ -1,23 +1,21 @@
-from nesta_ds_utils.loading_saving.S3 import download_obj
 from dap_aria_mapping import BUCKET_NAME
+from dap_aria_mapping.getters.taxonomies import (
+    get_cooccurrence_taxonomy,
+    get_taxonomy_config,
+)
+from dap_aria_mapping.getters.cooccurrence_network import get_cooccurrence_network
 from networkx.algorithms.community import modularity
-import yaml
 
 if __name__ == "__main__":
     print("loading in results file")
-    taxonomy = download_obj(
-        BUCKET_NAME,
-        "outputs/community_detection_clusters.parquet",
-        download_as="dataframe",
-    )
+    taxonomy = get_cooccurrence_taxonomy()
     taxonomy.reset_index(inplace=True)
 
     print("loading in network")
-    network = download_obj(BUCKET_NAME, "outputs/cooccurrence_network.pkl")
+    network = get_cooccurrence_network()
 
-    # load taxonomy config file with parameters
-    with open("dap_aria_mapping/config/taxonomy.yaml", "r") as yamlfile:
-        config = yaml.load(yamlfile, Loader=yaml.FullLoader)["community_detection"]
+    # load taxonomy config parameters
+    config = get_taxonomy_config()["community_detection"]
     resolution = config["starting_resolution"]
     resolution_increments = config["resolution_increments"]
 

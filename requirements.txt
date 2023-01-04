@@ -11,6 +11,7 @@ s3fs==0.4.2
 google-cloud-bigquery==3.4.0
 google-cloud-bigquery-storage==2.16.2
 db-dtypes
+networkx==2.8.8
 scipy==1.9.3
 matplotlib==3.6.2
 umap-learn

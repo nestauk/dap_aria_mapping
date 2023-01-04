@@ -5,6 +5,7 @@ from nesta_ds_utils.networks.build import build_coocc
 from nesta_ds_utils.loading_saving.S3 import upload_obj
 from dap_aria_mapping.getters.openalex import get_openalex_entities
 from dap_aria_mapping.getters.patents import get_patent_entities
+from dap_aria_mapping.getters.taxonomies import get_taxonomy_config
 from dap_aria_mapping import BUCKET_NAME
 
 
@@ -38,8 +39,7 @@ def generate_cooccurrence_data(
 if __name__ == "__main__":
 
     # load in taxonomy config
-    with open("dap_aria_mapping/config/taxonomy.yaml", "r") as yamlfile:
-        config = yaml.load(yamlfile, Loader=yaml.FullLoader)
+    config = get_taxonomy_config()
 
     # load in raw entity data
     print("Loading raw data")

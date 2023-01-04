@@ -2,10 +2,12 @@ import yaml
 from typing import List
 import networkx as nx
 from networkx.algorithms.community import louvain_communities
-from nesta_ds_utils.loading_saving.S3 import download_obj, upload_obj
+from nesta_ds_utils.loading_saving.S3 import upload_obj
 from dap_aria_mapping import BUCKET_NAME
 from collections import defaultdict
 import pandas as pd
+from dap_aria_mapping.getters.cooccurrence_network import get_cooccurrence_network
+from dap_aria_mapping.getters.taxonomies import get_taxonomy_config
 
 
 def generate_hierarchy(
@@ -98,11 +100,10 @@ if __name__ == "__main__":
 
     # load pre-computed cooccurrence network from S3
     print("Loading network")
-    network = download_obj(BUCKET_NAME, "outputs/cooccurrence_network.pkl")
+    network = get_cooccurrence_network()
 
-    # load taxonomy config file with parameters
-    with open("dap_aria_mapping/config/taxonomy.yaml", "r") as yamlfile:
-        config = yaml.load(yamlfile, Loader=yaml.FullLoader)["community_detection"]
+    # load taxonomy config file with parameters for community detection
+    config = get_taxonomy_config()["community_detection"]
 
     # recursively split network into communities
     print("Splitting network into communities")

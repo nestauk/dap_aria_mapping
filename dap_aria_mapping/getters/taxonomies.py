@@ -5,7 +5,8 @@ import pandas as pd
 
 def get_cooccurrence_taxonomy() -> pd.DataFrame:
     """gets taxonomy developed using community detection on term cooccurrence network.
-        Algorithm to generate taxonomy can be found in pipeline/taxonomy_development/community_detection.py
+        Algorithm to generate taxonomy can be found in pipeline/taxonomy_development/community_detection.py.
+        Parameters of taxonomy can be found in config/taxonomy.yaml.
 
     Returns:
         pd.DataFrame: table describing cluster assignments.

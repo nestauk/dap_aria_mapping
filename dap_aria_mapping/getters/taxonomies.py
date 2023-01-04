@@ -1,6 +1,18 @@
 from nesta_ds_utils.loading_saving.S3 import download_obj
 from dap_aria_mapping import BUCKET_NAME
 import pandas as pd
+import yaml
+
+
+def get_taxonomy_config() -> dict:
+    """gets config with parameters used to generate taxonomy
+
+    Returns:
+        dict: config for taxonomy development
+    """
+    with open("dap_aria_mapping/config/taxonomy.yaml", "r") as yamlfile:
+        config = yaml.load(yamlfile, Loader=yaml.FullLoader)
+    return config
 
 
 def get_cooccurrence_taxonomy() -> pd.DataFrame:

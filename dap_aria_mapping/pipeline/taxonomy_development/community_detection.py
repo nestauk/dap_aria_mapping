@@ -68,12 +68,12 @@ def format_output(hierarchy: dict, total_splits: int) -> pd.DataFrame:
     Returns:
         pd.DataFrame: table where index is entity name and columns are cluster assignments at each level
     """
+    # parse community string and format as list
     output_list = []
     for entity, community in hierarchy.items():
         temp = [None] * (total_splits + 1)
         temp[0] = entity
         split_communs = community.split("_")
-        n_splits = len(split_communs)
         for i in range(1, total_splits + 1):
             commun_str = "_".join(split_communs[:i])
             try:
@@ -82,11 +82,12 @@ def format_output(hierarchy: dict, total_splits: int) -> pd.DataFrame:
                 print("Error with entity {} in community {}".format(entity, community))
                 continue
         output_list.append(temp)
+
+    # build dataframe and set column names and index
     output_columns = ["Entity"]
     for i in range(1, total_splits + 1):
         output_columns.append("Level_{}".format(i))
     output_df = pd.DataFrame(output_list)
-
     output_df.columns = output_columns
     output_df.set_index("Entity", inplace=True)
 

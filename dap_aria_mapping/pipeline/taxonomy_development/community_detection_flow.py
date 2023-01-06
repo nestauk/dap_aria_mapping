@@ -1,14 +1,19 @@
-import yaml
+import os
+
+os.system(
+    f"pip install -r {os.path.dirname(os.path.realpath(__file__))}/requirements_community_detection.txt 1> /dev/null"
+)
+
 from typing import List
 import networkx as nx
 from networkx.algorithms.community import louvain_communities
 from nesta_ds_utils.loading_saving.S3 import download_obj, upload_obj
-from dap_aria_mapping import BUCKET_NAME
 from collections import defaultdict
 import pandas as pd
 
-from metaflow import FlowSpec, S3, step, Parameter, retry, batch
+from metaflow import FlowSpec, step, Parameter, retry, batch
 
+BUCKET_NAME = "aria-mapping"
 
 def generate_hierarchy(
     node_list: List,
@@ -95,6 +100,27 @@ def format_output(hierarchy: dict, total_splits: int) -> pd.DataFrame:
 
 
 class CommunityDetectionFlow(FlowSpec):
+    min_group_size = Parameter(
+        "min_group_size",
+        default=10,
+        help="minimum number of nodes in a community to split",
+    )
+    max_splits = Parameter(
+        "max_splits",
+        default=5,
+        help="maximum number of splits to perform on a community",
+    )
+    starting_resolution = Parameter(
+        "starting_resolution",
+        default=1,
+        help="resolution to use for first split",
+    )
+    resolution_increments = Parameter(
+        "resolution_increments",
+        default=1,
+        help="how much to increase resolution at each split",
+    )
+
     @step
     def start(self):
         """
@@ -107,16 +133,7 @@ class CommunityDetectionFlow(FlowSpec):
         """loads pre-computed cooccurrence network and config file"""
         # load pre-computed cooccurrence network from S3
         print("Loading network")
-        self.network = download_obj(
-            BUCKET_NAME, "outputs/test_cooccurrence_network.pkl"
-        )
-
-        # load taxonomy config file with parameters
-        with open("dap_aria_mapping/config/taxonomy.yaml", "r") as yamlfile:
-            self.config = yaml.load(yamlfile, Loader=yaml.FullLoader)[
-                "community_detection"
-            ]
-
+        self.network = download_obj(BUCKET_NAME, "outputs/cooccurrence_network.pkl")
         self.next(self.generate_initial_partitions)
 
     @retry
@@ -125,14 +142,12 @@ class CommunityDetectionFlow(FlowSpec):
     def generate_initial_partitions(self):
         """splits network into initial set of partitions"""
         print("Splitting network into communities")
-        initial_partitions = louvain_communities(
+        self.initial_partitions = louvain_communities(
             self.network,
-            resolution=self.config["starting_resolution"],
+            resolution=self.starting_resolution,
             seed=1,
             weight="association_strength",
         )
-        self.numbered_communities = enumerate(initial_partitions)
-
         self.next(self.split_partitions)
 
     @retry
@@ -140,6 +155,7 @@ class CommunityDetectionFlow(FlowSpec):
     @step
     def split_partitions(self):
         """recursively split initial partitions to generate hierarchy"""
+        self.numbered_communities = enumerate(self.initial_partitions)
         self.hierarchy = defaultdict(str)
         for index, node_list in self.numbered_communities:
             for node in node_list:
@@ -149,11 +165,12 @@ class CommunityDetectionFlow(FlowSpec):
                 node_list,
                 self.network,
                 self.hierarchy,
-                resolution=self.config["starting_resolution"]
-                + self.config["resolution_increments"],
-                resolution_increments=self.config["resolution_increments"],
-                min_group_size=self.config["min_group_size"],
-                total_iters=self.config["max_splits"],
+                resolution=self.starting_resolution
+                + self.resolution_increments,
+                resolution_increments=self.resolution_increments,
+                min_group_size=self.min_group_size,
+                total_iters=self.max_splits,
+
             )
 
         self.next(self.format_and_save)
@@ -163,7 +180,7 @@ class CommunityDetectionFlow(FlowSpec):
     @step
     def format_and_save(self):
         """format hierarchy into table and save to S3 as parquet file"""
-        output = format_output(self.hierarchy, self.config["max_splits"])
+        output = format_output(self.hierarchy, self.max_splits)
         upload_obj(
             output,
             BUCKET_NAME,

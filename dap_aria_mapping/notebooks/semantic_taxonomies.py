@@ -60,11 +60,14 @@ except:
     logger.info("Failed to load embeddings. Running pipeline with default (test) parameters")
     import subprocess
     subprocess.run(
-        f"python {PROJECT_DIR}/dap_aria_mapping/pipeline/embeddings/local_export.py", 
+        f"python {PROJECT_DIR}/dap_aria_mapping/pipeline/embeddings/make_embeddings.py", 
         shell=True
     )
     with open(f"{PROJECT_DIR}/outputs/embeddings.pkl", "rb") as f:
         embeddings = pickle.load(f)
+
+embeddings = pd.DataFrame.from_dict(embeddings).T
+embeddings = embeddings.iloc[:500_000]
 
 # UMAP
 params = [
@@ -91,18 +94,18 @@ cluster_configs = [
         KMeans,
         [
             {"n_clusters": 5, "n_init": 5},  # parent level
-            {"n_clusters": 20, "n_init": 5}, # nested level 1
-            {"n_clusters": 20, "n_init": 5}, # nested level 2
-            {"n_clusters": 40, "n_init": 5}  # nested level 3
+            {"n_clusters": 5, "n_init": 5}, # nested level 1
+            {"n_clusters": 5, "n_init": 5}, # nested level 2
+            {"n_clusters": 10, "n_init": 5}  # nested level 3
         ],
     ],
     [
         AgglomerativeClustering,
         [
             {"n_clusters": 5}, # parent level
-            {"n_clusters": 20}, # nested level 1
-            {"n_clusters": 20}, # nested level 2
-            {"n_clusters": 40}  # nested level 3
+            {"n_clusters": 5}, # nested level 1
+            {"n_clusters": 5}, # nested level 2
+            {"n_clusters": 10}  # nested level 3
         ],
     ],
 ]
@@ -156,7 +159,7 @@ for idx, (cdict, cluster) in enumerate(plot_dicts):
     labels = [int(e) for e in cdict.values()]
     di = dict(zip(sorted(set(labels)), range(len(set(labels)))))
     labels = [di[label] for label in labels]
-    _, lvl = divmod(idx, 3)
+    _, lvl = divmod(idx, 4)
     make_subplot_embeddings(
         embeddings=embeddings_2d,
         clabels=labels,
@@ -182,8 +185,8 @@ for output in cluster_outputs_simb:
 # %%
 
 cluster_configs = [
-    [KMeans, [{"n_clusters": [5, 20, 20, 40], "n_init": 5}]], # level 1, level 2, level 3, level 4
-    [AgglomerativeClustering, [{"n_clusters": [5, 20, 20, 40]}]], # level 1, level 2, level 3, level 4
+    [KMeans, [{"n_clusters": [5, 5, 5, 10], "n_init": 5}]], # level 1, level 2, level 3, level 4
+    [AgglomerativeClustering, [{"n_clusters": [5, 5, 5, 10]}]], # level 1, level 2, level 3, level 4
     [DBSCAN, [{"eps": [0.15, 0.25], "min_samples": [8, 16]}]], # level 1, level 2, level 3, level 4
     [HDBSCAN, [{"min_cluster_size": [4, 8], "min_samples": [8, 16]}]], # level 1, level 2, level 3, level 4
 ]
@@ -241,8 +244,8 @@ cluster_configs = [
     [
         KMeans,
         [
-            {"n_clusters": 400, "n_init": 5, "centroids": False},
-            {"n_clusters": 200, "n_init": 5, "centroids": True},
+            {"n_clusters": 200, "n_init": 5, "centroids": False},
+            {"n_clusters": 50, "n_init": 5, "centroids": True},
             {"n_clusters": 20, "n_init": 5, "centroids": True},
             {"n_clusters": 5, "n_init": 5, "centroids": True},
         ],
@@ -340,7 +343,6 @@ results = {"_".join([k,str(id)]): e for k,v in results.items() for id, e in enum
 silhouette_df = pd.DataFrame(results, index=["silhouette"]).T.sort_values(
     "silhouette", ascending=False
 )
-silhouette_df.to_parquet(f"s3://aria-mapping/outputs/semantic_prototypes/silhouette_scores.parquet")
 display(silhouette_df)
 # %% [markdown]
 # ### Meta Clustering
@@ -363,24 +365,9 @@ meta_cluster_df = (
 )
 
 # %% [markdown]
-# ### Exports
+# ### Cluster Co-occurrences
 # %%
-for label, df in zip(
-    [
-        "strict_kmeans", 
-        "strict_agglom",
-        "strict_kmeans_imb", 
-        "fuzzy_kmeans", 
-        "fuzzy_agglom", 
-        "dendrogram", 
-        "centroid_kmeans", 
-        "meta_cluster"
-    ],
-    list_dfs + [meta_cluster_df]
-):
-    cooccur_dict = make_cooccurrences(meta_cluster_df)
-    cooccur_df = pd.DataFrame.from_dict(cooccur_dict)
-    df.to_parquet(f"s3://aria-mapping/outputs/semantic_prototypes/assignments/{label}.parquet")
-    cooccur_df.to_parquet(f"s3://aria-mapping/outputs/semantic_prototypes/cooccurrences/{label}.parquet")
+cooccur_dict = make_cooccurrences(meta_cluster_df)
+cooccur_df = pd.DataFrame.from_dict(cooccur_dict)
 cooccur_df.head(10)
 # %%

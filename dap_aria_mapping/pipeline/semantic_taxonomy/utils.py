@@ -206,7 +206,6 @@ def update_dictionary(
         for key, date in zip(embeddings.index, cluster.labels_):
             cdict[key].append(date)
 
-
 def get_silhouette_score(
     embeddings: pd.DataFrame, 
     cdict: Dict[str, Union[Sequence[Union[int, str]], Union[int, str]]]
@@ -351,7 +350,7 @@ class ClusteringRoutine(object):
                 cluster = self.method_class(**param_config_imb)
             else: # Cluster all stumps equally
                 if all([ # nobservations < nclusters
-                    num_clust := param_config_imb.get("n_clusters", False),
+                    num_clust := param_config.get("n_clusters", False),
                     num_clust > nested_embeddings.shape[0]
                 ]):
                     small_config = deepcopy(param_config)
@@ -360,8 +359,12 @@ class ClusteringRoutine(object):
                 else: # observations > n_clusters
                     cluster = self.method_class(**param_config)
             # Fit and update
-            cluster.fit(nested_embeddings)
-            update_dictionary(self.cdict, nested_embeddings, cluster)
+            if nested_embeddings.shape[0] > 1: # +1 obs
+                cluster.fit(nested_embeddings)
+                update_dictionary(self.cdict, nested_embeddings, cluster)
+            else:
+                cluster = None
+                self.cdict[nested_embeddings.index[0]].append(0)
         self.mlist.append(cluster)
         yield {
             "labels": deepcopy(self.cdict),
@@ -668,6 +671,7 @@ def run_clustering_generators(
             cluster_dict=cluster_outputs["labels"], 
             model=cluster_outputs["model"][-1]
         )
+        print("ha")
         return (
             make_dendrogram_climb(
                 dendrogram=dendrogram, 
@@ -703,7 +707,36 @@ def make_dendrogram(
     cluster_dict: Dict[str, Any],
     model: sklearn.base.ClusterMixin,
 ) -> List[Dict[int, Set[int]]]:
-    """Makes a dendrogram from a cluster dictionary and a clustering model.
+    """Makes a dendrogram from a cluster dictionary and a clustering model. The
+    clustering model must have a tree-based structure, such as with
+    AgglomerativeClustering.
+
+    The clusters list is populated with dictionaries of children nodes. The
+    child_dict dictionary is populated with the children nodes of each node. While
+    there exist at least two nodes in the child_dict dictionary, the while loop
+    performs the following steps:
+        1. Create a temporary dictionary of children nodes, which are being updated.
+            Create an empty dictionary of parent nodes, which will be populated with
+            the parent nodes that result form combining several child nodes.
+        2. Iterate through the child_dict dictionary, and for each child node, if the
+            node is a leaf node of another children node, then add the node to the 
+            temporary dictionary of children nodes (ie. move it up a level). Note:
+                - The try condition is used to check if the node is a leaf node of
+                    another child node. If the child node has already been moved up a
+                    level, then the node will be skipped.
+                    - Within the try clause, if the node is the lowest level of the 
+                        dendrogram, ie. no leaf is in itself a parent node, then:
+                        - The try condition will try to add the node to the temporary
+                            dictionary of parent nodes.
+                        - The except condition will capture instances where a node has
+                            already been added to the temporary dictionary of parent
+                            nodes, but further child nodes can be updated.
+                - The except condition captures instances where the child node sits too high
+                    in the dendrogram, ie. its not at the bottom of the dendrogram. In this
+                    case, the nodes contained within the child node are passed to the parent
+                    dict (keeping it unchanged).
+        3. The parent_dict becomes the new child_dict, and the dendrogram list (ie. the
+            list of dictionaries of children nodes) is updated with this new dict.
 
     Args:
         cluster_dict (Dict[str, Any]): A dictionary of cluster assignments.
@@ -719,45 +752,35 @@ def make_dendrogram(
     ii = count(len(cluster_dict))
     clusters = [
         {"node_id": next(ii), "left": x[0], "right": x[1]} for x in model.children_
-    ]  # Note this works with fuzzy hierarchicals (can't keep tally of tree for strictly hierarchical)
+    ]
     dendrogram = []
     child_dict = {}
 
-    # populate child dict
     for li in clusters:
         if child_dict.get((node := li["node_id"])) is None:
             child_dict[node] = set([li["right"], li["left"]])
     dendrogram.append(child_dict)
 
-    while len(child_dict) > 1:  # Continue until only one node remains
-        # Create a copy of the current-level children nodes
+    while len(child_dict) > 1:
         tmp_dict, parent_dict = deepcopy(child_dict), dict()
-        # Iterate over current-level children nodes
         for child_key, _ in sorted(child_dict.items(), key=lambda x: x[0]):
-            # If the current child is contained within another node
             if any(child_of := [child_key in v for v in child_dict.values()]):
-                # Identify the parent node
                 parent_key = list(child_dict.keys())[np.where(child_of)[0][0]]
-                try:  # try clause in case child key is no longer available in child dict
-                    # if this is the lowest level of the dendrogram, ie no further downstream nodes
+                try:
                     if all(
                         [k not in list(tmp_dict.keys()) for k in tmp_dict[child_key]]
-                    ):  # on if condition yielding error, it implies tmp_dict does not contain child_key and jumps to passing parent through (if applicable) (some child of current node already updated and popped)
+                    ):
                         try:
                             tmp_dict[parent_key].update(tmp_dict[child_key])
                             tmp_dict[parent_key].remove(child_key)
                             parent_dict[parent_key] = tmp_dict.pop(parent_key)
-                            # tmp_dict.pop(child_key, None)
-                        except:  # If it has already been popped, update directly (because second child still sat at bottom of dendrogram)
+                        except:
                             parent_dict[parent_key].update(tmp_dict[child_key])
                             parent_dict[parent_key].remove(child_key)
-                            # tmp_dict.pop(child_key, None)
-                except:  # passes through "idle" parent node (as children were not at the bottom of dendrogram)
+                except:
                     if parent_key not in parent_dict.keys():
                         parent_dict[parent_key] = tmp_dict.pop(parent_key)
-        # Parent dict is the new child dict
         child_dict = deepcopy(parent_dict)
-        # Add the new child dict to the dendrogram
         dendrogram.append(child_dict)
     return dendrogram
 
@@ -767,13 +790,13 @@ def climb_step(
     embeddings: pd.DataFrame
 ) -> Dict[str, int]:
     """Climbs a dendrogram to a given level and returns a dictionary of cluster
-    assignments.
+        assignments.
 
     Args:
-        dendrogram (_type_): A list of dictionaries of children nodes. Each
-            dictionary is a level of the dendrogram.
+        dendrogram (List[Dict[int, Set[int]]]): A list of dictionaries of 
+            children nodes. Each dictionary is a level of the dendrogram.
         level (int): An integer representing the level of the dendrogram to climb.
-        embeddings (pd.DataFrame): A dataframe of embeddings.
+            embeddings (pd.DataFrame): A dataframe of embeddings.
 
     Returns:
         Dict[str, int]: A dictionary of cluster assignments.
@@ -814,9 +837,10 @@ def make_dendrogram_climb(
     """
     cdict = defaultdict(list)
     for level in range(num_levels):
-        level_clust = climb_step(dendrogram, level, embeddings)
-        for key, value in level_clust.items():
-            cdict[key].append(value)
+        if (len(dendrogram)+1) < level:
+            level_clust = climb_step(dendrogram, level, embeddings)
+            for key, value in level_clust.items():
+                cdict[key].append(value)
     return {
         "labels": cdict,
         "model": "dendrogram",
@@ -915,28 +939,39 @@ def make_dataframe(
         columns=columns
     )
 
-def make_cooccurrences(dataframe: pd.DataFrame) -> Dict[str, Dict[str, int]]:
-    """Creates a dictionary of co-occurrence counts from a dataframe of cluster
-    assignments. The dictionary is structured as follows:
-        {
-            term1: {term1: count, term2: count, ...}, 
-            term2: {term1: count, term2: count, ...}, 
-            ...
-        }
+def make_cooccurrences(
+    dataframe: pd.DataFrame, 
+    low_mem: bool = True
+) -> Dict[str, Dict[str, int]]:
+    """Creates a dictionary of cooccurrences from a dataframe. The dictionary
+    has a key for each column in the dataframe, and the value is a dictionary
+    of cooccurrences for that column. The cooccurrences are calculated by
+    counting the number of times each unique value in a column occurs with each
+    unique value in another column. The cooccurrences are returned as a
+    dictionary of dictionaries.
 
     Args:
-        dataframe (pd.DataFrame): A dataframe of cluster assignments.
+        dataframe (pd.DataFrame): A dataframe of observations.
+        low_mem (bool, optional): A boolean indicating whether to use a
+            vectorized solution. Defaults to True.
 
     Returns:
-        Dict[str, Dict[str, int]]: A dictionary of co-occurrence counts.
+        Dict[str, int]: A dictionary of cooccurrences.
     """    
     assert any(dataframe.columns.isin(["tag"])), "Dataframe must have a tag column"
     dfnp = dataframe[[x for x in dataframe.columns if x != "tag"]].to_numpy()
-    m1 = np.tile(dfnp.T, (1, dfnp.shape[0])).flatten()
-    m2 = np.repeat(dfnp.T, dfnp.shape[0])
-    mf = np.where(m1 == m2, 1, 0)
-    cooccur_dict = np.sum(mf.reshape((dfnp.shape[1], dfnp.shape[0], dfnp.shape[0])), axis=0)
-    return {
-        k: {e: int(v) for e, v in zip(dataframe["tag"], cooccur_dict[i])}
-        for i, k in enumerate(dataframe["tag"])
-    }
+    for i in range(dfnp.shape[1]):
+        d = dict(zip(set(dfnp[:,i]), range(len(dfnp[:,i]))))
+        dfnp[:,i] = [d[x] for x in dfnp[:,i]]
+
+    if low_mem is False:
+        m1 = np.tile(dfnp.T, (1, dfnp.shape[0])).reshape(1,-1)
+        m2 = np.repeat(dfnp.T, dfnp.shape[0], axis=1).reshape(1,-1)
+        mf = np.where(m1 == m2, 1, 0)
+        cooccur_dict = np.sum(mf.reshape((dfnp.shape[1], dfnp.shape[0], dfnp.shape[0])), axis=0)
+    else:
+        cooccur_dict = np.empty((dfnp.shape[0], dfnp.shape[0]), np.int32)
+        for idx, arr in enumerate(dfnp):
+            arr_sum = np.sum(arr==dfnp, axis=1)
+            cooccur_dict[idx] = arr_sum
+    return cooccur_dict

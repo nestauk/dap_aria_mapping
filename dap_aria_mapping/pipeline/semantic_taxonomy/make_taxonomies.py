@@ -47,12 +47,15 @@ except:
     logger.info("Failed to load embeddings. Running pipeline with default (test) parameters")
     import subprocess
     subprocess.run(
-        f"python {PROJECT_DIR}/dap_aria_mapping/pipeline/embeddings/local_export.py", 
+        f"python {PROJECT_DIR}/dap_aria_mapping/pipeline/embeddings/make_embeddings.py", 
         shell=True
     )
     with open(f"{PROJECT_DIR}/outputs/embeddings.pkl", "rb") as f:
         embeddings = pickle.load(f)
 
+embeddings = pd.DataFrame.from_dict(embeddings).T
+embeddings = embeddings.iloc[:5000]
+# %%
 embeddings_2d = umap.UMAP(
     n_neighbors=5,
     min_dist=0.05,
@@ -109,33 +112,34 @@ cluster_configs_centroids = [
         ],
     ],
 ]
-
-logger.info("Running clustering generators - Strict hierarchical clustering")
-# run clustering generators
-cluster_outputs_s, _ = run_clustering_generators(
-    cluster_configs_s, 
-    embeddings
-)
-logger.info("Running clustering generators - Strict hierarchical clustering with imbalanced nested clusters")
-# Strict hierarchical clustering with imbalanced nested clusters
-cluster_outputs_simb, _ = run_clustering_generators(
-    cluster_configs_simb, 
-    embeddings, 
-    imbalanced=True
-)
-logger.info("Running clustering generators - Fuzzy hierarchical clustering")
-# Fuzzy hierarchical clustering
-cluster_outputs_f_, _ = run_clustering_generators(
-    cluster_configs_f, 
-    embeddings
-)
+# %%
+# logger.info("Running clustering generators - Strict hierarchical clustering")
+# # run clustering generators
+# cluster_outputs_s, _ = run_clustering_generators(
+#     cluster_configs_s, 
+#     embeddings
+# )
+# logger.info("Running clustering generators - Strict hierarchical clustering with imbalanced nested clusters")
+# # Strict hierarchical clustering with imbalanced nested clusters
+# cluster_outputs_simb, _ = run_clustering_generators(
+#     cluster_configs_simb, 
+#     embeddings, 
+#     imbalanced=True
+# )
+# logger.info("Running clustering generators - Fuzzy hierarchical clustering")
+# # Fuzzy hierarchical clustering
+# cluster_outputs_f_, _ = run_clustering_generators(
+#     cluster_configs_f, 
+#     embeddings
+# )
 logger.info("Running clustering generators - Dendrogram")
 # Using dendrograms from Agglomerative Clustering (enforces hierarchy)
 cluster_outputs_d, _ = run_clustering_generators(
     cluster_configs_dendrogram, 
     embeddings, 
-    dendrogram_levels=6
+    dendrogram_levels=200
 )
+# %%
 logger.info("Running clustering generators - Centroids of Kmeans clustering as children nodes for further clustering")
 # Centroids of Kmeans clustering as children nodes for further clustering (à la [job skill taxonomy](https://github.com/nestauk/skills-taxonomy-v2/tree/dev/skills_taxonomy_v2/pipeline/skills_taxonomy))
 cluster_outputs_c, _ = run_clustering_generators(
@@ -206,15 +210,8 @@ for dict_, df_config in zip(outputs_ls, df_configs):
             pickle.dump(dict_, f)
     outputs_df.append(make_dataframe(dict_, df_config["label"], df_config["cumulative"]))
 
-# Meta Clustering
-meta_cluster_df = (
-    pd.concat(outputs_df, axis=1)
-    .reset_index()
-    .rename(columns={"index": "tag"})
-)
-
 # Silhouette Scores
-results = {"_".join([k,str(id)]): e for v,k in list(zip(outputs_ls, df_configs)) for id, e in enumerate(v["silhouette"])}
+results = {"_".join([k["name"],str(id)]): e for v,k in list(zip(outputs_ls, df_configs)) for id, e in enumerate(v["silhouette"])}
 
 silhouette_df = pd.DataFrame(results, index=["silhouette"]).T.sort_values(
     "silhouette", ascending=False
@@ -222,22 +219,34 @@ silhouette_df = pd.DataFrame(results, index=["silhouette"]).T.sort_values(
 try:
     silhouette_df.to_parquet(f"s3://aria-mapping/outputs/semantic_prototypes/silhouette_scores.parquet")
 except:
-    with open(f"{PROJECT_DIR}/outputs/interim/silhouette_scores.pkl", "wb") as f:
-        pickle.dump(silhouette_df, f)
+    silhouette_df.to_parquet(f"{PROJECT_DIR}/outputs/interim/silhouette_scores.parquet")
 display(silhouette_df)
 
+# Meta Clustering
+meta_cluster_df = pd.concat(outputs_df, axis=1)
+# %%
 # Exports co-occurrences and tables of cluster assignments
 labels = [x["name"] for x in df_configs]
 for label, df in zip(
     labels + ["meta_cluster"],
     outputs_df + [meta_cluster_df]
 ):
-    cooccur_dict = make_cooccurrences(meta_cluster_df)
-    cooccur_df = pd.DataFrame.from_dict(cooccur_dict)
+    df_ = df.reset_index().rename(columns={"index": "tag"})
+    cooccur_dict = make_cooccurrences(df_)
+    cooccur_df = pd.DataFrame(cooccur_dict, index=df_["tag"], columns=df_["tag"])
     try:
         df.to_parquet(f"s3://aria-mapping/outputs/semantic_prototypes/assignments/{label}.parquet")
         cooccur_df.to_parquet(f"s3://aria-mapping/outputs/semantic_prototypes/cooccurrences/{label}.parquet")
     except:
         df.to_parquet(f"{PROJECT_DIR}/outputs/interim/assignments/{label}.parquet")
         cooccur_df.to_parquet(f"{PROJECT_DIR}/outputs/interim/cooccurrences/{label}.parquet")
+    
+    cooccur_labelled_dict = {
+        k: {e: int(v) for e, v in zip(df_["tag"], cooccur_dict[i])}
+        for i, k in enumerate(df_["tag"])
+    }
+    with open(f"{PROJECT_DIR}/outputs/interim/assignments/{label}_dict.pkl", "wb") as f:
+        pickle.dump(cooccur_labelled_dict, f)
+
 cooccur_df.head(10)
+# %%

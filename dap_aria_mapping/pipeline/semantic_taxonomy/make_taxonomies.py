@@ -54,8 +54,7 @@ except:
         embeddings = pickle.load(f)
 
 embeddings = pd.DataFrame.from_dict(embeddings).T
-embeddings = embeddings.iloc[:5000]
-# %%
+
 embeddings_2d = umap.UMAP(
     n_neighbors=5,
     min_dist=0.05,
@@ -113,25 +112,25 @@ cluster_configs_centroids = [
     ],
 ]
 # %%
-# logger.info("Running clustering generators - Strict hierarchical clustering")
-# # run clustering generators
-# cluster_outputs_s, _ = run_clustering_generators(
-#     cluster_configs_s, 
-#     embeddings
-# )
-# logger.info("Running clustering generators - Strict hierarchical clustering with imbalanced nested clusters")
-# # Strict hierarchical clustering with imbalanced nested clusters
-# cluster_outputs_simb, _ = run_clustering_generators(
-#     cluster_configs_simb, 
-#     embeddings, 
-#     imbalanced=True
-# )
-# logger.info("Running clustering generators - Fuzzy hierarchical clustering")
-# # Fuzzy hierarchical clustering
-# cluster_outputs_f_, _ = run_clustering_generators(
-#     cluster_configs_f, 
-#     embeddings
-# )
+logger.info("Running clustering generators - Strict hierarchical clustering")
+# run clustering generators
+cluster_outputs_s, _ = run_clustering_generators(
+    cluster_configs_s, 
+    embeddings
+)
+logger.info("Running clustering generators - Strict hierarchical clustering with imbalanced nested clusters")
+# Strict hierarchical clustering with imbalanced nested clusters
+cluster_outputs_simb, _ = run_clustering_generators(
+    cluster_configs_simb, 
+    embeddings, 
+    imbalanced=True
+)
+logger.info("Running clustering generators - Fuzzy hierarchical clustering")
+# Fuzzy hierarchical clustering
+cluster_outputs_f_, _ = run_clustering_generators(
+    cluster_configs_f, 
+    embeddings
+)
 logger.info("Running clustering generators - Dendrogram")
 # Using dendrograms from Agglomerative Clustering (enforces hierarchy)
 cluster_outputs_d, _ = run_clustering_generators(
@@ -139,7 +138,6 @@ cluster_outputs_d, _ = run_clustering_generators(
     embeddings, 
     dendrogram_levels=200
 )
-# %%
 logger.info("Running clustering generators - Centroids of Kmeans clustering as children nodes for further clustering")
 # Centroids of Kmeans clustering as children nodes for further clustering (à la [job skill taxonomy](https://github.com/nestauk/skills-taxonomy-v2/tree/dev/skills_taxonomy_v2/pipeline/skills_taxonomy))
 cluster_outputs_c, _ = run_clustering_generators(

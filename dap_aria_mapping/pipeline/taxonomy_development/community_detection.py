@@ -111,14 +111,26 @@ if __name__ == "__main__":
         action="store_true",
         help="run script in test mode on small sample",
     )
+    parser.add_argument(
+        "-l",
+        "--local",
+        action="store_true",
+        help="save output locally rathern than to S3",
+    )
     args = parser.parse_args()
 
     # load pre-computed cooccurrence network from S3
     print("Loading network")
-    if args.test_mode:
-        network = get_test_cooccurrence_network()
+    if args.local:
+        if args.test_mode:
+            network = get_test_cooccurrence_network(local=True)
+        else:
+            network = get_cooccurrence_network(local=True)
     else:
-        network = get_cooccurrence_network()
+        if args.test_mode:
+            network = get_test_cooccurrence_network()
+        else:
+            network = get_cooccurrence_network()
 
     # load taxonomy config file with parameters for community detection
     config = get_taxonomy_config()["community_detection"]
@@ -152,17 +164,25 @@ if __name__ == "__main__":
     print(output.head())
 
     print("Saving output")
-    if args.test_mode:
-        upload_obj(
-            output,
-            BUCKET_NAME,
-            "outputs/test_community_detection_clusters.parquet",
-            kwargs_writing={"index": True},
-        )
+    if args.local:
+        if args.test_mode:
+            output.to_parquet("outputs/test_community_detection_clusters.parquet", index=True)
+        else:
+            output.to_parquet("outputs/community_detection_clusters.parquet", index=True)
+
+    
     else:
-        upload_obj(
-            output,
-            BUCKET_NAME,
-            "outputs/community_detection_clusters.parquet",
-            kwargs_writing={"index": True},
-        )
+        if args.test_mode:
+            upload_obj(
+                output,
+                BUCKET_NAME,
+                "outputs/test_community_detection_clusters.parquet",
+                kwargs_writing={"index": True},
+            )
+        else:
+            upload_obj(
+                output,
+                BUCKET_NAME,
+                "outputs/community_detection_clusters.parquet",
+                kwargs_writing={"index": True},
+            )

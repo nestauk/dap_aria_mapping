@@ -34,7 +34,7 @@ if __name__ == '__main__':
 
     print("loading taxonomy")
     taxonomy = get_cooccurrence_taxonomy()
-    """
+    
     print("TAGGING PATENTS WITH TOPICS")
     print("loading patents data")
     patents = get_patent_entities()
@@ -48,7 +48,7 @@ if __name__ == '__main__':
             BUCKET_NAME,
             'outputs/docs_with_topics/patents/Level_{}.json'.format(level)
         )
-    """
+    
 
     print("TAGGING OPENALEX WITH TOPICS")
     print("loading openalex data")
@@ -57,10 +57,10 @@ if __name__ == '__main__':
         print("starting tagging for level {}".format(level))
         tax_at_level = taxonomy["Level_{}".format(level)]
         topics_per_doc = tag_docs_at_level(openalex, tax_at_level)
-        #tax_df = pd.DataFrame.from_dict(topics_per_doc, orient = 'index')
-        #columns = ["Topic_{}".format(i) for i in range(0,len(tax_df.columns))]
-        #tax_df.columns = columns
-        with open('dap_aria_mapping/pipeline/topic_distributions/outputs/openalex/Level_{}.json'.format(level), 'w+') as f:
-            json.dump(topics_per_doc,f)
+        upload_obj(
+            topics_per_doc,
+            BUCKET_NAME,
+            'outputs/docs_with_topics/openalex/Level_{}.json'.format(level)
+        )
 
 

@@ -8,7 +8,7 @@ from dap_aria_mapping.getters.patents import get_patent_entities
 from dap_aria_mapping.getters.taxonomies import get_taxonomy_config
 from dap_aria_mapping import BUCKET_NAME
 import argparse
-
+import pickle
 
 def generate_cooccurrence_data(
     raw_entity_data: List[dict],
@@ -30,7 +30,7 @@ def generate_cooccurrence_data(
     for abstract in entity_list:
         abstract_list = []
         for entity in abstract:
-            if entity["confidence"] >= confidence_threshold:
+            if (entity["confidence"] >= confidence_threshold):
                 abstract_list.append(entity["entity"])
         cooccurrence_data.append(abstract_list)
 
@@ -47,6 +47,12 @@ if __name__ == "__main__":
         "--test_mode",
         action="store_true",
         help="run script in test mode on small sample",
+    )
+    parser.add_argument(
+        "-l",
+        "--local_output",
+        action="store_true",
+        help="save output locally rathern than to S3",
     )
     args = parser.parse_args()
 
@@ -74,21 +80,35 @@ if __name__ == "__main__":
 
     # build term cooccurrence network
     print("Generating network")
-    network = build_coocc(cooccurrence_data, edge_attributes=["association_strength"])
+    network = build_coocc(cooccurrence_data, edge_attributes=["association_strength"], use_node_weights=True)
 
     # remove nodes with degree <= frequency threshold
+    node_frequences = nx.get_node_attributes(network, "frequency")
+    
     to_be_removed = [
         x
         for x in network.nodes()
-        if network.degree(x, weight="weight") <= config["min_entity_frequency"]
+        if node_frequences[x] < config["min_entity_frequency"]
     ]
     for x in to_be_removed:
         network.remove_node(x)
+    
     print("Network generated with {} nodes".format(network.number_of_nodes()))
 
-    # save network to S3
-    print("Saving network as pickle file to S3")
-    if args.test_mode:
-        upload_obj(network, BUCKET_NAME, "outputs/test_cooccurrence_network.pkl")
+    # save network as pickle file
+    print("Saving network as pickle file")
+    if args.local_output:
+        print("Saving locally")
+        if args.test_mode:
+            with open("outputs/test_cooccurrence_network.pkl","wb") as f:
+                pickle.dump(network,f)
+        else:
+            with open("outputs/cooccurrence_network.pkl","wb") as f:
+                pickle.dump(network,f)
+
     else:
-        upload_obj(network, BUCKET_NAME, "outputs/cooccurrence_network.pkl")
+        print("Saving to S3")
+        if args.test_mode:
+            upload_obj(network, BUCKET_NAME, "outputs/test_cooccurrence_network.pkl")
+        else:
+            upload_obj(network, BUCKET_NAME, "outputs/cooccurrence_network.pkl")

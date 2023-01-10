@@ -4,27 +4,42 @@ import re, sklearn
 import matplotlib.axes as mpl_axes
 from sklearn.metrics import silhouette_score
 from sentence_transformers import SentenceTransformer
-from typing import Union, Dict, DefaultDict, List, Any, Set, Type, Literal, Sequence, Callable, Tuple, Generator
+from typing import (
+    Union,
+    Dict,
+    DefaultDict,
+    List,
+    Any,
+    Set,
+    Type,
+    Literal,
+    Sequence,
+    Callable,
+    Tuple,
+    Generator,
+)
 from itertools import product
 from copy import deepcopy
 from collections import Counter, defaultdict
 from itertools import chain, count
 import altair as alt
+
 alt.data_transformers.disable_max_rows()
 
+
 def get_sample(
-    entities: Dict[str, Sequence[Tuple[str, int]]], 
-    score_threshold: int = 80, 
-    num_articles: int = -1
+    entities: Dict[str, Sequence[Tuple[str, int]]],
+    score_threshold: int = 80,
+    num_articles: int = -1,
 ) -> Dict[str, Sequence[str]]:
     """Creates a sample of entities from the entities dictionary,
     where each article contains a list of tuples of the form (entity, score).
-    The sample size is determined by `num_articles`, and entities with 
+    The sample size is determined by `num_articles`, and entities with
     a confidence score below the threshold are removed.
 
     Args:
-        entities (Dict[str, Sequence[Tuple[str, int]]]): A dictionary of entities, 
-            where each key is an article and each value is a list of tuples of the 
+        entities (Dict[str, Sequence[Tuple[str, int]]]): A dictionary of entities,
+            where each key is an article and each value is a list of tuples of the
             form (entity, score).
         score_threshold (int, optional): The minimum confidence score for an entity.
             If not provided, defaults to 80.
@@ -32,26 +47,29 @@ def get_sample(
             all articles are sampled. If not provided, defaults to -1.
 
     Returns:
-        Dict[str, Sequence[str]]: A dictionary of entities, where each key is 
+        Dict[str, Sequence[str]]: A dictionary of entities, where each key is
             an article and each value is a list of entities.
     """
-    entities = {k: v for k, v in entities.items() if len(v) > 0}    
+    entities = {k: v for k, v in entities.items() if len(v) > 0}
     if num_articles == -1:
         num_articles = len(entities.values())
     draws = num_articles / len(entities.values()) >= np.random.uniform(
         0, 1, len(entities.values())
     )
     sample = {k: v for i, (k, v) in enumerate(entities.items()) if draws[i]}
-    return {k: [e["entity"] for e in v if e["confidence"] >= score_threshold] for k, v in sample.items()}
+    return {
+        k: [e["entity"] for e in v if e["confidence"] >= score_threshold]
+        for k, v in sample.items()
+    }
 
 
 def filter_entities(
-    entities: Dict[str, Sequence[str]], 
-    method: Literal["percentile", "absolute"] = "percentile", 
-    min_freq: int = 0, 
-    max_freq: int = 100
+    entities: Dict[str, Sequence[str]],
+    method: Literal["percentile", "absolute"] = "percentile",
+    min_freq: int = 0,
+    max_freq: int = 100,
 ) -> Dict[str, Sequence[str]]:
-    """Filters entities from the entities dictionary, where each article contains 
+    """Filters entities from the entities dictionary, where each article contains
     a list of entities. The filtering is done by frequency, either as a percentile
     or as an absolute value.
 
@@ -70,9 +88,12 @@ def filter_entities(
     Returns:
         Dict[str, Sequence[str]]: A dictionary of entities, where each key is
             an article and each value is a list of entities.
-    """    
+    """
     assert min_freq < max_freq, "min_freq must be less than max_freq"
-    assert method in ["percentile", "absolute"], "method must be in ['percentile', 'absolute']"
+    assert method in [
+        "percentile",
+        "absolute",
+    ], "method must be in ['percentile', 'absolute']"
     frequencies = Counter(chain(*entities.values()))
     if method == "percentile":
         min_freq, max_freq = (
@@ -93,7 +114,7 @@ def embed(
 
     Args:
         entities (Sequence[str]): A list of entities.
-        model (str, optional): The name of the pretrained model. Defaults to 
+        model (str, optional): The name of the pretrained model. Defaults to
             "distilbert-base-nli-stsb-mean-tokens".
 
     Returns:
@@ -113,7 +134,7 @@ def cluster_to_list(
 
     Args:
         cluster (Union[int, str]): An assignment to a cluster for a given method.
-        cdict (Dict[str, Union[int, str]]): A dictionary mapping entities to 
+        cdict (Dict[str, Union[int, str]]): A dictionary mapping entities to
             cluster assignments.
         embeddings (pd.DataFrame): A dataframe of embeddings, where each row is
             an entity and each column is a dimension of the embedding.
@@ -136,7 +157,7 @@ def get_cluster_config(
 
     Yields:
         Generator[Dict[str, Union[int, str]], None, None]: A generator of dictionaries.
-    """    
+    """
     if any([isinstance(x, list) for x in params.values()]):
         keys, permuts = (
             list(params.keys()),
@@ -159,7 +180,7 @@ def get_param_initial(query: str, key: str) -> str:
 
     Returns:
         str: Initial value of the parameter.
-    """    
+    """
     if m := re.match(query, key):
         return m.group(2)
 
@@ -167,8 +188,8 @@ def get_param_initial(query: str, key: str) -> str:
 def get_manifold_cluster_config(
     nested_config: List[Dict[str, Union[int, str]]]
 ) -> Generator[Dict[str, Union[int, str]], None, None]:
-    """Generates a list of dictionaries of parameters for manifold clustering. If 
-    any nested dictionary contains parameters with lists, then the cartesian product 
+    """Generates a list of dictionaries of parameters for manifold clustering. If
+    any nested dictionary contains parameters with lists, then the cartesian product
     of these parameters is taken. The latter creates a generator with nested generators.
 
     Args:
@@ -182,9 +203,9 @@ def get_manifold_cluster_config(
 
 
 def update_dictionary(
-    cdict: DefaultDict[str, Union[Sequence[Union[int, str]], Union[int, str]]], 
-    embeddings: pd.DataFrame, 
-    cluster: sklearn.base.ClusterMixin
+    cdict: DefaultDict[str, Union[Sequence[Union[int, str]], Union[int, str]]],
+    embeddings: pd.DataFrame,
+    cluster: sklearn.base.ClusterMixin,
 ) -> DefaultDict[str, Union[Sequence[Union[int, str]], Union[int, str]]]:
     """Updates a dictionary of cluster assignments.
 
@@ -206,18 +227,19 @@ def update_dictionary(
         for key, date in zip(embeddings.index, cluster.labels_):
             cdict[key].append(date)
 
+
 def get_silhouette_score(
-    embeddings: pd.DataFrame, 
-    cdict: Dict[str, Union[Sequence[Union[int, str]], Union[int, str]]]
+    embeddings: pd.DataFrame,
+    cdict: Dict[str, Union[Sequence[Union[int, str]], Union[int, str]]],
 ) -> Union[float, List[float]]:
-    """Iterates calculations of the silhouette score for a given dictionary 
-    of cluster assignments. If the dictionary contains multiple levels of 
+    """Iterates calculations of the silhouette score for a given dictionary
+    of cluster assignments. If the dictionary contains multiple levels of
     cluster assignments, then the silhouette score is computed for each level.
 
     Args:
         embeddings (pd.DataFrame): A dataframe of embeddings, where each row is
             an entity and each column is a dimension of the embedding.
-        cdict (Dict[str, Union[Sequence[Union[int, str]], Union[int, str]]]): 
+        cdict (Dict[str, Union[Sequence[Union[int, str]], Union[int, str]]]):
             A dictionary of cluster assignments.
 
     Returns:
@@ -228,15 +250,15 @@ def get_silhouette_score(
         return compute_silhouette_score(embeddings, cdict)
     elif isinstance(list(cdict.values())[0], list):
         sil_list = []
-        for level in range(1, len(list(cdict.values())[0])+1):
+        for level in range(1, len(list(cdict.values())[0]) + 1):
             cdict_level = {key: val[:level] for key, val in cdict.items()}
             sil_list.append(compute_silhouette_score(embeddings, cdict_level))
         return sil_list
 
 
 def compute_silhouette_score(
-    embeddings: pd.DataFrame, 
-    cdict: Dict[str, Union[Sequence[Union[int, str]], Union[int, str]]]
+    embeddings: pd.DataFrame,
+    cdict: Dict[str, Union[Sequence[Union[int, str]], Union[int, str]]],
 ) -> float:
     """Calculates the silhouette score for a given dictionary of cluster assignments.
     If the dictionary contains centroid clusters, then the silhouette score is computed
@@ -267,25 +289,26 @@ def compute_silhouette_score(
     else:
         return 0
 
+
 class ClusteringRoutine(object):
     """A class for clustering routines. This class is used to cluster embeddings
     using a given clustering method and a list of parameter configurations.
     """
+
     def __init__(self, embeddings: pd.DataFrame):
-        """Initializes a clustering routine. 
+        """Initializes a clustering routine.
 
         Args:
             embeddings (pd.DataFrame): A dataframe of embeddings, where each row is
                 an entity and each column is a dimension of the embedding.
-        """        
+        """
         self.embeddings = embeddings
 
     def make_init_iteration(
-        self, 
-        param_config: Dict[str, Union[int, str]]
+        self, param_config: Dict[str, Union[int, str]]
     ) -> Generator[Dict[str, Union[int, str]], None, None]:
         """Makes the top-level iteration of a clustering routine. Creates a cluster
-        object and fits it to the embeddings. Creates and updates the dictionary of 
+        object and fits it to the embeddings. Creates and updates the dictionary of
         cluster assignments. Yields the dictionary of cluster assignments, the cluster
         object, the silhouette score, and the centroid parameters.
 
@@ -297,11 +320,13 @@ class ClusteringRoutine(object):
             Generator[Dict[str, Union[int, str]], None, None]: A generator that yields
                 the dictionary of cluster assignments, the cluster object, the silhouette
                 score, and the centroid parameters (if applies).
-        """        
+        """
         cluster = self.method_class(**param_config)
         cluster.fit(self.embeddings)
         self.cdict, self.mlist = defaultdict(list), []
-        update_dictionary(self.cdict, self.embeddings, cluster), self.mlist.append(cluster)
+        update_dictionary(self.cdict, self.embeddings, cluster), self.mlist.append(
+            cluster
+        )
         yield {
             "labels": deepcopy(self.cdict),
             "model": deepcopy(self.mlist),
@@ -310,10 +335,9 @@ class ClusteringRoutine(object):
         }
 
     def make_iteration(
-        self, 
-        param_config: Dict[str, Union[int, str]]
+        self, param_config: Dict[str, Union[int, str]]
     ) -> Generator[Dict[str, Union[int, str]], None, None]:
-        """Makes a further iteration of a clustering routine. Creates a cluster object and 
+        """Makes a further iteration of a clustering routine. Creates a cluster object and
         fits it to the embeddings. Creates and updates the dictionary of cluster assignments.
         Yields the dictionary of cluster assignments and the cluster object, the silhouette
         score, and the centroid parameters.
@@ -326,10 +350,8 @@ class ClusteringRoutine(object):
             Generator[Dict[str, Union[int, str]], None, None]: A generator that yields
                 the dictionary of cluster assignments, the cluster object, the silhouette
                 score, and the centroid parameters (if applies).
-        """        
-        clusters = list(
-            list(e) for e in set([tuple(i) for i in self.cdict.values()])
-        )
+        """
+        clusters = list(list(e) for e in set([tuple(i) for i in self.cdict.values()]))
         for cluster_group in clusters:
             nested_embeddings = self.embeddings.loc[
                 self.embeddings.index.isin(
@@ -337,29 +359,37 @@ class ClusteringRoutine(object):
                 )
             ]
             # Cluster proportional to stump sizes
-            if all([self.kwargs.get("imbalanced", False), param_config.get("n_clusters", False)]):
+            if all(
+                [
+                    self.kwargs.get("imbalanced", False),
+                    param_config.get("n_clusters", False),
+                ]
+            ):
                 param_config_imb = deepcopy(param_config)
                 param_config_imb["n_clusters"] = int(
                     round(
-                        nested_embeddings.shape[0] / self.embeddings.shape[0]
+                        nested_embeddings.shape[0]
+                        / self.embeddings.shape[0]
                         * param_config["n_clusters"]
                     )
                 )
-                if param_config_imb["n_clusters"]<2:
+                if param_config_imb["n_clusters"] < 2:
                     param_config_imb["n_clusters"] = 2
                 cluster = self.method_class(**param_config_imb)
-            else: # Cluster all stumps equally
-                if all([ # nobservations < nclusters
-                    num_clust := param_config.get("n_clusters", False),
-                    num_clust > nested_embeddings.shape[0]
-                ]):
+            else:  # Cluster all stumps equally
+                if all(
+                    [  # nobservations < nclusters
+                        num_clust := param_config.get("n_clusters", False),
+                        num_clust > nested_embeddings.shape[0],
+                    ]
+                ):
                     small_config = deepcopy(param_config)
                     small_config["n_clusters"] = 2
                     cluster = self.method_class(**small_config)
-                else: # observations > n_clusters
+                else:  # observations > n_clusters
                     cluster = self.method_class(**param_config)
             # Fit and update
-            if nested_embeddings.shape[0] > 1: # +1 obs
+            if nested_embeddings.shape[0] > 1:  # +1 obs
                 cluster.fit(nested_embeddings)
                 update_dictionary(self.cdict, nested_embeddings, cluster)
             else:
@@ -374,12 +404,11 @@ class ClusteringRoutine(object):
         }
 
     def make_centroid_iteration(
-        self, 
-        param_config: Dict[str, Union[int, str]]
+        self, param_config: Dict[str, Union[int, str]]
     ) -> Generator[Dict[str, Union[int, str]], None, None]:
         """Makes an iteration of a centroid clustering routine. Creates a cluster object
         and fits it to the embeddings. Creates and updates several dictionaries of cluster
-        assignments, centroid embeddings, and a mapping of centroid to individual tags. 
+        assignments, centroid embeddings, and a mapping of centroid to individual tags.
         Yields the dictionary of cluster assignments, the cluster object, the silhouette
         score, and the centroid parameters.
 
@@ -391,13 +420,11 @@ class ClusteringRoutine(object):
             Generator[Dict[str, Union[int, str]], None, None]: A generator that yields
                 the dictionary of cluster assignments, the cluster object, the silhouette
                 score, and the centroid parameters (if applies).
-        """        
+        """
         self.centdict = defaultdict(list)
         self.cent2ddict = defaultdict(list)
         self.centmap = defaultdict(list)
-        clusters = list(
-            list(e) for e in set([tuple(i) for i in self.cdict.values()])
-        )
+        clusters = list(list(e) for e in set([tuple(i) for i in self.cdict.values()]))
         if not any(["ce" in str(x) for x in clusters[0]]):
             self.make_centroid_init_step(clusters)
         else:
@@ -420,7 +447,9 @@ class ClusteringRoutine(object):
                 ]
             )
         )
-        update_dictionary(self.cdict, self.embeddings, cedict), self.mlist.append(cluster)
+        update_dictionary(self.cdict, self.embeddings, cedict), self.mlist.append(
+            cluster
+        )
         if self.kwargs.get("embeddings_2d", None) is not None:
             yield {
                 "labels": deepcopy(self.cdict),
@@ -446,7 +475,7 @@ class ClusteringRoutine(object):
 
         Args:
             clusters (List[List[str]]): A list of lists of cluster assignments.
-        """        
+        """
         for clust_group in clusters:
             centroid_label = "".join(map(str, clust_group))
             nested_embeddings = self.embeddings.loc[
@@ -469,15 +498,12 @@ class ClusteringRoutine(object):
                 self.cent2ddict.update(
                     {
                         f"cl{centroid_label}": np.mean(
-                            [
-                                self.kwargs["embeddings_2d"][i]
-                                for i in embed_indices
-                            ],
+                            [self.kwargs["embeddings_2d"][i] for i in embed_indices],
                             axis=0,
                         )
                     }
                 )
-    
+
     def make_centroid_child_step(self, clusters: List[List[str]]) -> None:
         """Creates the child centroid step of a centroid clustering routine. Updates
         several dictionaries of cluster assignments, centroid embeddings, and a mapping of
@@ -485,7 +511,7 @@ class ClusteringRoutine(object):
 
         Args:
             clusters (List[List[str]]): A list of lists of cluster assignments.
-        """        
+        """
         clusters = set([clust[-1] for clust in clusters])
         for clust_group in clusters:
             centroid_label = "".join(map(str, clust_group))
@@ -494,14 +520,14 @@ class ClusteringRoutine(object):
                     [
                         e
                         for e in self.embeddings.index
-                        if self.cdict[e][-1] == clust_group # [TODO]
+                        if self.cdict[e][-1] == clust_group  # [TODO]
                     ]
                 )
             ]
             embed_indices = [
                 self.embeddings.index.get_loc(e)
                 for e in nested_embeddings.index
-                if self.cdict[e][-1] == clust_group # [TODO]
+                if self.cdict[e][-1] == clust_group  # [TODO]
             ]
 
             self.centdict.update(
@@ -514,15 +540,12 @@ class ClusteringRoutine(object):
                 self.cent2ddict.update(
                     {
                         f"{centroid_label}": np.mean(
-                            [
-                                self.kwargs["embeddings_2d"][i]
-                                for i in embed_indices
-                            ],
+                            [self.kwargs["embeddings_2d"][i] for i in embed_indices],
                             axis=0,
                         )
                     }
                 )
-    
+
     def run_step(self, params_config: Dict[str, Any]) -> Generator:
         """Runs a single step of the clustering routine. This is a generator function
         that yields a dictionary of cluster assignments, a list of clustering models, and
@@ -535,7 +558,7 @@ class ClusteringRoutine(object):
         Yields:
             Generator: A generator that yields a dictionary of cluster assignments, a list
                 of clustering models, and the silhouette score of the clustering routine.
-        """        
+        """
         centroids = params_config.pop("centroids", False)
         if self.nested is False:
             yield from self.make_init_iteration(params_config)
@@ -547,10 +570,10 @@ class ClusteringRoutine(object):
                 yield from self.make_iteration(params_config)
 
     def run_single_routine(
-        self, 
-        method_class: Type[sklearn.base.ClusterMixin], 
+        self,
+        method_class: Type[sklearn.base.ClusterMixin],
         config: Dict[str, Any],
-        **kwargs
+        **kwargs,
     ) -> Generator:
         """Runs a single clustering routine. This is a generator function that yields a
         dictionary of cluster assignments, a list of clustering models, and the silhouette
@@ -563,17 +586,17 @@ class ClusteringRoutine(object):
         Returns:
             Generator: A generator that yields a dictionary of cluster assignments, a list
                 of clustering models, and the silhouette score of the clustering routine.
-        """    
+        """
         self.method_class = method_class
         self.nested = False
         self.kwargs = kwargs
         yield from self.run_step(config)
 
     def run_from_configs(
-        self, 
-        config: Tuple[Type[sklearn.base.ClusterMixin], Dict[str, Any]],
-        **kwargs
-    ) -> Generator[Dict[str, Union[List[Union[int, str]], Union[int, str]]], None, None]:
+        self, config: Tuple[Type[sklearn.base.ClusterMixin], Dict[str, Any]], **kwargs
+    ) -> Generator[
+        Dict[str, Union[List[Union[int, str]], Union[int, str]]], None, None
+    ]:
         """Runs a clustering routine from a list of parameters. Lists of parameter dicts
         are interpreted as nested clustering routines, where each child routine is run
         on the subsets generated by the parent routine. If the dictionary parameters contain
@@ -590,7 +613,7 @@ class ClusteringRoutine(object):
             Generator[Dict[str, Union[List[Union[int, str], Union[int, str]]], None, None]:
                 A generator that yields a dictionary of cluster assignments, a list of
                 clustering models, and the silhouette score of the clustering routine.
-        """    
+        """
         self.method_class, cconfig = config
         self.kwargs = kwargs
         self.nested = False
@@ -600,11 +623,14 @@ class ClusteringRoutine(object):
             for param_config in child_config:
                 yield from self.run_step(param_config)
             self.nested = True
-                
+
     def __iter__(self):
         return self
 
-def get_cluster_outputs(generators: List[Generator]) -> Tuple[Dict[str, Any], List[Any]]:
+
+def get_cluster_outputs(
+    generators: List[Generator],
+) -> Tuple[Dict[str, Any], List[Any]]:
     """Gets the outputs of a list of clustering generators.
 
     Args:
@@ -614,7 +640,7 @@ def get_cluster_outputs(generators: List[Generator]) -> Tuple[Dict[str, Any], Li
         Tuple[Dict[str, Any], List[Any]]: A tuple of a dictionary of cluster assignments,
             a list of clustering models, and the silhouette score of the clustering
             routine.
-    """    
+    """
     cluster_dicts = [
         {
             "labels": clusterdict["labels"],
@@ -637,11 +663,12 @@ def get_cluster_outputs(generators: List[Generator]) -> Tuple[Dict[str, Any], Li
         cluster_dicts, plot_dicts = cluster_dicts[0], plot_dicts[0]
     return cluster_dicts, plot_dicts
 
+
 def run_clustering_generators(
     cluster_configs: List[Tuple[Type[sklearn.base.ClusterMixin], Dict[str, Any]]],
-    embeddings: pd.DataFrame, 
-    dendrogram_levels: int = -1, 
-    **kwargs
+    embeddings: pd.DataFrame,
+    dendrogram_levels: int = -1,
+    **kwargs,
 ) -> Tuple[Dict[str, Any], List[Any]]:
     """Runs a list of clustering routines. Each routine is a generator that yields a
     dictionary of cluster assignments, a list of clustering models, and the silhouette
@@ -668,27 +695,25 @@ def run_clustering_generators(
     if dendrogram_levels != -1:
         cluster_outputs, _ = get_cluster_outputs(cluster_gens)
         dendrogram = make_dendrogram(
-            cluster_dict=cluster_outputs["labels"], 
-            model=cluster_outputs["model"][-1]
+            cluster_dict=cluster_outputs["labels"], model=cluster_outputs["model"][-1]
         )
-        print("ha")
         return (
             make_dendrogram_climb(
-                dendrogram=dendrogram, 
-                num_levels=dendrogram_levels, 
-                embeddings=embeddings
+                dendrogram=dendrogram,
+                num_levels=dendrogram_levels,
+                embeddings=embeddings,
             ),
-            None
+            None,
         )
     return get_cluster_outputs(cluster_gens)
 
 
 def make_subplot_embeddings(
-    embeddings: pd.DataFrame, 
+    embeddings: pd.DataFrame,
     clabels: pd.Series,
-    axis: mpl_axes.Axes, 
-    label: str = None, 
-    **kwargs
+    axis: mpl_axes.Axes,
+    label: str = None,
+    **kwargs,
 ) -> None:
     """Makes a scatter plot of embeddings with cluster labels.
 
@@ -719,12 +744,12 @@ def make_dendrogram(
             Create an empty dictionary of parent nodes, which will be populated with
             the parent nodes that result form combining several child nodes.
         2. Iterate through the child_dict dictionary, and for each child node, if the
-            node is a leaf node of another children node, then add the node to the 
+            node is a leaf node of another children node, then add the node to the
             temporary dictionary of children nodes (ie. move it up a level). Note:
                 - The try condition is used to check if the node is a leaf node of
                     another child node. If the child node has already been moved up a
                     level, then the node will be skipped.
-                    - Within the try clause, if the node is the lowest level of the 
+                    - Within the try clause, if the node is the lowest level of the
                         dendrogram, ie. no leaf is in itself a parent node, then:
                         - The try condition will try to add the node to the temporary
                             dictionary of parent nodes.
@@ -784,16 +809,15 @@ def make_dendrogram(
         dendrogram.append(child_dict)
     return dendrogram
 
+
 def climb_step(
-    dendrogram: List[Dict[int, Set[int]]],
-    level: int, 
-    embeddings: pd.DataFrame
+    dendrogram: List[Dict[int, Set[int]]], level: int, embeddings: pd.DataFrame
 ) -> Dict[str, int]:
     """Climbs a dendrogram to a given level and returns a dictionary of cluster
         assignments.
 
     Args:
-        dendrogram (List[Dict[int, Set[int]]]): A list of dictionaries of 
+        dendrogram (List[Dict[int, Set[int]]]): A list of dictionaries of
             children nodes. Each dictionary is a level of the dendrogram.
         level (int): An integer representing the level of the dendrogram to climb.
             embeddings (pd.DataFrame): A dataframe of embeddings.
@@ -801,7 +825,7 @@ def climb_step(
     Returns:
         Dict[str, int]: A dictionary of cluster assignments.
     """
-    split = dendrogram[-(level+2)]
+    split = dendrogram[-(level + 2)]
     tags = [
         [tag for tag in cluster_tags if tag < embeddings.shape[0]]
         for cluster_tags in split.values()
@@ -815,19 +839,20 @@ def climb_step(
             ]
         )
     )
-    level_clust = sorted(level_clust, key=lambda x: x[0]) #guarantees tag order consistency
+    level_clust = sorted(
+        level_clust, key=lambda x: x[0]
+    )  # guarantees tag order consistency
     return dict(zip(embeddings.index, [x[1] for x in level_clust]))
 
+
 def make_dendrogram_climb(
-    dendrogram: List[Dict[int, Set[int]]],
-    num_levels: int, 
-    embeddings: pd.DataFrame
+    dendrogram: List[Dict[int, Set[int]]], num_levels: int, embeddings: pd.DataFrame
 ) -> Dict[str, Any]:
     """Climbs a dendrogram to a given level and returns a dictionary of cluster
     assignments.
 
     Args:
-        dendrogram (List[Dict[int, Set[int]]]): A list of dictionaries of children 
+        dendrogram (List[Dict[int, Set[int]]]): A list of dictionaries of children
             nodes. Each dictionary is a level of the dendrogram.
         num_levels (int): An integer representing the number of levels to climb.
         embeddings (pd.DataFrame): A dataframe of embeddings.
@@ -837,7 +862,7 @@ def make_dendrogram_climb(
     """
     cdict = defaultdict(list)
     for level in range(num_levels):
-        if (len(dendrogram)+1) < level:
+        if (len(dendrogram) - 2) >= level:
             level_clust = climb_step(dendrogram, level, embeddings)
             for key, value in level_clust.items():
                 cdict[key].append(value)
@@ -845,8 +870,9 @@ def make_dendrogram_climb(
         "labels": cdict,
         "model": "dendrogram",
         "silhouette": get_silhouette_score(embeddings=embeddings, cdict=cdict),
-        "centroid_params": None
+        "centroid_params": None,
     }
+
 
 def make_plots(analysis_df: pd.DataFrame) -> alt.Chart:
     """Creates a plot from the cluster analysis dataframe. The plot is a
@@ -860,7 +886,7 @@ def make_plots(analysis_df: pd.DataFrame) -> alt.Chart:
     Returns:
         alt.Chart: A horizontal concatenation of bar charts, one for each column
             in the dataframe.
-    """    
+    """
     return alt.hconcat(
         *[
             (
@@ -881,14 +907,13 @@ def make_plots(analysis_df: pd.DataFrame) -> alt.Chart:
         ]
     )
 
+
 def make_dataframe(
-    cluster_outputs: Dict[str, Any],
-    label: str = "cluster", 
-    cumulative:bool = True
+    cluster_outputs: Dict[str, Any], label: str = "cluster", cumulative: bool = True
 ) -> pd.DataFrame:
     """Creates a dataframe of cluster assignments from the output of a clustering
     algorithm. The dataframe has a column for each level of the clustering
-    algorithm, while `label` can be used to annotate the name of the column 
+    algorithm, while `label` can be used to annotate the name of the column
     (e.g. "cluster" or "cluster_level").
 
     Args:
@@ -907,7 +932,7 @@ def make_dataframe(
     if cumulative:
         for level in range(num_levels):
             for k, v in cluster_outputs["labels"].items():
-                d[k].append("_".join(map(str, v[:(level+1)])))
+                d[k].append("_".join(map(str, v[: (level + 1)])))
     else:
         for level in range(num_levels):
             for k, v in cluster_outputs["labels"].items():
@@ -918,30 +943,23 @@ def make_dataframe(
         model_name = cluster_outputs["model"]
     if isinstance(model_name, list):
         columns = [
-            "_".join(x) 
+            "_".join(x)
             for x in list(
                 zip(
                     [str(x) for x in model_name],
-                    [str(idx) + label for idx in range(num_levels)]
+                    [str(idx) + label for idx in range(num_levels)],
                 )
             )
         ]
     else:
         columns = [
-            "{}_{}{}".format(
-                model_name, idx, label
-            )
-            for idx in range(num_levels)
+            "{}_{}{}".format(model_name, idx, label) for idx in range(num_levels)
         ]
-    return pd.DataFrame.from_dict(
-        d, 
-        orient="index", 
-        columns=columns
-    )
+    return pd.DataFrame.from_dict(d, orient="index", columns=columns)
+
 
 def make_cooccurrences(
-    dataframe: pd.DataFrame, 
-    low_mem: bool = True
+    dataframe: pd.DataFrame, low_mem: bool = True
 ) -> Dict[str, Dict[str, int]]:
     """Creates a dictionary of cooccurrences from a dataframe. The dictionary
     has a key for each column in the dataframe, and the value is a dictionary
@@ -957,21 +975,23 @@ def make_cooccurrences(
 
     Returns:
         Dict[str, int]: A dictionary of cooccurrences.
-    """    
+    """
     assert any(dataframe.columns.isin(["tag"])), "Dataframe must have a tag column"
     dfnp = dataframe[[x for x in dataframe.columns if x != "tag"]].to_numpy()
     for i in range(dfnp.shape[1]):
-        d = dict(zip(set(dfnp[:,i]), range(len(dfnp[:,i]))))
-        dfnp[:,i] = [d[x] for x in dfnp[:,i]]
+        d = dict(zip(set(dfnp[:, i]), range(len(dfnp[:, i]))))
+        dfnp[:, i] = [d[x] for x in dfnp[:, i]]
 
     if low_mem is False:
-        m1 = np.tile(dfnp.T, (1, dfnp.shape[0])).reshape(1,-1)
-        m2 = np.repeat(dfnp.T, dfnp.shape[0], axis=1).reshape(1,-1)
+        m1 = np.tile(dfnp.T, (1, dfnp.shape[0])).reshape(1, -1)
+        m2 = np.repeat(dfnp.T, dfnp.shape[0], axis=1).reshape(1, -1)
         mf = np.where(m1 == m2, 1, 0)
-        cooccur_dict = np.sum(mf.reshape((dfnp.shape[1], dfnp.shape[0], dfnp.shape[0])), axis=0)
+        cooccur_dict = np.sum(
+            mf.reshape((dfnp.shape[1], dfnp.shape[0], dfnp.shape[0])), axis=0
+        )
     else:
         cooccur_dict = np.empty((dfnp.shape[0], dfnp.shape[0]), np.int32)
         for idx, arr in enumerate(dfnp):
-            arr_sum = np.sum(arr==dfnp, axis=1)
+            arr_sum = np.sum(arr == dfnp, axis=1)
             cooccur_dict[idx] = arr_sum
     return cooccur_dict

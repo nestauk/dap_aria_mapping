@@ -6,3 +6,4 @@ community_detection:
   max_splits: 5
   starting_resolution: 1
   resolution_increments: 1
+  seed: 1

@@ -6,6 +6,7 @@ from dap_aria_mapping import BUCKET_NAME
 from nesta_ds_utils.loading_saving.S3 import upload_obj
 import pandas as pd
 import json
+import argparse
 
 def tag_docs_at_level(docs: dict, tax_at_level: pd.Series) -> dict:
     """tag documents with topic labels based on entities present in document
@@ -31,9 +32,27 @@ def tag_docs_at_level(docs: dict, tax_at_level: pd.Series) -> dict:
     return topics_per_doc
 
 if __name__ == '__main__':
-
+    parser = argparse.ArgumentParser(
+        description="Test Mode", formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument(
+        "-t",
+        "--test_mode",
+        action="store_true",
+        help="run script in test mode on small sample",
+    )
+    parser.add_argument(
+        "-l",
+        "--local",
+        action="store_true",
+        help="save output locally rathern than to S3",
+    )
+    args = parser.parse_args()
     print("loading taxonomy")
-    taxonomy = get_cooccurrence_taxonomy()
+    if args.local:
+        taxonomy = get_cooccurrence_taxonomy(local=True)
+    else:
+        taxonomy = get_cooccurrence_taxonomy(local=True)
     
     print("TAGGING PATENTS WITH TOPICS")
     print("loading patents data")
@@ -43,11 +62,15 @@ if __name__ == '__main__':
         print("starting tagging for level {}".format(level))
         tax_at_level = taxonomy["Level_{}".format(level)]
         topics_per_doc = tag_docs_at_level(patents, tax_at_level)
-        upload_obj(
-            topics_per_doc,
-            BUCKET_NAME,
-            'outputs/docs_with_topics/patents/Level_{}.json'.format(level)
-        )
+        if args.local:
+            with open('outputs/docs_with_topics/patents/Level_{}.json'.format(level), 'w') as f:
+                json.dump(topics_per_doc,f)
+        else:
+            upload_obj(
+                topics_per_doc,
+                BUCKET_NAME,
+                'outputs/docs_with_topics/patents/Level_{}.json'.format(level)
+            )
     
 
     print("TAGGING OPENALEX WITH TOPICS")
@@ -57,10 +80,14 @@ if __name__ == '__main__':
         print("starting tagging for level {}".format(level))
         tax_at_level = taxonomy["Level_{}".format(level)]
         topics_per_doc = tag_docs_at_level(openalex, tax_at_level)
-        upload_obj(
-            topics_per_doc,
-            BUCKET_NAME,
-            'outputs/docs_with_topics/openalex/Level_{}.json'.format(level)
-        )
+        if args.local:
+            with open('outputs/docs_with_topics/openalex/Level_{}.json'.format(level), 'w') as f:
+                json.dump(topics_per_doc,f)
+        else:
+            upload_obj(
+                topics_per_doc,
+                BUCKET_NAME,
+                'outputs/docs_with_topics/openalex/Level_{}.json'.format(level)
+            )
 
 

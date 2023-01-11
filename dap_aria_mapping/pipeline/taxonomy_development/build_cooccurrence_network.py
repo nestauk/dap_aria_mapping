@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Sequence
 import yaml
 import networkx as nx
 from nesta_ds_utils.networks.build import build_coocc
@@ -12,15 +12,16 @@ import pickle
 
 def generate_cooccurrence_data(
     raw_entity_data: List[dict],
-    confidence_threshold: int = 80,
-    cooccurrence_data: List[list] = [],
+    min_confidence_threshold: int = 80,
+    cooccurrence_data: Sequence = [],
 ) -> List[list]:
     """generates list of list of entities contained in each abstract
 
     Args:
-        raw_entity_data (List[dict]):
-        confidence_threshold (int, optional): only include entities with confidence >= threshold. Defaults to 80.
-        cooccurrence_data (List[list], optional): output data to append to. Defaults to [].
+        raw_entity_data (List[dict]): list of entities contained in each abstract, list items represent abstracts,
+            dict: {"entity": value of entity, "confidence": confidence score from DBPedia entity extraction}
+        min_confidence_threshold (int, optional): only include entities with confidence >= threshold. Defaults to 80.
+        cooccurrence_data (Sequence, optional): output data to append to. Defaults to [].
 
     Returns:
         List: list of list of entities contained in each abstract
@@ -30,7 +31,7 @@ def generate_cooccurrence_data(
     for abstract in entity_list:
         abstract_list = []
         for entity in abstract:
-            if (entity["confidence"] >= confidence_threshold):
+            if (entity["confidence"] >= min_confidence_threshold):
                 abstract_list.append(entity["entity"])
         cooccurrence_data.append(abstract_list)
 
@@ -44,7 +45,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "-t",
-        "--test_mode",
+        "--test",
         action="store_true",
         help="run script in test mode on small sample",
     )
@@ -67,15 +68,15 @@ if __name__ == "__main__":
     # build combined list of lists of entities in each abstract
     print("Building input data")
     cooccurrence_data = generate_cooccurrence_data(
-        oa_entities, confidence_threshold=config["min_entity_confidence"]
+        oa_entities, min_confidence_threshold=config["min_entity_confidence"]
     )
     cooccurrence_data = generate_cooccurrence_data(
         patent_entities,
-        confidence_threshold=config["min_entity_confidence"],
+        min_confidence_threshold=config["min_entity_confidence"],
         cooccurrence_data=cooccurrence_data,
     )
     # if running in test mode, only use a small sample of the data
-    if args.test_mode:
+    if args.test:
         cooccurrence_data = cooccurrence_data[:1000]
 
     # build term cooccurrence network
@@ -99,7 +100,7 @@ if __name__ == "__main__":
     print("Saving network as pickle file")
     if args.local_output:
         print("Saving locally")
-        if args.test_mode:
+        if args.test:
             with open("outputs/test_cooccurrence_network.pkl","wb") as f:
                 pickle.dump(network,f)
         else:
@@ -108,7 +109,7 @@ if __name__ == "__main__":
 
     else:
         print("Saving to S3")
-        if args.test_mode:
+        if args.test:
             upload_obj(network, BUCKET_NAME, "outputs/test_cooccurrence_network.pkl")
         else:
             upload_obj(network, BUCKET_NAME, "outputs/cooccurrence_network.pkl")

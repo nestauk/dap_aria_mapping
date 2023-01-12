@@ -1,7 +1,7 @@
 from nesta_ds_utils.loading_saving.S3 import download_obj
 from dap_aria_mapping import BUCKET_NAME
 
-def openalex_coocccurrence_topics(level: int) -> dict:
+def openalex_with_coocc_topics(level: int) -> dict:
     """returns openalex documents tagged with topics contained in abstracts, 
     where topics were generated using the cooccurrence taxonomy
 
@@ -19,7 +19,7 @@ def openalex_coocccurrence_topics(level: int) -> dict:
     download_as="dict",
     )
 
-def patent_coocccurrence_topics(level: int) -> dict:
+def patents_with_coocc_topics(level: int) -> dict:
     """returns patent documents tagged with topics contained in abstracts, 
     where topics were generated using the cooccurrence taxonomy
 

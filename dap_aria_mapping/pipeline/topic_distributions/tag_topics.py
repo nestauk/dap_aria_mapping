@@ -57,22 +57,22 @@ if __name__ == '__main__':
     print("TAGGING PATENTS WITH TOPICS")
     print("loading patents data")
     patents = get_patent_entities()
+    level = 1
+    #for level in range(1,len(taxonomy.columns)+1):
+    print("starting tagging for level {}".format(level))
+    tax_at_level = taxonomy["Level_{}".format(level)]
+    topics_per_doc = tag_docs_at_level(patents, tax_at_level)
+    if args.local:
+        with open('outputs/docs_with_topics/patents/Level_{}.json'.format(level), 'w') as f:
+            json.dump(topics_per_doc,f)
+    else:
+        upload_obj(
+            topics_per_doc,
+            BUCKET_NAME,
+            'outputs/docs_with_topics/cooccurrence_taxonomy/patents/Level_{}.json'.format(level)
+        )
     
-    for level in range(2,len(taxonomy.columns)+1):
-        print("starting tagging for level {}".format(level))
-        tax_at_level = taxonomy["Level_{}".format(level)]
-        topics_per_doc = tag_docs_at_level(patents, tax_at_level)
-        if args.local:
-            with open('outputs/docs_with_topics/patents/Level_{}.json'.format(level), 'w') as f:
-                json.dump(topics_per_doc,f)
-        else:
-            upload_obj(
-                topics_per_doc,
-                BUCKET_NAME,
-                'outputs/docs_with_topics/patents/Level_{}.json'.format(level)
-            )
-    
-
+    """
     print("TAGGING OPENALEX WITH TOPICS")
     print("loading openalex data")
     openalex = get_openalex_entities()
@@ -87,7 +87,8 @@ if __name__ == '__main__':
             upload_obj(
                 topics_per_doc,
                 BUCKET_NAME,
-                'outputs/docs_with_topics/openalex/Level_{}.json'.format(level)
+                'outputs/docs_with_topics/cooccurrence_taxonomy/openalex/Level_{}.json'.format(level)
             )
+    """
 
 

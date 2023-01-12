@@ -7,7 +7,7 @@ boto3>=1.23.0
 pyarrow==10.0.0
 fsspec==2021.11.0
 metaflow==2.7.14
-s3fs==2021.11.0
+s3fs==0.4.2
 google-cloud-bigquery==3.4.0
 google-cloud-bigquery-storage==2.16.2
 db-dtypes

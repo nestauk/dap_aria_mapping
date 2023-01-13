@@ -83,7 +83,7 @@ class GetEmbeddings(FlowSpec):
     @step
     def filter_entities(self):
         self.filtered_entities = filter_entities(
-            self.sample_data, method="absolute", min_freq=10, max_freq=1_000_000
+            self.entities, method="absolute", min_freq=10, max_freq=1_000_000
         )
         self.next(self.preprocess)
 
@@ -112,15 +112,24 @@ class GetEmbeddings(FlowSpec):
 
         self.model_name = MODEL_NAME
         encoder = SentenceTransformer(self.model_name)
-        self.embeddings = encoder.encode(self.filtered_entities)
+        self.embeddings = pipe(
+            self.filtered_entities,
+            encoder.encode,
+            lambda embeds: dict(zip(self.filtered_entities, embeds)),
+        )
         self.next(self.save)
 
     @step
     def save(self):
         import pandas as pd
+        import boto3, pickle
 
-        self.embeddings_df = pd.DataFrame(self.embeddings)
-        self.embeddings_df.to_parquet(f"s3://{BUCKET_NAME}/outputs/embeddings.parquet")
+        s3 = boto3.client("s3")
+        s3.put_object(
+            Body=pickle.dumps(self.embeddings),
+            Bucket=BUCKET_NAME,
+            Key="outputs/embeddings/embeddings.pkl",
+        )
         self.next(self.end)
 
     @step

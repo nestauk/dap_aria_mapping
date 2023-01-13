@@ -6,7 +6,7 @@ import pickle, argparse
 import boto3
 from copy import deepcopy
 
-from dap_aria_mapping.pipeline.semantic_taxonomy.utils import (
+from dap_aria_mapping.utils.semantics import (
     get_sample,
     filter_entities,
 )
@@ -64,6 +64,7 @@ patent_entities = pipe(
 
 entities = deepcopy(openalex_entities)
 entities.update(patent_entities)
+
 entities = pipe(
     entities,
     partial(

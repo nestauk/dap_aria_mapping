@@ -1,7 +1,8 @@
 from nesta_ds_utils.loading_saving.S3 import download_obj
 from dap_aria_mapping import BUCKET_NAME
+import boto3, yaml, pickle
 import pandas as pd
-import yaml
+from toolz import pipe
 
 
 def get_taxonomy_config() -> dict:
@@ -48,6 +49,38 @@ def get_test_cooccurrence_taxonomy() -> pd.DataFrame:
         "outputs/test_community_detection_clusters.parquet",
         download_as="dataframe",
     )
+
+
+def get_embeddings() -> pd.DataFrame:
+    """Downloads embeddings from S3 and returns them as a pandas dataframe
+
+    Returns:
+        pd.DataFrame: Embeddings dataframe
+    """
+    s3 = boto3.client("s3")
+    embeddings_object = s3.get_object(
+        Bucket=BUCKET_NAME, Key="outputs/embeddings/embeddings.pkl"
+    )
+    embeddings = pickle.loads(embeddings_object["Body"].read())
+    embeddings = pd.DataFrame.from_dict(embeddings).T
+    return embeddings
+
+
+def get_cooccurrences(
+    cluster_object: str, bucket_name: str = BUCKET_NAME
+) -> pd.DataFrame:
+    """Downloads cooccurrences from S3 and returns them as a pandas dataframe
+
+    Returns:
+        pd.DataFrame: Cooccurrences dataframe
+    """
+    s3 = boto3.client("s3")
+    meta_cluster_s3 = s3.get_object(
+        Bucket=bucket_name,
+        Key=f"outputs/semantic_taxonomy/cooccurrences/{cluster_object}.parquet",
+    )
+
+    return pipe(meta_cluster_s3["Body"], lambda x: pd.read_parquet(x))
 
 
 def get_semantic_taxonomy(cluster_object: str = "centroids") -> pd.DataFrame:

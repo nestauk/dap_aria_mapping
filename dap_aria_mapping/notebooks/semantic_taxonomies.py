@@ -3,18 +3,19 @@
 # The following notebook explores the use of semantic embeddings to create taxonomies of entities, with the goal of creating an ontology of the ARIA dataset. It leverages embeddings from the tags identified in articles extracted from OpenAlex, and uses them to cluster entities into groups. This taxonomy is assumed hierarchical.
 #
 # Multiple options are explored to create the taxonomy, including:
-# - **Strict hierarchical clustering**: Iteratively cluster the entity embeddings using Agglomerative Clustering and KMeans. At each level, clustering is performed on the subsets that were created at the previous level. This allows for strict hierarchical entity breakdowns. 
+# - **Strict hierarchical clustering**: Iteratively cluster the entity embeddings using Agglomerative Clustering and KMeans. At each level, clustering is performed on the subsets that were created at the previous level. This allows for strict hierarchical entity breakdowns.
 # - **Strict hierarchical clustering with varying number of clusters**: Iteratively cluster the entity embeddings using KMeans. At each level, clustering is performed on the subsets that were created at the previous level. The number of clusters is proportional to the parent cluster size.
 # - **Fuzzy hierarchical clustering**: Cluster the entity embeddings using an array of methods, including KMeans, Agglomerative Clustering, DBSCAN, OPTICS, and HDBSCAN. Several levels of resolution are used, and the taxonomy is built by concatenating these. This allows for non-strict hierarchical entity breakdowns.
 # - **Hierarchical clustering using a dendrogram climb algorithm**: Reconstruct the dendrogram of the Agglomerative Clustering, and use it to create the taxonomy.
 # - **Hierarchical clustering using the centroids of parent-level clusters**: Cluster the entity embeddings using KMeans, and use the centroids of the clusters as nodes in subsequent levels of the taxonomy.
-# - **Meta clustering using the co-occurrence of terms in the set of clustering results**: Use outputs from all previous clustering methods to create a tag co-occurrence matrix. Apply community detection algorithms to this matrix to create the taxonomy. 
+# - **Meta clustering using the co-occurrence of terms in the set of clustering results**: Use outputs from all previous clustering methods to create a tag co-occurrence matrix. Apply community detection algorithms to this matrix to create the taxonomy.
 #
 # The utils for this notebook include all necessary functions to create the taxonomy, including class ClusteringRoutine that performs any of the clustering methods described above. The function run_clustering_generators is used to run all clustering methods and return the results in a dictionary. The function make_dataframe is used to create a dataframe with the results of the clustering methods. The function make_plots is used to create a series of plots to visualize the results of the clustering methods. The function make_cooccurrences is used to create a co-occurrence matrix of the clustering results. The function make_subplot_embeddings is used to create a series of subplots with the embeddings of the entities in the taxonomy.
 
 # [TODO] Pipeline should simply create the necessary dataframes and save them to S3.
 # [TODO] Plots & validation / silhouettes should be in subfolder of the pipeline, called "validation" or "evaluation".
 import warnings
+
 warnings.simplefilter(action="ignore", category=FutureWarning)
 from IPython.display import display
 import boto3, pickle, json
@@ -30,12 +31,12 @@ from collections import defaultdict
 from itertools import chain
 from functools import partial
 from dap_aria_mapping import PROJECT_DIR, BUCKET_NAME, logger
-from dap_aria_mapping.pipeline.semantic_taxonomy.utils import (
+from dap_aria_mapping.utils.semantics import (
     make_subplot_embeddings,
     make_dataframe,
     make_plots,
     make_cooccurrences,
-    run_clustering_generators
+    run_clustering_generators,
 )
 
 np.random.seed(42)
@@ -48,8 +49,7 @@ try:
     try:
         logger.info("Downloading embeddings from S3")
         embeddings_object = s3.get_object(
-            Bucket=BUCKET_NAME,
-            Key="outputs/embeddings/embeddings.pkl"
+            Bucket=BUCKET_NAME, Key="outputs/embeddings/embeddings.pkl"
         )
         embeddings = pickle.loads(embeddings_object["Body"].read())
     except:
@@ -57,17 +57,20 @@ try:
         with open(f"{PROJECT_DIR}/outputs/embeddings.pkl", "rb") as f:
             embeddings = pickle.load(f)
 except:
-    logger.info("Failed to load embeddings. Running pipeline with default (test) parameters")
+    logger.info(
+        "Failed to load embeddings. Running pipeline with default (test) parameters"
+    )
     import subprocess
+
     subprocess.run(
-        f"python {PROJECT_DIR}/dap_aria_mapping/pipeline/embeddings/make_embeddings.py", 
-        shell=True
+        f"python {PROJECT_DIR}/dap_aria_mapping/pipeline/embeddings/make_embeddings.py",
+        shell=True,
     )
     with open(f"{PROJECT_DIR}/outputs/embeddings.pkl", "rb") as f:
         embeddings = pickle.load(f)
 
 embeddings = pd.DataFrame.from_dict(embeddings).T
-embeddings = embeddings.iloc[:500_000]
+embeddings = embeddings.iloc[:5_000]
 
 # UMAP
 params = [
@@ -94,18 +97,18 @@ cluster_configs = [
         KMeans,
         [
             {"n_clusters": 5, "n_init": 5},  # parent level
-            {"n_clusters": 5, "n_init": 5}, # nested level 1
-            {"n_clusters": 5, "n_init": 5}, # nested level 2
-            {"n_clusters": 10, "n_init": 5}  # nested level 3
+            {"n_clusters": 5, "n_init": 5},  # nested level 1
+            {"n_clusters": 5, "n_init": 5},  # nested level 2
+            {"n_clusters": 10, "n_init": 5},  # nested level 3
         ],
     ],
     [
         AgglomerativeClustering,
         [
-            {"n_clusters": 5}, # parent level
-            {"n_clusters": 5}, # nested level 1
-            {"n_clusters": 5}, # nested level 2
-            {"n_clusters": 10}  # nested level 3
+            {"n_clusters": 5},  # parent level
+            {"n_clusters": 5},  # nested level 1
+            {"n_clusters": 5},  # nested level 2
+            {"n_clusters": 10},  # nested level 3
         ],
     ],
 ]
@@ -123,7 +126,9 @@ for idx, (cdict, cluster) in enumerate(plot_dicts):
         label=f"{cluster[-1]} {str(lvl)}",
         s=4,
     )
-fig.savefig(PROJECT_DIR / "outputs" / "figures" / "semantic_taxonomy" / "clustering_strict.png")
+fig.savefig(
+    PROJECT_DIR / "outputs" / "figures" / "semantic_taxonomy" / "clustering_strict.png"
+)
 
 # print silhouettes
 for output in cluster_outputs_s:
@@ -142,15 +147,17 @@ cluster_configs = [
     [
         KMeans,
         [
-            {"n_clusters": 5, "n_init": 5}, # parent level
-            {"n_clusters": 20, "n_init": 5},# nested level 1, total n_clusters is 20+
-            {"n_clusters": 20, "n_init": 5},# nested level 2, total n_clusters is 20+
-            {"n_clusters": 40, "n_init": 5},# nested level 2, total n_clusters is 40+
+            {"n_clusters": 5, "n_init": 5},  # parent level
+            {"n_clusters": 20, "n_init": 5},  # nested level 1, total n_clusters is 20+
+            {"n_clusters": 20, "n_init": 5},  # nested level 2, total n_clusters is 20+
+            {"n_clusters": 40, "n_init": 5},  # nested level 2, total n_clusters is 40+
         ],
     ],
 ]
 # run clustering generators with imbalanced nested clusters
-cluster_outputs_simb, plot_dicts = run_clustering_generators(cluster_configs, embeddings, imbalanced=True)
+cluster_outputs_simb, plot_dicts = run_clustering_generators(
+    cluster_configs, embeddings, imbalanced=True
+)
 
 # %%
 # plot results
@@ -167,7 +174,13 @@ for idx, (cdict, cluster) in enumerate(plot_dicts):
         label=f"{cluster[-1]} {str(lvl)}",
         s=4,
     )
-fig.savefig(PROJECT_DIR / "outputs" / "figures" / "semantic_taxonomy" / "clustering_strict_imb.png")
+fig.savefig(
+    PROJECT_DIR
+    / "outputs"
+    / "figures"
+    / "semantic_taxonomy"
+    / "clustering_strict_imb.png"
+)
 
 # print silhouettes
 for output in cluster_outputs_simb:
@@ -185,10 +198,22 @@ for output in cluster_outputs_simb:
 # %%
 
 cluster_configs = [
-    [KMeans, [{"n_clusters": [5, 5, 5, 10], "n_init": 5}]], # level 1, level 2, level 3, level 4
-    [AgglomerativeClustering, [{"n_clusters": [5, 5, 5, 10]}]], # level 1, level 2, level 3, level 4
-    [DBSCAN, [{"eps": [0.15, 0.25], "min_samples": [8, 16]}]], # level 1, level 2, level 3, level 4
-    [HDBSCAN, [{"min_cluster_size": [4, 8], "min_samples": [8, 16]}]], # level 1, level 2, level 3, level 4
+    [
+        KMeans,
+        [{"n_clusters": [5, 5, 5, 10], "n_init": 5}],
+    ],  # level 1, level 2, level 3, level 4
+    [
+        AgglomerativeClustering,
+        [{"n_clusters": [5, 5, 5, 10]}],
+    ],  # level 1, level 2, level 3, level 4
+    [
+        DBSCAN,
+        [{"eps": [0.15, 0.25], "min_samples": [8, 16]}],
+    ],  # level 1, level 2, level 3, level 4
+    [
+        HDBSCAN,
+        [{"min_cluster_size": [4, 8], "min_samples": [8, 16]}],
+    ],  # level 1, level 2, level 3, level 4
 ]
 
 # run clustering generators with fuzzy clusters
@@ -205,14 +230,14 @@ for idx, (cdict, cluster) in enumerate(plot_dicts):
         label=f"{cluster[-1].__module__}",
         cmap="gist_ncar",
     )
-fig.savefig(PROJECT_DIR / "outputs" / "figures" / "semantic_taxonomy" / "clustering_fuzzy.png")
+fig.savefig(
+    PROJECT_DIR / "outputs" / "figures" / "semantic_taxonomy" / "clustering_fuzzy.png"
+)
 
 # print silhouettes
 for cluster in cluster_outputs_f_:
     print(
-        "Silhouette score - {}: {}".format(
-            cluster["model"][-1], cluster["silhouette"]
-        )
+        "Silhouette score - {}: {}".format(cluster["model"][-1], cluster["silhouette"])
     )
 
 # %% [markdown]
@@ -222,7 +247,9 @@ for cluster in cluster_outputs_f_:
 cluster_configs = [[AgglomerativeClustering, [{"n_clusters": 100}]]]
 
 # run clustering generators with dendrograms
-cluster_outputs_d, plot_dicts = run_clustering_generators(cluster_configs, embeddings, dendrogram_levels=6)
+cluster_outputs_d, plot_dicts = run_clustering_generators(
+    cluster_configs, embeddings, dendrogram_levels=6
+)
 
 # %%
 # plot results
@@ -235,10 +262,16 @@ for i, ax in zip(range(6), axis.flat):
         label=f"denrogram - level {i}",
         s=4,
     )
-fig.savefig(PROJECT_DIR / "outputs" / "figures" / "semantic_taxonomy" / "clustering_dendrogram.png")
+fig.savefig(
+    PROJECT_DIR
+    / "outputs"
+    / "figures"
+    / "semantic_taxonomy"
+    / "clustering_dendrogram.png"
+)
 # %% [markdown]
 # ### Centroids of Kmeans clustering as children nodes for further clustering (à la [job skill taxonomy](https://github.com/nestauk/skills-taxonomy-v2/tree/dev/skills_taxonomy_v2/pipeline/skills_taxonomy))
-# This approach uses any number of nested KMeans clustering runs. After a given level, the centroids of the previous level are used as the new data points for the next level. 
+# This approach uses any number of nested KMeans clustering runs. After a given level, the centroids of the previous level are used as the new data points for the next level.
 # %%
 cluster_configs = [
     [
@@ -258,7 +291,7 @@ cluster_outputs_c, plot_dicts = run_clustering_generators(
 )
 # [HACK] flip order, should be fixed in run_clustering_generators (should run highest level → lowest level)
 for output_dict in cluster_outputs_c:
-    for k,v in output_dict["labels"].items():
+    for k, v in output_dict["labels"].items():
         output_dict["labels"][k] = v[::-1]
     output_dict["silhouette"] = output_dict["silhouette"][::-1]
 
@@ -281,10 +314,16 @@ for idx, cdict in enumerate(cluster_outputs_c):
             s=cdict["centroid_params"]["sizes"],
         )
     print(f"Silhouette score ({idx}): {cdict['silhouette']}")
-fig.savefig(PROJECT_DIR / "outputs" / "figures" / "semantic_taxonomy" / "clustering_centroids.png")
+fig.savefig(
+    PROJECT_DIR
+    / "outputs"
+    / "figures"
+    / "semantic_taxonomy"
+    / "clustering_centroids.png"
+)
 # %% [markdown]
 # ### Analysis
-# This section outputs silhouette scores for all relevant outputs above. It also constructs barplots of the cluster sizes for each level of the taxonomy across approaches. 
+# This section outputs silhouette scores for all relevant outputs above. It also constructs barplots of the cluster sizes for each level of the taxonomy across approaches.
 # %%
 # Harmonize cluster outputs for analysis
 # [HACK] - fix this. For exports, I create a single dictionary for the fuzzy clusters
@@ -294,14 +333,21 @@ for group in ["sklearn.cluster._kmeans", "sklearn.cluster._agglomerative"]:
         "labels": defaultdict(list),
         "model": [],
         "silhouette": [],
-        "centroid_params": None
+        "centroid_params": None,
     }
 
     cluster_outpu = [x for x in cluster_outputs_f_ if x["model"][0].__module__ == group]
     for clust in cluster_outpu:
         for k, v in clust["labels"].items():
             dict_group["labels"][k].append(v[0])
-        dict_group["model"].append("_".join([clust["model"][0].__module__.replace(".", ""), str(clust["model"][0].get_params()["n_clusters"])]))
+        dict_group["model"].append(
+            "_".join(
+                [
+                    clust["model"][0].__module__.replace(".", ""),
+                    str(clust["model"][0].get_params()["n_clusters"]),
+                ]
+            )
+        )
         dict_group["silhouette"].append(clust["silhouette"][0])
     cluster_outputs_f.append(dict_group)
 
@@ -312,7 +358,9 @@ strict_kmeans_imb_df = make_dataframe(cluster_outputs_simb[-1], "_strict_imbalan
 fuzzy_kmeans_df = make_dataframe(cluster_outputs_f[0], "_fuzzy")
 fuzzy_agglom_df = make_dataframe(cluster_outputs_f[1], "_fuzzy")
 dendrogram_df = make_dataframe(cluster_outputs_d, "")
-centroid_kmeans_df = make_dataframe(cluster_outputs_c[-1], "_centroids", cumulative=False)
+centroid_kmeans_df = make_dataframe(
+    cluster_outputs_c[-1], "_centroids", cumulative=False
+)
 # %% Strictly hierarchical clustering KMEANS
 make_plots(strict_kmeans_df)
 # %% Strictly hierarchical clustering Agglomerative
@@ -327,7 +375,7 @@ make_plots(dendrogram_df)
 make_plots(centroid_kmeans_df)
 # %% [markdown]
 # #### Silhouette Scores
-# %% 
+# %%
 results = {
     "kmeans_strict": cluster_outputs_s[3]["silhouette"],
     "agglom_strict": cluster_outputs_s[7]["silhouette"],
@@ -338,7 +386,9 @@ results = {
     "kmeans_centroid": cluster_outputs_c[-1]["silhouette"],
 }
 
-results = {"_".join([k,str(id)]): e for k,v in results.items() for id, e in enumerate(v)}
+results = {
+    "_".join([k, str(id)]): e for k, v in results.items() for id, e in enumerate(v)
+}
 
 silhouette_df = pd.DataFrame(results, index=["silhouette"]).T.sort_values(
     "silhouette", ascending=False
@@ -349,25 +399,25 @@ display(silhouette_df)
 # Following the approach of Juan in the [AFS repository](https://github.com/nestauk/afs_neighbourhood_analysis/tree/1b1f1b1dabbebd07e5c85c72d7401107173bf863/afs_neighbourhood_analysis/analysis), we combine the clustering methods to produce a matrix of entity co-occurrences. The objective is to apply community detection algorithms on this.
 # %%
 list_dfs = [
-    strict_kmeans_df, 
+    strict_kmeans_df,
     strict_agglom_df,
-    strict_kmeans_imb_df, 
-    fuzzy_kmeans_df, 
+    strict_kmeans_imb_df,
+    fuzzy_kmeans_df,
     fuzzy_agglom_df,
-    dendrogram_df, 
-    centroid_kmeans_df
+    dendrogram_df,
+    centroid_kmeans_df,
 ]
 
 meta_cluster_df = (
-    pd.concat(list_dfs, axis=1)
-    .reset_index()
-    .rename(columns={"index": "tag"})
+    pd.concat(list_dfs, axis=1).reset_index().rename(columns={"index": "tag"})
 )
 
 # %% [markdown]
 # ### Cluster Co-occurrences
 # %%
 cooccur_dict = make_cooccurrences(meta_cluster_df)
-cooccur_df = pd.DataFrame.from_dict(cooccur_dict)
+cooccur_df = pd.DataFrame(
+    cooccur_dict, index=meta_cluster_df["tag"], columns=meta_cluster_df["tag"]
+)
 cooccur_df.head(10)
 # %%

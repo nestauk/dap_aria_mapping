@@ -1,0 +1,127 @@
+SEMANTIC_TAXONOMY:
+  CLUSTER_METHODS:
+    strict_kmeans: KMeans
+    strict_agglom: AgglomerativeClustering
+    strict_kmeans_imb: KMeans
+    fuzzy_kmeans: KMeans
+    fuzzy_agglom: AgglomerativeClustering
+    fuzzy_dbscan: DBSCAN
+    fuzzy_hdbscan: HDBSCAN
+    dendrogram: AgglomerativeClustering
+    centroids_test: KMeans
+    centroids: KMeans
+  CLUSTER_CONFIGS:
+    strict_kmeans:
+      - n_clusters: 5 # level 1
+        n_init: 5
+      - n_clusters: 20 # level 2
+        n_init: 5
+      - n_clusters: 20 # level 3
+        n_init: 5
+      - n_clusters: 40 # level 4
+        n_init: 5
+    strict_agglom:
+      - n_clusters: 5
+      - n_clusters: 20
+      - n_clusters: 20
+      - n_clusters: 40
+    strict_kmeans_imb:
+      - n_clusters: 5
+        n_init: 5
+      - n_clusters: 20
+        n_init: 5
+      - n_clusters: 20
+        n_init: 5
+      - n_clusters: 40
+        n_init: 5
+    fuzzy_kmeans:
+      - n_clusters: 5
+        n_init: 5
+      - n_clusters: 20
+        n_init: 5
+      - n_clusters: 20
+        n_init: 5
+      - n_clusters: 40
+        n_init: 5
+    fuzzy_agglom:
+      - n_clusters: 5
+      - n_clusters: 20
+      - n_clusters: 20
+      - n_clusters: 40
+    fuzzy_dbscan:
+      - eps:
+          - 0.15
+          - 0.25
+        min_samples:
+          - 8
+          - 16
+    fuzzy_hdbscan:
+      - min_cluster_size:
+          - 4
+          - 8
+        min_samples:
+          - 8
+          - 16
+    dendrogram:
+      - n_clusters: 100
+    centroids_test:
+      - n_clusters: # level 4
+        n_init: 5
+        centroids: False
+      - n_clusters: # level 3
+        n_init: 5
+        centroids: True
+      - n_clusters: # level 2
+        n_init: 5
+        centroids: True
+      - n_clusters: # level 1
+        n_init: 5
+        centroids: True
+    centroids:
+      - n_clusters: 10000 # level 6
+        n_init: 5
+        centroids: False
+      - n_clusters: 5000 # level 5
+        n_init: 5
+        centroids: True
+      - n_clusters: 2000 # level 4
+        n_init: 5
+        centroids: True
+      - n_clusters: 500 # level 3
+        n_init: 5
+        centroids: True
+      - n_clusters: 100 # level 2
+        n_init: 5
+        centroids: True
+      - n_clusters: 10 # level 1
+        n_init: 5
+        centroids: True
+  DF_CONFIGS:
+    kmeans_strict:
+      name: kmeans_strict
+      label: _strict
+      cumulative: True
+    agglom_strict:
+      name: agglom_strict
+      label: _strict
+      cumulative: True
+    kmeans_strict_imb:
+      name: kmeans_strict_imb
+      label: _strict
+      cumulative: True
+    kmeans_fuzzy:
+      name: kmeans_fuzzy
+      label: _strict
+      cumulative: True
+    agglom_fuzzy:
+      name: agglom_fuzzy
+      label: _strict
+      cumulative: True
+    agglom_dendrogram:
+      name: agglom_dendrogram
+      label: _strict
+      cumulative: True
+    kmeans_centroid:
+      name: kmeans_centroid
+      label: _centroids
+      cumulative: False

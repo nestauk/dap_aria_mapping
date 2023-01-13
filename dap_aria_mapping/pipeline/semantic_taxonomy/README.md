@@ -1,6 +1,8 @@
-## Exploration of semantic-based taxonomies
+# Semantic-based taxonomies
 
-This folder explores the use of semantic embeddings to create taxonomies of entities, with the goal of creating an ontology of the ARIA dataset. It leverages embeddings from the tags identified in articles extracted from OpenAlex, and uses them to cluster entities into groups. This taxonomy is assumed hierarchical.
+## Overview
+
+This folder uses semantic embeddings to create a series of entity taxonomies. It leverages embeddings from the tags identified in articles extracted from OpenAlex or Google Patents, and uses them to cluster entities into groups. This taxonomy is assumed hierarchical.
 
 Multiple options are explored to create the taxonomy, including:
 
@@ -11,11 +13,40 @@ Multiple options are explored to create the taxonomy, including:
 - **Hierarchical clustering using the centroids of parent-level clusters**: Cluster the entity embeddings using KMeans, and use the centroids of the clusters as nodes in subsequent levels of the taxonomy.
 - **Meta clustering using the co-occurrence of terms in the set of clustering results**: Use outputs fromall previous clustering methods to create a tag co-occurrence matrix. Apply community detection algorithms to this matrix to create the taxonomy.
 
-The utils for this notebook include all necessary functions to create the taxonomy, including class ClusteringRoutine that performs any of the clustering methods described above. The function run_clustering_generators is used to run all clustering methods andreturn the results in a dictionary. The function make_dataframe is used to create a dataframe with the results of the clustering methods. The function make_plots is used to create a series of plots to visualize the results of the clustering methods. The function make_cooccurrences is used to create a co-occurrence matrix of the clustering results. The function make_subplot_embeddings is used to create a series of subplots with the embeddings of the entities in the taxonomy.
+The utils for the different approaches can be found in `utils.semantics.py` and include all necessary functions to create the taxonomy, including the class ClusteringRoutine that performs any of the clustering methods described above.
+
+## Single Clustering routine
+
+The `make_taxonomy.py` file contains the basic routine and function calls necessary to build a single taxonomy. To run an example, execute the following:
+
+`python dap_aria_mapping/pipeline/semantic_taxonomy/make_taxonomy.py --cluster_method=centroids --plot=True --production=True`
+
+Note that config either corresponds to a clustering routine defined in the basic config file, or a standalone yaml file with the necessary parameters. These configurations accept lists within cluster parameters - which outputs the product of all possible configurations within a single cluster level -, and lists of cluster parameters, which are interpreted as different levels of the algorithm. See the class docstrings in `utils.semantics.py` for additional details.
+
+![1673627635364](image/README/1673627635364.png)
+
+The outputs are twofold:
+
+- A list of dictionaries with per-level label assignments, stored in `s3://aria-mapping/outputs/semantic_taxonomy/raw_outputs/`
+- A dataframe of cluster assignments, with rows corresponding to entities and columns corresponding to different levels of the taxonomy. These are stored in `s3://aria-mapping/outputs/semantic_taxonomy/assignments/`
+
+## Manifold Clustering routine
+
+An alternative to selecting one of several clustering approaches is to employ all of them by running a community detection algorithm on the co-occurrences of entities within clusters across all approaches.
+
+The file `make_taxonomies.py` generates taxonomies using all methods described above, and exports additional outputs over the single routine as it also produces matrices of co-occurrences for each method. In addition, it combines all clustering algorithms, and generates a co-occurrence matrix for the frequencies of co-occurrences among all approaches, which we label `meta_cluster`. These are stored in `s3://aria-mapping/outputs/semantic_taxonomy/cooccurrences/`.
+
+## Make a Graph object
+
+In order to use the `meta_cluster` in a community detection algorithm, we use the matrix of co-occurrences as an adjacency matrix to construct a graph object `nx.Graph`. To do so, execute:
+
+`python dap_aria_mapping/pipeline/semantic_taxonomy/make_graph.py --cluster_object=meta_cluster --bucket_name==aria-mapping`
+
+This outputs a graph object which can be used in the existing pipeline used to construct a taxonomy through entity co-occurrences. The difference is that the meaning of the edge weights between terms represent their co-occurrences on semantic-based clustering algorithms, and not only their joint presence in OpenAlex and Google Patents data.
 
 ### Sample dataset
 
-We use a sample of 3,000 articles to showcase the different models. Tags in these entities are filtered by selecting those with a confidence threshold higher than 80 and a minimum frequency above the 60th percentile of other entities.
+We illustrate an example of the manifold clustering routine using a sample of 3,000 articles. Tags in these entities are filtered by selecting those with a confidence threshold higher than 80 and a minimum frequency above the 60th percentile of other entities.
 
 ![1671699887328](image/README/1671699887328.png)
 
@@ -51,7 +82,7 @@ DBSCAN and HDBSCAN are unable to output meaningful clusters given a set of param
 
 ### Using dendrograms from Agglomerative Clustering (enforces hierarchy)
 
-This approach uses a single run of any sklearn clustering method that supports a children_ attribute. The children_ attribute is used to recreate th dendrogram that produced the clustering, which is then used to create the taxonomy. The climbing algorithm advances one union of subtrees at a time. The number of levels is determined by the `dendrogram_levels` parameter.
+This approach uses a single run of any sklearn clustering method that supports a children* attribute. The children* attribute is used to recreate th dendrogram that produced the clustering, which is then used to create the taxonomy. The climbing algorithm advances one union of subtrees at a time. The number of levels is determined by the `dendrogram_levels` parameter.
 
 ![1671700575409](image/README/1671700575409.png)
 

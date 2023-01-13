@@ -1,8 +1,38 @@
-from nesta_ds_utils.loading_saving.S3 import download_obj
 from dap_aria_mapping import BUCKET_NAME
-import pandas as pd
 import boto3, yaml, pickle
+import pandas as pd
 from toolz import pipe
+
+def get_embeddings() -> pd.DataFrame:
+    """Downloads embeddings from S3 and returns them as a pandas dataframe
+
+    Returns:
+        pd.DataFrame: Embeddings dataframe
+    """
+    s3 = boto3.client("s3")
+    embeddings_object = s3.get_object(
+        Bucket=BUCKET_NAME, Key="outputs/embeddings/embeddings.pkl"
+    )
+    embeddings = pickle.loads(embeddings_object["Body"].read())
+    embeddings = pd.DataFrame.from_dict(embeddings).T
+    return embeddings
+
+
+def get_cooccurrences(
+    cluster_object: str, bucket_name: str = BUCKET_NAME
+) -> pd.DataFrame:
+    """Downloads cooccurrences from S3 and returns them as a pandas dataframe
+
+    Returns:
+        pd.DataFrame: Cooccurrences dataframe
+    """
+    s3 = boto3.client("s3")
+    meta_cluster_s3 = s3.get_object(
+        Bucket=bucket_name,
+        Key=f"outputs/semantic_taxonomy/cooccurrences/{cluster_object}.parquet",
+    )
+
+    return pipe(meta_cluster_s3["Body"], lambda x: pd.read_parquet(x)), pickle
 
 def get_taxonomy_config() -> dict:
     """gets config with parameters used to generate taxonomy

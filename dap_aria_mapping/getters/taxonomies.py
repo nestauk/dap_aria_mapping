@@ -3,6 +3,7 @@ import boto3, yaml, pickle
 import pandas as pd
 from toolz import pipe
 
+
 def get_embeddings() -> pd.DataFrame:
     """Downloads embeddings from S3 and returns them as a pandas dataframe
 
@@ -19,7 +20,7 @@ def get_embeddings() -> pd.DataFrame:
 
 
 def get_cooccurrences(
-    cluster_object: str, bucket_name: str = BUCKET_NAME
+    cluster_object: str = "meta_cluster", bucket_name: str = BUCKET_NAME
 ) -> pd.DataFrame:
     """Downloads cooccurrences from S3 and returns them as a pandas dataframe
 
@@ -32,7 +33,25 @@ def get_cooccurrences(
         Key=f"outputs/semantic_taxonomy/cooccurrences/{cluster_object}.parquet",
     )
 
-    return pipe(meta_cluster_s3["Body"], lambda x: pd.read_parquet(x)), pickle
+    return pipe(meta_cluster_s3["Body"], lambda x: pd.read_parquet(x))
+
+
+def get_semantic_taxonomy(
+    cluster_object: str = "centroids", bucket_name: str = BUCKET_NAME
+) -> pd.DataFrame:
+    """Downloads taxonomy from S3 and returns them as a pandas dataframe
+
+    Returns:
+        pd.DataFrame: Taxonomy dataframe
+    """
+    s3 = boto3.client("s3")
+    meta_cluster_s3 = s3.get_object(
+        Bucket=bucket_name,
+        Key=f"outputs/semantic_taxonomy/assignments/semantic_{cluster_object}_clusters.parquet",
+    )
+
+    return pipe(meta_cluster_s3["Body"], lambda x: pd.read_parquet(x))
+
 
 def get_taxonomy_config() -> dict:
     """gets config with parameters used to generate taxonomy

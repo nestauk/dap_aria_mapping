@@ -138,5 +138,5 @@ if __name__ == "__main__":
     if args.production:
         logger.info("Saving dataframe of clustering results to S3")
         centroid_kmeans_df.to_parquet(
-            f"s3://aria-mapping/{OUTPUT_DIR}/assignments/single_clustering_{args.cluster_method}.parquet"
+            f"s3://aria-mapping/{OUTPUT_DIR}/assignments/semantic_{args.cluster_method}_clusters.parquet"
         )

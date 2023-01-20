@@ -179,6 +179,39 @@ def get_openalex_institutes() -> pd.DataFrame:
     )
 
 
+def get_openalex_forward_citations(
+    year: int = None,
+    focus_papers_only: bool = True,
+) -> Dict:
+    """_summary_
+
+    Args:
+        year (int, optional): The year for which to fetch a subset of forward
+            citation data. Defaults to None, which fetches data for all years.
+        focus_papers_only (bool, optional): If True, forward citations are only
+            fetched for the core works. If False, forward citations are also
+            fetched for the works that are cited by the core works. Defaults
+            to True.
+
+    Returns:
+        Dict: Dictionary mapping work IDs of publications that cite works in
+    """
+    fp = "focus_papers_only" if focus_papers_only else "expanded"
+
+    if year is not None:
+        directory = "inputs/data_collection/processed_openalex/yearly_subsets/"
+        fname = f"forward_citations_{fp}_{year}.json"
+    else:
+        directory = "inputs/data_collection/openalex/"
+        fname = f"forward_citations_{fp}.json"
+
+    return download_obj(
+        BUCKET_NAME,
+        f"{directory}{fname}",
+        download_as="dict",
+    )
+
+
 # We didn't use this table - it looks like it would need cleaning up if you were keen
 # to use meSH information
 def get_openalex_mesh() -> pd.DataFrame:

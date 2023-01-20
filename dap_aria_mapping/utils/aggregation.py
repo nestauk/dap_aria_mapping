@@ -39,3 +39,39 @@ def taxonomy_distribution(tax_at_level: pd.Series) -> dict:
     for taxid, count in pd.DataFrame(tax_dist.value_counts()).iterrows():
         tax_dist[taxid] = count[0]/len(tax_dist)
     return tax_dist
+
+def topics_per_institution_distribution(docs_with_topics: dict, institution_lookup: dict) -> tuple(dict, dict):
+    """takes documents tagged with topics and a lookup of documents to institutions and generates 
+        a distribution of topics per institutions
+
+    Args:
+        docs_with_topics (dict):  key: document id, value: list of topics associated with the document
+        institution_lookup (dict): key: document id, value: list of institutions associated with the document
+
+    Returns:
+         tuple: returns two dictionaries representing distributions:
+            1. count of documents per institution per topic - 
+                key: topic id, 
+                value: dictionary - key: institution: value: count of documents
+            2. proportion of documents per topic - 
+                key: topic id, 
+                value: dictionary - key: institution: value: percent of institutions
+                note: sum of proportion distribution will not = 1 as an institution can produce 
+                many documents which can have multiple topics
+
+    """
+    
+    total_institutions = len(list(institution_lookup.keys()))
+    absolute_dist = defaultdict(lambda: defaultdict(int))
+    for doc, topics in docs_with_topics.items():
+        inst_list = institution_lookup[doc]
+        for institution in inst_list:
+            for topic in set(topics):
+                absolute_dist[topic][institution] += 1
+
+    proportional_dist = defaultdict(lambda: defaultdict(int))
+    for topic, institution_dict in absolute_dist.items():
+        for inst, count in institution_dict.items():
+            proportional_dist[topic][inst] = count/total_institutions
+    
+    return absolute_dist, proportional_dist

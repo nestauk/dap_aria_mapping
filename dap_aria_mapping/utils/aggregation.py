@@ -1,7 +1,8 @@
 from collections import defaultdict
 import pandas as pd
+from typing import Tuple
 
-def topic_distributions(docs_with_topics: dict) -> tuple(dict, dict):
+def topic_distributions(docs_with_topics: dict) -> Tuple[dict, dict]:
     """takes a set of documents tagged with topics and returns 
         the distribution of the count of documents per topic
 
@@ -36,11 +37,11 @@ def taxonomy_distribution(tax_at_level: pd.Series) -> dict:
         dict: taxonomy distribution - key: taxonomy id, value: proportion of entities in the category
     """
     tax_dist = defaultdict(float)
-    for taxid, count in pd.DataFrame(tax_dist.value_counts()).iterrows():
-        tax_dist[taxid] = count[0]/len(tax_dist)
+    for taxid, count in pd.DataFrame(tax_at_level.value_counts()).iterrows():
+        tax_dist[taxid] = count[0]/len(tax_at_level)
     return tax_dist
 
-def topics_per_institution_distribution(docs_with_topics: dict, institution_lookup: dict) -> tuple(dict, dict):
+def topics_per_institution_distribution(docs_with_topics: dict, institution_lookup: dict) -> Tuple[dict, dict]:
     """takes documents tagged with topics and a lookup of documents to institutions and generates 
         a distribution of topics per institutions
 

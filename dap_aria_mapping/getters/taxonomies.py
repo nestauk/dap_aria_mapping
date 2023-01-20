@@ -48,3 +48,15 @@ def get_test_cooccurrence_taxonomy() -> pd.DataFrame:
         "outputs/test_community_detection_clusters.parquet",
         download_as="dataframe",
     )
+
+
+def get_semantic_taxonomy(cluster_object: str = "centroids") -> pd.DataFrame:
+    """Downloads taxonomy from S3 and returns them as a pandas dataframe
+    Returns:
+        pd.DataFrame: Taxonomy dataframe
+    """
+    return download_obj(
+        BUCKET_NAME,
+        f"outputs/semantic_taxonomy/assignments/semantic_{cluster_object}_clusters.parquet",
+        download_as="dataframe",
+    )

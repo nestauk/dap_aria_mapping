@@ -130,9 +130,9 @@ if __name__ == "__main__":
         cluster_outputs[-1],
         partial(make_dataframe, label=f"_{args.cluster_method}", cumulative=True),
         lambda df: df.rename(
-            columns={k: "Level_{}".format(v) for v, k in enumerate(df.columns)}
+            columns={k: "Level_{}".format(int(v) + 1) for v, k in enumerate(df.columns)}
         ),
-        lambda df: df.reset_index().rename(columns={"index": "tag"}),
+        lambda df: df.reset_index().rename(columns={"index": "Entity"}),
     )
 
     if args.production:

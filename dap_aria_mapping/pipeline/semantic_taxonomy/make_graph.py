@@ -16,24 +16,29 @@ def process_dataframe(df: pd.DataFrame) -> nx.Graph:
     Returns:
         nx.Graph: graph object
     """
+    logger.info("Creating dictionary of network tags")
+    network_dict = dict(zip(df.index, range(len(df.index))))
+
     logger.info("Normalising dataframe")
     df = pipe(
         df,
-        lambda df: df / df.iloc[0, 0],
         lambda df: (
-            df.astype(np.float16).mask(np.tril(np.ones(df.shape, dtype=np.bool_)))
+            df.astype(np.int8).rename(columns=network_dict, index=network_dict)
         ),
     )
 
+    logger.info("Creating network object")
     network = nx.Graph()
     network.add_nodes_from(meta_cluster_df.index)
 
     logger.info("Creating edge dictionaries and update network")
-    for tag, row in df.iterrows():
-        ndict = (row[row > 0]).to_dict()
+
+    for idx, (tag, row) in enumerate(df.iterrows()):
+        triu_row = row.iloc[(1 + idx) :]
+        ndict = (triu_row[triu_row > 2]).to_dict()
         for nkey, nval in ndict.items():
             network.add_edge(tag, nkey, weight=nval)
-    return network
+    return network, network_dict
 
 
 s3 = boto3.client("s3")
@@ -59,11 +64,16 @@ if __name__ == "__main__":
     )
 
     logger.info("Transforming dataframe into graph object")
-    G = process_dataframe(meta_cluster_df)
+    network, network_dict = process_dataframe(meta_cluster_df)
 
     logger.info("Saving graph object to S3")
     s3.put_object(
-        Body=pickle.dumps(G),
+        Body=pickle.dumps(network),
         Bucket=args.bucket_name,
-        Key=f"outputs/semantic_taxonomy/{args.cluster_object}_graph.pkl",
+        Key=f"outputs/semantic_taxonomy/{args.cluster_object}_network.pkl",
+    )
+    s3.put_object(
+        Body=pickle.dumps(network),
+        Bucket=args.bucket_name,
+        Key=f"outputs/semantic_taxonomy/{args.cluster_object}_network_dict.pkl",
     )

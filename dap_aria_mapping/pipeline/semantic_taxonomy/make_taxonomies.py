@@ -137,12 +137,12 @@ if __name__ == "__main__":
             Key=f"outputs/semantic_taxonomy/raw_outputs/{name_export}.pkl",
         )
 
-        df_ = make_dataframe(dict_, df_config["label"], df_config["cumulative"])
+        df = make_dataframe(dict_, df_config["label"], df_config["cumulative"])
         if df_config["name"] == "agglom_dendrogram":
-            depth_dendrogram = df_.shape[1]
+            depth_dendrogram = df.shape[1]
             levels = [int(depth_dendrogram * i) for i in [0.1, 0.3, 0.5, 0.7, 0.9]]
-            df_ = df_.iloc[:, levels]
-        outputs_df.append(df_)
+            df = df.iloc[:, levels]
+        outputs_df.append(df)
 
     logger.info("Running silhouette score export")
     results = {
@@ -172,6 +172,7 @@ if __name__ == "__main__":
             )
             .reset_index()
             .rename(columns={"index": "Entity"})
+            .set_index("Entity")
         )
         logger.info(f"Making co-occurrences for {label}")
         cooccur_dict = make_cooccurrences(df)

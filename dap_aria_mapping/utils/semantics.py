@@ -357,43 +357,43 @@ class ClusteringRoutine(object):
                     [e for e in self.embeddings.index if self.cdict[e] == cluster_group]
                 )
             ]
-            # Cluster proportional to stump sizes
-            if all(
-                [
-                    self.kwargs.get("imbalanced", False),
-                    param_config.get("n_clusters", False),
-                ]
-            ):
-                param_config_imb = deepcopy(param_config)
-                param_config_imb["n_clusters"] = int(
-                    round(
-                        nested_embeddings.shape[0]
-                        / self.embeddings.shape[0]
-                        * param_config["n_clusters"]
-                    )
-                )
-                if param_config_imb["n_clusters"] < 2:
-                    param_config_imb["n_clusters"] = 2
-                cluster = self.method_class(**param_config_imb)
-            else:  # Cluster all stumps equally
-                if all(
-                    [  # nobservations < nclusters
-                        num_clust := param_config.get("n_clusters", False),
-                        num_clust > nested_embeddings.shape[0],
-                    ]
-                ):
-                    small_config = deepcopy(param_config)
-                    small_config["n_clusters"] = 2
-                    cluster = self.method_class(**small_config)
-                else:  # observations > n_clusters
-                    cluster = self.method_class(**param_config)
-            # Fit and update
-            if nested_embeddings.shape[0] > 1:  # +1 obs
-                cluster.fit(nested_embeddings)
-                update_dictionary(self.cdict, nested_embeddings, cluster)
-            else:
+            if nested_embeddings.shape[0] < 10:  # Small stump, pass through
                 cluster = None
                 self.cdict[nested_embeddings.index[0]].append(0)
+            else:
+                # Cluster proportional to stump sizes
+                if all(
+                    [
+                        self.kwargs.get("imbalanced", False),
+                        param_config.get("n_clusters", False),
+                    ]
+                ):
+                    param_config_imb = deepcopy(param_config)
+                    param_config_imb["n_clusters"] = int(
+                        round(
+                            nested_embeddings.shape[0]
+                            / self.embeddings.shape[0]
+                            * param_config["n_clusters"]
+                        )
+                    )
+                    if param_config_imb["n_clusters"] < 2:
+                        param_config_imb["n_clusters"] = 2
+                    cluster = self.method_class(**param_config_imb)
+                else:  # Cluster all stumps equally
+                    if all(
+                        [  # nobservations < nclusters
+                            num_clust := param_config.get("n_clusters", False),
+                            num_clust > nested_embeddings.shape[0],
+                        ]
+                    ):
+                        small_config = deepcopy(param_config)
+                        small_config["n_clusters"] = 2
+                        cluster = self.method_class(**small_config)
+                    else:  # observations > n_clusters
+                        cluster = self.method_class(**param_config)
+                # Fit and update
+                cluster.fit(nested_embeddings)
+                update_dictionary(self.cdict, nested_embeddings, cluster)
         self.mlist.append(cluster)
         yield {
             "labels": deepcopy(self.cdict),
@@ -975,8 +975,8 @@ def make_cooccurrences(
     Returns:
         Dict[str, int]: A dictionary of cooccurrences.
     """
-    assert any(dataframe.columns.isin(["tag"])), "Dataframe must have a tag column"
-    dfnp = dataframe[[x for x in dataframe.columns if x != "tag"]].to_numpy()
+    assert dataframe.index.name == "Entity", "Dataframe must have an Entity index"
+    dfnp = dataframe.to_numpy()
     for i in range(dfnp.shape[1]):
         d = dict(zip(set(dfnp[:, i]), range(len(dfnp[:, i]))))
         dfnp[:, i] = [d[x] for x in dfnp[:, i]]

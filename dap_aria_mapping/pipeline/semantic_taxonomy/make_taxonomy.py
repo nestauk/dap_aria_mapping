@@ -12,6 +12,7 @@ from hdbscan import HDBSCAN
 from dap_aria_mapping import PROJECT_DIR, BUCKET_NAME, logger, config
 from dap_aria_mapping.utils.semantics import make_dataframe, run_clustering_generators
 from dap_aria_mapping.getters.taxonomies import get_embeddings
+from copy import deepcopy
 
 METHODS = {
     "KMeans": KMeans,
@@ -32,14 +33,12 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--plot",
-        type=bool,
-        default=False,
+        action="store_true",
         help="Whether to plot the results (only centroids config)",
     )
     parser.add_argument(
         "--production",
-        type=bool,
-        default=False,
+        action="store_true",
         help="Whether to run in production mode",
     )
 
@@ -47,9 +46,6 @@ if __name__ == "__main__":
 
     if args.production and args.cluster_method != "centroids":
         raise ValueError("Production mode only supports centroids config")
-
-    if args.production is False and args.cluster_method == "centroids":
-        args.cluster_method = "centroids_test"
 
     logger.info("Downloading embeddings from S3")
     embeddings = get_embeddings()
@@ -102,7 +98,7 @@ if __name__ == "__main__":
                     c=cdict["model"][idx].labels_,
                     s=cdict["centroid_params"]["sizes"],
                 )
-        if args.prodution:
+        if args.production:
             fig.savefig(
                 PROJECT_DIR
                 / "outputs"
@@ -132,7 +128,9 @@ if __name__ == "__main__":
         lambda df: df.rename(
             columns={k: "Level_{}".format(int(v) + 1) for v, k in enumerate(df.columns)}
         ),
-        lambda df: df.reset_index().rename(columns={"index": "Entity"}),
+        lambda df: df.reset_index()
+        .rename(columns={"index": "Entity"})
+        .set_index("Entity"),
     )
 
     if args.production:

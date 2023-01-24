@@ -78,7 +78,7 @@ class OpenAlexForwardCitationsFlow(FlowSpec):
         type=bool,
     )
     year = Parameter(
-        "start_year",
+        "year",
         help=(
             "Collect citations for focus papers published during this year. If "
             "None then data for all works available are collected."

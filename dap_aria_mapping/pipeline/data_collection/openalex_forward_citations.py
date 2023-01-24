@@ -77,22 +77,13 @@ class OpenAlexForwardCitationsFlow(FlowSpec):
         default=True,
         type=bool,
     )
-    start_year = Parameter(
+    year = Parameter(
         "start_year",
         help=(
-            "Collect citations for focus papers published from, and including, "
-            "this year."
+            "Collect citations for focus papers published during this year. If "
+            "None then data for all works available are collected."
         ),
-        default=2007,
-        type=int,
-    )
-    end_year = Parameter(
-        "start_year",
-        help=(
-            "Collect citations for focus papers published until, and including, "
-            "this year."
-        ),
-        default=2022,
+        default=None,
         type=int,
     )
     min_citations = Parameter(

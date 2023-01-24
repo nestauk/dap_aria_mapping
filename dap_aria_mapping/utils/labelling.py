@@ -409,6 +409,7 @@ def get_cluster_journal_ranks(
             }
 
     """
+
     assert output in [
         "absolute",
         "relative",
@@ -505,7 +506,22 @@ def build_labelled_taxonomy(
 ) -> pd.DataFrame:
     """Builds a labelled taxonomy from a taxonomy dataframe, a
         dictionary of journal to entities, and a dictionary of
-        cluster to entity counts.
+        cluster to entity counts. The labels are used to name topics
+        at any level of the taxonomy, substituting for the str ID.
+        Two distinct groups of labels are created:
+
+        - Journal labels: The journals ranking highest in a cluster.
+            The ranking is based on three factors. For each entity
+            in a topic, for each journal that entity appears in, the
+            rank is calculated using a weighted average of:
+            - The frequency of the entity in the cluster.
+            - The frequency of the entity in the journal.
+            - The frequency of the journal in the cluster.
+
+        - Main entity labels: The entities assigned to the cluster
+            with the highest frequency across journals. If there are
+            multiple entities with the same frequency, one is chosen
+            at random.
 
     Args:
         df (pd.DataFrame): A taxonomy dataframe, with at least one

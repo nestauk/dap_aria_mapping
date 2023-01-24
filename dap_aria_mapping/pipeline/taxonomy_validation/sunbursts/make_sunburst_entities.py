@@ -12,13 +12,14 @@ from typing import (
 from copy import deepcopy
 from tqdm import tqdm
 from toolz import pipe
+from functools import partial
 from dap_aria_mapping import logger, PROJECT_DIR
 
 # %%
 from dap_aria_mapping.getters.taxonomies import get_cooccurrence_taxonomy
 from dap_aria_mapping.getters.openalex import get_openalex_works, get_openalex_entities
 from dap_aria_mapping.utils.semantics import get_sample, filter_entities
-from dap_aria_mapping.utils.validation import *
+from dap_aria_mapping.utils.labelling import *
 
 
 def propagate_sunburst_entity_values(
@@ -152,10 +153,15 @@ if __name__ == "__main__":
     oa_works = get_openalex_works()
 
     logger.info("Loading data - entities")
-    oa_entities = get_openalex_entities()
-    oa_entities = get_sample(
-        entities=oa_entities, score_threshold=80, num_articles=args.n_articles
+    oa_entities = pipe(
+        get_openalex_entities(),
+        partial(get_sample, score_threshold=80, num_articles=args.n_articles),
+        partial(filter_entities, min_freq=10, max_freq=1_000_000, method="absolute"),
     )
+    # oa_entities = get_openalex_entities()
+    # oa_entities = get_sample(
+    #     entities=oa_entities, score_threshold=80, num_articles=args.n_articles
+    # )
 
     logger.info("Building dictionary - journal to entities")
     journal_entities = get_journal_entities(oa_works, oa_entities)

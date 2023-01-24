@@ -51,9 +51,14 @@ def get_test_cooccurrence_taxonomy() -> pd.DataFrame:
 
 
 def get_semantic_taxonomy(cluster_object: str = "centroids") -> pd.DataFrame:
-    """Downloads taxonomy from S3 and returns them as a pandas dataframe
+    """Downloads taxonomy from S3 and returns them as a pandas dataframe.
+
+    Args:
+        cluster_object (str, optional): The type of semantic cluster object to download.
+            Defaults to "centroids".
+
     Returns:
-        pd.DataFrame: Taxonomy dataframe
+        pd.DataFrame: A pandas dataframe containing the semantic taxonomy.
     """
     return download_obj(
         BUCKET_NAME,

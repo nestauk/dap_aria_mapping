@@ -4,9 +4,11 @@ import altair as alt
 from nesta_ds_utils.viz.altair import formatting, saving
 
 formatting.setup_theme()
+
 from toolz import pipe
 from dap_aria_mapping import logger, PROJECT_DIR
 from typing import Union, Sequence
+from functools import partial
 
 from dap_aria_mapping.getters.taxonomies import (
     get_cooccurrence_taxonomy,
@@ -14,7 +16,7 @@ from dap_aria_mapping.getters.taxonomies import (
 )
 from dap_aria_mapping.getters.openalex import get_openalex_works, get_openalex_entities
 from dap_aria_mapping.utils.semantics import get_sample, filter_entities
-from dap_aria_mapping.utils.validation import *
+from dap_aria_mapping.utils.labelling import *
 
 
 def dataframe_to_histogram_df(
@@ -51,6 +53,16 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--taxonomy",
+        nargs="+",
+        help=(
+            "The type of taxonomy to use. Can be a single taxonomy or a sequence \
+            of taxonomies, and accepts 'cooccur', 'centroids' or 'imbalanced' as tags."
+        ),
+        required=True,
+    )
+
+    parser.add_argument(
         "--level",
         nargs="+",
         help="The level of the taxonomy to use. Can be a single level or a sequence of levels.",
@@ -75,17 +87,27 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     logger.info("Loading data - taxonomy")
-    cooccur_taxonomy = get_cooccurrence_taxonomy()
-    semantic_centroids_taxonomy = get_semantic_taxonomy("centroids")
-    semantic_kmeans_taxonomy = get_semantic_taxonomy("kmeans_strict_imb")
+    if not isinstance(args.taxonomy, list):
+        args.taxonomy = [args.taxonomy]
+    taxonomies = []
+    if "cooccur" in args.taxonomy:
+        cooccur_taxonomy = get_cooccurrence_taxonomy()
+        taxonomies.append(["Network", cooccur_taxonomy])
+    if "centroids" in args.taxonomy:
+        semantic_centroids_taxonomy = get_semantic_taxonomy("centroids")
+        taxonomies.append(["Semantic (Centroids)", semantic_centroids_taxonomy])
+    if "imbalanced" in args.taxonomy:
+        semantic_kmeans_taxonomy = get_semantic_taxonomy("kmeans_strict_imb")
+        taxonomies.append(["Semantic (Imbalanced)", semantic_kmeans_taxonomy])
 
     logger.info("Loading data - works")
     oa_works = get_openalex_works()
 
     logger.info("Loading data - entities")
-    oa_entities = get_openalex_entities()
-    oa_entities = get_sample(
-        entities=oa_entities, score_threshold=80, num_articles=args.n_articles
+    oa_entities = pipe(
+        get_openalex_entities(),
+        partial(get_sample, score_threshold=80, num_articles=args.n_articles),
+        partial(filter_entities, min_freq=10, max_freq=1_000_000, method="absolute"),
     )
 
     logger.info("Building dictionary - journal to entities")
@@ -100,20 +122,15 @@ if __name__ == "__main__":
     )
 
     logger.info("Building labelled taxonomies")
-    cooccur_taxonomy_labelled = build_labelled_taxonomy(
-        cooccur_taxonomy, journal_entities, entity_counts, entity_journal_counts
-    )
-
-    semantic_centroids_taxonomy_labelled = build_labelled_taxonomy(
-        semantic_centroids_taxonomy,
-        journal_entities,
-        entity_counts,
-        entity_journal_counts,
-    )
-
-    semantic_kmeans_taxonomy_labelled = build_labelled_taxonomy(
-        semantic_kmeans_taxonomy, journal_entities, entity_counts, entity_journal_counts
-    )
+    labelled_taxonomies = [
+        [
+            name,
+            build_labelled_taxonomy(
+                taxonomy, journal_entities, entity_counts, entity_journal_counts
+            ),
+        ]
+        for name, taxonomy in taxonomies
+    ]
 
     levels = args.level if isinstance(args.level, list) else list(args.level)
 
@@ -139,16 +156,10 @@ if __name__ == "__main__":
                     )
                     .properties(width=800, height=100)
                 )
-                for label, df in zip(
-                    ["Network", "Semantic (Centroids)", "Semantic (Imbalanced)"],
-                    [
-                        cooccur_taxonomy_labelled,
-                        semantic_centroids_taxonomy_labelled,
-                        semantic_kmeans_taxonomy_labelled,
-                    ],
-                )
+                for label, df in labelled_taxonomies
             ]
         )
+
         if args.save:
             chart.save(
                 PROJECT_DIR

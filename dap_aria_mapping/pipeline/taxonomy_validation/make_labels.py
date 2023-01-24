@@ -3,28 +3,29 @@ import argparse, pickle, boto3
 from toolz import pipe
 from dap_aria_mapping import logger, PROJECT_DIR, BUCKET_NAME
 from typing import Union, Sequence
+from functools import partial
 
 from dap_aria_mapping.getters.taxonomies import (
     get_cooccurrence_taxonomy,
     get_semantic_taxonomy,
 )
 from dap_aria_mapping.getters.openalex import get_openalex_works, get_openalex_entities
-from dap_aria_mapping.utils.semantics import get_sample, filter_entities
-from dap_aria_mapping.utils.validation import *
+from dap_aria_mapping.utils.entity_selection import get_sample, filter_entities
+from dap_aria_mapping.utils.labelling import *
 
 
-def save_labels(taxonomy_class: str, label_type: str, level: int, labels: Dict) -> None:
+def save_labels(taxonomy: str, label_type: str, level: int, labels: Dict) -> None:
     """Save the labels for a given taxonomy level.
 
     Args:
-        taxonomy_class (str): A string representing the taxonomy class.
+        taxonomy (str): A string representing the taxonomy class.
             Can be 'cooccur', 'semantic' or 'semantic_kmeans'.
         label_type (str): A string representing the labels type.
         level (int): The level of the taxonomy to use.
         labels (Dict): A dictionary of the labels.
     """
     title = "outputs/topic_labels/labels_class_{}_labtype_{}_level_{}.pkl".format(
-        taxonomy_class, label_type, str(level)
+        taxonomy, label_type, str(level)
     )
     s3 = boto3.client("s3")
     s3.put_object(
@@ -42,9 +43,13 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--taxonomy_class",
-        help="The type of taxonomy to use. Can be 'cooccur', 'semantic' or 'semantic_kmeans'.",
-        default="cooccur",
+        "--taxonomy",
+        nargs="+",
+        help=(
+            "The type of taxonomy to use. Can be a single taxonomy or a sequence \
+            of taxonomies, and accepts 'cooccur', 'centroids' or 'imbalanced' as tags."
+        ),
+        required=True,
     )
 
     parser.add_argument(
@@ -76,80 +81,70 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     logger.info("Loading data - taxonomy")
-    if args.taxonomy_class == "cooccur":
-        taxonomy = get_cooccurrence_taxonomy()
-    elif args.taxonomy_class == "semantic":
-        taxonomy = pipe(
-            "centroids",
-            get_semantic_taxonomy,
-            lambda df: df.rename(columns={"tag": "Entity"})
-            if "tag" in df.columns
-            else df,
-            lambda df: df.set_index("Entity"),
-            lambda df: df.rename(
-                columns={
-                    k: "Level_{}".format(str(v + 1)) for v, k in enumerate(df.columns)
-                }
-            ),
-        )
-    elif args.taxonomy_class == "semantic_kmeans":
-        taxonomy = pipe(
-            "kmeans_strict_imb",
-            get_semantic_taxonomy,
-            lambda df: df.rename(columns={"tag": "Entity"})
-            if "tag" in df.columns
-            else df,
-            lambda df: df.set_index("Entity"),
-            lambda df: df.rename(
-                columns={
-                    k: "Level_{}".format(str(v + 1)) for v, k in enumerate(df.columns)
-                }
-            ),
-        )
+    if not isinstance(args.taxonomy, list):
+        args.taxonomy = [args.taxonomy]
+    taxonomies = []
+    if "cooccur" in args.taxonomy:
+        cooccur_taxonomy = get_cooccurrence_taxonomy()
+        taxonomies.append(["cooccur", cooccur_taxonomy])
+    if "centroids" in args.taxonomy:
+        semantic_centroids_taxonomy = get_semantic_taxonomy("centroids")
+        taxonomies.append(["centroids", semantic_centroids_taxonomy])
+    if "imbalanced" in args.taxonomy:
+        semantic_kmeans_taxonomy = get_semantic_taxonomy("kmeans_strict_imb")
+        taxonomies.append(["imbalanced", semantic_kmeans_taxonomy])
 
     logger.info("Loading data - works")
     oa_works = get_openalex_works()
 
     logger.info("Loading data - entities")
-    oa_entities = get_openalex_entities()
-    oa_entities = get_sample(
-        entities=oa_entities, score_threshold=80, num_articles=args.n_articles
+    oa_entities = pipe(
+        get_openalex_entities(),
+        partial(get_sample, score_threshold=80, num_articles=args.n_articles),
+        partial(filter_entities, min_freq=10, max_freq=1_000_000, method="absolute"),
     )
 
     logger.info("Building dictionary - journal to entities")
     journal_entities = get_journal_entities(oa_works, oa_entities)
 
-    for level in [int(x) for x in args.levels]:
-        logger.info("Starting level {}".format(str(level)))
-        logger.info("Building dictionary - entity to journals")
-        clust_counts = get_level_entity_counts(journal_entities, taxonomy, level=level)
-
-        if "entity" in args.label_type:
-            logger.info("Building dictionary - entity to labels")
-            labels = get_cluster_entity_labels(clust_counts, num_entities=args.n_top)
-            if args.save:
-                logger.info("Saving dictionary as pickle")
-                save_labels(
-                    taxonomy_class=args.taxonomy_class,
-                    label_type="entity",
-                    level=level,
-                    labels=labels,
-                )
-
-        if "journal" in args.label_type:
-            logger.info("Building dictionary - journal to labels")
-            cluster_journal_ranks = get_cluster_journal_ranks(
-                clust_counts, journal_entities, output="relative"
+    for taxlabel, taxonomy in taxonomies:
+        logger.info("Starting taxonomy {}".format(taxlabel))
+        for level in [int(x) for x in args.levels]:
+            logger.info("Starting level {}".format(str(level)))
+            logger.info("Building dictionary - entity to journals")
+            clust_counts = get_level_entity_counts(
+                journal_entities, taxonomy, level=level
             )
-            labels = get_cluster_journal_labels(
-                cluster_journal_ranks, num_labels=args.n_top
-            )
-            if args.save:
-                logger.info("Saving dictionary as pickle")
-                save_labels(
-                    taxonomy_class=args.taxonomy_class,
-                    label_type="journal",
-                    level=level,
-                    labels=labels,
+
+            if "entity" in args.label_type:
+                logger.info("Building dictionary - entity to labels")
+                labels = get_cluster_entity_labels(
+                    clust_counts, num_entities=args.n_top
                 )
-        logger.info("Finished level {}".format(str(level)))
+                if args.save:
+                    logger.info("Saving dictionary as pickle")
+                    save_labels(
+                        taxonomy=taxlabel,
+                        label_type="entity",
+                        level=level,
+                        labels=labels,
+                    )
+
+            if "journal" in args.label_type:
+                logger.info("Building dictionary - journal to labels")
+                cluster_journal_ranks = get_cluster_journal_ranks(
+                    clust_counts, journal_entities, output="relative"
+                )
+                labels = get_cluster_journal_labels(
+                    cluster_journal_ranks, num_labels=args.n_top
+                )
+                if args.save:
+                    logger.info("Saving dictionary as pickle")
+                    save_labels(
+                        taxonomy=taxlabel,
+                        label_type="journal",
+                        level=level,
+                        labels=labels,
+                    )
+            logger.info("Finished level {}".format(str(level)))
+        logger.info("Finished taxonomy {}".format(taxlabel))

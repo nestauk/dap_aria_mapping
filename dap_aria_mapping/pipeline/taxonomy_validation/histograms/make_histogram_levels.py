@@ -76,27 +76,8 @@ if __name__ == "__main__":
 
     logger.info("Loading data - taxonomy")
     cooccur_taxonomy = get_cooccurrence_taxonomy()
-    semantic_taxonomy = get_semantic_taxonomy()
-    semantic_kmeans_taxonomy = pipe(
-        "kmeans_strict_imb",
-        get_semantic_taxonomy,
-        lambda df: df.rename(columns={"tag": "Entity"}) if "tag" in df.columns else df,
-        lambda df: df.set_index("Entity"),
-        lambda df: df.rename(
-            columns={k: "Level_{}".format(str(v + 1)) for v, k in enumerate(df.columns)}
-        ),
-    )
-
-    if "tag" in semantic_taxonomy.columns:
-        semantic_taxonomy.rename(columns={"tag": "Entity"}, inplace=True)
-    semantic_taxonomy.set_index("Entity", inplace=True)
-    semantic_taxonomy.rename(
-        columns={
-            k: "Level_{}".format(str(v + 1))
-            for v, k in enumerate(semantic_taxonomy.columns)
-        },
-        inplace=True,
-    )
+    semantic_centroids_taxonomy = get_semantic_taxonomy("centroids")
+    semantic_kmeans_taxonomy = get_semantic_taxonomy("kmeans_strict_imb")
 
     logger.info("Loading data - works")
     oa_works = get_openalex_works()
@@ -123,8 +104,11 @@ if __name__ == "__main__":
         cooccur_taxonomy, journal_entities, entity_counts, entity_journal_counts
     )
 
-    semantic_taxonomy_labelled = build_labelled_taxonomy(
-        semantic_taxonomy, journal_entities, entity_counts, entity_journal_counts
+    semantic_centroids_taxonomy_labelled = build_labelled_taxonomy(
+        semantic_centroids_taxonomy,
+        journal_entities,
+        entity_counts,
+        entity_journal_counts,
     )
 
     semantic_kmeans_taxonomy_labelled = build_labelled_taxonomy(
@@ -159,7 +143,7 @@ if __name__ == "__main__":
                     ["Network", "Semantic (Centroids)", "Semantic (Imbalanced)"],
                     [
                         cooccur_taxonomy_labelled,
-                        semantic_taxonomy_labelled,
+                        semantic_centroids_taxonomy_labelled,
                         semantic_kmeans_taxonomy_labelled,
                     ],
                 )

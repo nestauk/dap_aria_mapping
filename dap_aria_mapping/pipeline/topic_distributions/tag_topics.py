@@ -72,7 +72,7 @@ if __name__ == '__main__':
             'outputs/docs_with_topics/cooccurrence_taxonomy/patents/Level_{}.json'.format(level)
         )
     
-    """
+
     print("TAGGING OPENALEX WITH TOPICS")
     print("loading openalex data")
     openalex = get_openalex_entities()
@@ -89,6 +89,6 @@ if __name__ == '__main__':
                 BUCKET_NAME,
                 'outputs/docs_with_topics/cooccurrence_taxonomy/openalex/Level_{}.json'.format(level)
             )
-    """
+
 
 

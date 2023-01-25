@@ -177,9 +177,7 @@ if __name__ == "__main__":
         logger.info(f"Making co-occurrences for {label}")
         cooccur_dict = make_cooccurrences(df)
         logger.info(f"Transforming to co-occurrence dataframe ({label})")
-        cooccur_df = pd.DataFrame(
-            cooccur_dict, index=df["Entity"], columns=df["Entity"]
-        )
+        cooccur_df = pd.DataFrame(cooccur_dict, index=df.index, columns=df.index)
 
         logger.info(f"Saving parquets for {label}")
         df.to_parquet(

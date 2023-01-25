@@ -1,7 +1,7 @@
 import pandas as pd
 from nesta_ds_utils.loading_saving.S3 import download_obj
 from dap_aria_mapping import BUCKET_NAME, AI_GENOMICS_BUCKET_NAME
-from typing import Mapping, Union
+from typing import Mapping, Union, List
 import pandas as pd
 
 
@@ -31,31 +31,28 @@ def get_patent_entities() -> Mapping[str, Mapping[str, Union[str, str]]]:
     )
 
 
-#########TEMPORARY AI GENOMICS GETTERS##########################
-
-
-def get_ai_genomics_patents_entities() -> Mapping[str, Mapping[str, Union[str, str]]]:
-    """From S3 loads post-processed AI in genomics patents DBpedia entities"""
+def get_patent_forward_citations() -> Mapping[str, List[str]]:
+    """From S3 loads patent forward citations"""
     return download_obj(
-        AI_GENOMICS_BUCKET_NAME,
-        "outputs/entity_extraction/ai_genomics_patents_lookup_clean.json",
+        BUCKET_NAME,
+        "inputs/data_collection/patents/patents_forward_citations.json",
         download_as="dict",
     )
 
 
-def get_ai_patents_entities() -> Mapping[str, Mapping[str, Union[str, str]]]:
-    """From S3 loads post-processed AI patents DBpedia entities"""
+def get_patent_backward_citations() -> Mapping[str, List[str]]:
+    """From S3 loads patent backward citations"""
     return download_obj(
-        AI_GENOMICS_BUCKET_NAME,
-        "outputs/entity_extraction/ai_patents_lookup_clean.json",
+        BUCKET_NAME,
+        "inputs/data_collection/patents/patents_backward_citations.json",
         download_as="dict",
     )
 
 
-def get_genomics_patents_entities() -> Mapping[str, Mapping[str, Union[str, str]]]:
-    """From S3 loads post-processed genomics patents DBpedia entities"""
+def get_patent_citations_metadata() -> pd.DataFrame:
+    """From S3 loads patent citations metadata"""
     return download_obj(
-        AI_GENOMICS_BUCKET_NAME,
-        "outputs/entity_extraction/genomics_patents_lookup_clean.json",
-        download_as="dict",
+        BUCKET_NAME,
+        "inputs/data_collection/patents/patents_citations_metadata.json",
+        download_as="dataframe",
     )

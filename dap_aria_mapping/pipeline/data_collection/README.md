@@ -30,6 +30,32 @@ We have also included pytest unit tests for relevant functions in the tests dire
 
 Output data from these pipelines is stored on S3 in the `inputs/data_collection` directory. Getters for these datasets have been added to the getters section of the repository.
 
+### Additional Raw Data
+
+#### Foward citations for measuring disruption
+
+#### Patents
+
+We also collect citation information for patents to calculate the consolidation-distruption (CD) index.
+
+We define 'focus patents' as the patent ids collected by `dap_aria_mapping/pipeline/data_collection/openalex.py.`.
+
+To collect the patent forward citations, backward citations and backward citation metadata, run the following flow:
+
+`python dap_aria_mapping/pipeline/data_collection/paents_citations.py run --production=False`
+
+If you run the flow in production (i.e. `production=True`), it will cost money to do so.
+
+This flow outputs three files stored on S3 at `inputs/data_collection/patents/`:
+
+1. `**patents_forward_citations.json**`: A json where the key is a focal patent id and the value is a list of patent ids that cite the focal patent id.
+2. `**patents_backward_citations.json**`: A json where the key is a focal patent id and the value is a list of patent ids that the focal patent id cites.
+3. `**patents_citations_metadata.parquet**`: A parquet file that stores additional backward citation metadata including citation category, citation type, free-text citation in non-patent literature and the citation filing date.
+
+i.e.
+
+Please refer to the [patents data dictionary](https://docs.google.com/spreadsheets/d/1LtfjECVI5pqqwE7oMw1JbwFcUWhUoHgJH_mJ0flw9Fw/edit#gid=1878548964) for additional information on the collection information.
+
 ## Getting Up and Running With Batch on Metaflow
 
 If you haven't used batch processing with Metaflow before and want to run any of the flows that make use of batch (e.g. `openalex.py`), you'll need to ensure a few things are set up first:

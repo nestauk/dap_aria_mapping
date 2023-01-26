@@ -60,10 +60,12 @@ def patents_citation_query(
     return f"select publication_number, citation from `patents-public-data.patents.publications` WHERE publication_number IN ({focal_ids_formatted})"
 
 
-def patents_backward_citation_query(
+def patents_forward_citation_query(
     publication_numbers: List[str], production: bool = False
 ) -> str:
-    """Returns a query that collects patent backward citation information for a list of focal_ids.
+    """Returns a query that collects patent forward citation information
+        for a list of focal_ids. i.e. for a given focal patent id, find the
+        patents ids that cite them.
 
     Args:
         publication_numbers (List[str]): List of publication numbers.
@@ -76,7 +78,7 @@ def patents_backward_citation_query(
     """
     focal_ids = publication_numbers if production else publication_numbers[:10]
 
-    backward_citation_q = (
+    foward_citation_q = (
         f"WITH focal_id AS (SELECT * FROM UNNEST({focal_ids}) AS focal_ids)",
         "SELECT focal_id, p.publication_number AS cited_by",
         "FROM `patents-public-data.patents.publications` as p,",
@@ -84,7 +86,7 @@ def patents_backward_citation_query(
         "WHERE citation.publication_number IN (focal_ids)",
     )
 
-    return " ".join(backward_citation_q)
+    return " ".join(foward_citation_q)
 
 
 class PatentsCitationsFlow(FlowSpec):
@@ -149,32 +151,37 @@ class PatentsCitationsFlow(FlowSpec):
             .query("citation_publication_number != ''")
         )
 
-        self.next(self.retrieve_forward_citation_data)
-
-    @step
-    def retrieve_forward_citation_data(self):
-        """Retrieve forward citation data from formatted citation data"""
-        self.forward_citations = (
-            self.citations_data.groupby("focal_publication_number")
-            .citation_publication_number.apply(list)
-            .to_dict()
-        )
         self.next(self.retrieve_backward_citation_data)
 
     @step
     def retrieve_backward_citation_data(self):
-        """Retrieves backward citation data for focal ids in BigQuery"""
+        """Retrieve backward citation data from formatted citation data
+        i.e. a list of patent ids that a given focal patent cites
+        """
+        self.backward_citations = (
+            self.citations_data.groupby("focal_publication_number")
+            .citation_publication_number.apply(list)
+            .to_dict()
+        )
+        self.next(self.retrieve_foward_citation_data)
+
+    @step
+    def retrieve_foward_citation_data(self):
+        """Retrieves forward citation data for focal ids in BigQuery
+        i.e. for a given focal patent id, the patents ids
+        that cite them.
+        """
         from dap_aria_mapping.utils.conn import est_conn
 
         # I would self.conn in the previous step but it doesn't work with metaflow
         conn = est_conn()
-        patents_backwards_citation_q = patents_backward_citation_query(
+        patents_backwards_citation_q = patents_forward_citation_query(
             publication_numbers=self.publication_numbers, production=self.production
         )
         results = conn.query(patents_backwards_citation_q).to_dataframe()
 
         results["focal_id"] = results.focal_id.apply(lambda x: x["focal_ids"])
-        self.backward_citations = (
+        self.forward_citations = (
             results.groupby("focal_id").cited_by.apply(list).to_dict()
         )
 
@@ -182,7 +189,8 @@ class PatentsCitationsFlow(FlowSpec):
 
     @step
     def save_data(self):
-        """Saves forward, backward and citation metadata as json files to s3"""
+        """Saves forward, backward and citation metadata as
+        json/parquet files to s3"""
         from nesta_ds_utils.loading_saving.S3 import upload_obj
         from dap_aria_mapping import BUCKET_NAME
 
@@ -200,7 +208,7 @@ class PatentsCitationsFlow(FlowSpec):
             upload_obj(
                 self.citations_data,
                 BUCKET_NAME,
-                "inputs/data_collection/patents/patents_citations_metadata.json",
+                "inputs/data_collection/patents/patents_citations_metadata.parquet",
             )
         else:
             pass

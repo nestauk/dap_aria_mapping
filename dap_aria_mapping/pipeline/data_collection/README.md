@@ -54,6 +54,8 @@ This flow outputs three files stored on S3 at `inputs/data_collection/patents/`:
 
 i.e.
 
+<img width="397" alt="citations_visual" src="https://user-images.githubusercontent.com/46863334/214832831-9d993613-f6aa-41ef-a3bf-b9887cc4a58e.png">
+
 Please refer to the [patents data dictionary](https://docs.google.com/spreadsheets/d/1LtfjECVI5pqqwE7oMw1JbwFcUWhUoHgJH_mJ0flw9Fw/edit#gid=1878548964) for additional information on the collection information.
 
 ## Getting Up and Running With Batch on Metaflow

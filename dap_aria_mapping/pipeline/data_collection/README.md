@@ -52,9 +52,9 @@ This flow outputs three files stored on S3 at `inputs/data_collection/patents/`:
 2. **`patents_backward_citations.json`**: A json where the key is a focal patent id and the value is a list of patent ids that the focal patent id cites.
 3. **`patents_citations_metadata.parquet`**: A parquet file that stores additional backward citation metadata including citation category, citation type, free-text citation in non-patent literature and the citation filing date.
 
-i.e.
+Below is a visual of forward vs. backward citations for a [given Google patent, CN104213415B](https://patents.google.com/patent/CN104213415B/en?oq=CN104213415B).
 
-<img width="397" alt="citations_visual" src="https://user-images.githubusercontent.com/46863334/214832831-9d993613-f6aa-41ef-a3bf-b9887cc4a58e.png">
+<p align="center"><img width="397" alt="citations_visual" src="https://user-images.githubusercontent.com/46863334/214832831-9d993613-f6aa-41ef-a3bf-b9887cc4a58e.png"></p>
 
 Please refer to the [patents data dictionary](https://docs.google.com/spreadsheets/d/1LtfjECVI5pqqwE7oMw1JbwFcUWhUoHgJH_mJ0flw9Fw/edit#gid=1878548964) for additional information on the collection information.
 

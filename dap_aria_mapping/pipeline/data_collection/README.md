@@ -48,9 +48,9 @@ If you run the flow in production (i.e. `production=True`), it will cost money t
 
 This flow outputs three files stored on S3 at `inputs/data_collection/patents/`:
 
-1. `**patents_forward_citations.json**`: A json where the key is a focal patent id and the value is a list of patent ids that cite the focal patent id.
-2. `**patents_backward_citations.json**`: A json where the key is a focal patent id and the value is a list of patent ids that the focal patent id cites.
-3. `**patents_citations_metadata.parquet**`: A parquet file that stores additional backward citation metadata including citation category, citation type, free-text citation in non-patent literature and the citation filing date.
+1. **`patents_forward_citations.json`**: A json where the key is a focal patent id and the value is a list of patent ids that cite the focal patent id.
+2. **`patents_backward_citations.json`**: A json where the key is a focal patent id and the value is a list of patent ids that the focal patent id cites.
+3. **`patents_citations_metadata.parquet`**: A parquet file that stores additional backward citation metadata including citation category, citation type, free-text citation in non-patent literature and the citation filing date.
 
 i.e.
 

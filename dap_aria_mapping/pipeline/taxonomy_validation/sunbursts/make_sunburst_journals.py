@@ -18,8 +18,8 @@ from dap_aria_mapping import logger, PROJECT_DIR
 # %%
 from dap_aria_mapping.getters.taxonomies import get_cooccurrence_taxonomy
 from dap_aria_mapping.getters.openalex import get_openalex_works, get_openalex_entities
-from dap_aria_mapping.utils.semantics import get_sample, filter_entities
-from dap_aria_mapping.utils.labelling import *
+from dap_aria_mapping.utils.entity_selection import get_sample, filter_entities
+from dap_aria_mapping.utils.topic_names import *
 
 
 def propagate_sunburst_journal_values(
@@ -27,13 +27,13 @@ def propagate_sunburst_journal_values(
     journal: Union[str, bool],
     level: Union[Union[int, str], Sequence[Union[int, str]]] = 1,
 ) -> Dict:
-    """Propagate sunburst values from a dataframe of the labelled taxonomy.
+    """Propagate sunburst values from a dataframe of the named taxonomy.
         The sunburst values are then used to create a sunburst plot, and the
         resulting data parameters are used to build plotting alternatives
         using plotly's `updatemenus`.
 
     Args:
-        df (pd.DataFrame): A dataframe of the labelled taxonomy.
+        df (pd.DataFrame): A dataframe of the named taxonomy.
         journal (Union[str, bool]): The journal to propagate values for. If `True`,
             a random journal will be selected. If `False`, all journals will be
             selected. If `str`, the specified journal will be selected.
@@ -46,9 +46,9 @@ def propagate_sunburst_journal_values(
             by plotly to build the plot.
     """
     if isinstance(level, int):
-        columns = ["Level_{}_Entity_Labels".format(str(level))]
+        columns = ["Level_{}_Entity_Names".format(str(level))]
     elif isinstance(level, list):
-        columns = ["Level_{}_Entity_Labels".format(str(x)) for x in level]
+        columns = ["Level_{}_Entity_Names".format(str(x)) for x in level]
 
     if isinstance(journal, bool):
         if journal:
@@ -68,7 +68,7 @@ def propagate_sunburst_journal_values(
     )
     return {
         "ids": [fig.data[0]["ids"]],
-        "labels": [fig.data[0]["labels"]],
+        "names": [fig.data[0]["names"]],
         "parents": [fig.data[0]["parents"]],
         "values": [fig.data[0]["values"]],
     }
@@ -79,10 +79,10 @@ def build_journal_sunburst(
     level: Union[Union[int, str], Sequence[Union[int, str]]] = 1,
     save: Union[bool, str] = False,
 ) -> PlotlyFigure:
-    """Build a sunburst plot from a dataframe of the labelled taxonomy.
+    """Build a sunburst plot from a dataframe of the named taxonomy.
 
     Args:
-        df (pd.DataFrame): A dataframe of the labelled taxonomy.
+        df (pd.DataFrame): A dataframe of the named taxonomy.
         level (Union[Union[int, str], Sequence[Union[int, str]]], optional):
             The level(s) to propagate values for. Defaults to 1.
         save (bool, optional): Whether to save the plot. Defaults to False.
@@ -91,9 +91,9 @@ def build_journal_sunburst(
         PlotlyFigure: A plotly figure of the sunburst plot.
     """
     if isinstance(level, int):
-        columns = ["Level_{}_Entity_Labels".format(str(level))]
+        columns = ["Level_{}_Entity_Names".format(str(level))]
     elif isinstance(level, list):
-        columns = ["Level_{}_Entity_Labels".format(str(x)) for x in level]
+        columns = ["Level_{}_Entity_Names".format(str(x)) for x in level]
 
     path = ["Main_Journal"] + columns + ["Entity"]
 
@@ -114,7 +114,7 @@ def build_journal_sunburst(
             "buttons": [
                 {
                     "method": "update",
-                    "label": "Top Publishing Journals",
+                    "name": "Top Publishing Journals",
                     "args": [
                         propagate_sunburst_journal_values(
                             df, journal=False, level=level
@@ -125,7 +125,7 @@ def build_journal_sunburst(
             + [
                 {
                     "method": "update",
-                    "label": journal,
+                    "name": journal,
                     "args": [
                         propagate_sunburst_journal_values(
                             df, journal=journal, level=level
@@ -143,8 +143,8 @@ def build_journal_sunburst(
         },
         {
             "buttons": [
-                {"args": [{"maxdepth": level}], "label": label, "method": "restyle"}
-                for label, level in zip(
+                {"args": [{"maxdepth": level}], "name": name, "method": "restyle"}
+                for name, level in zip(
                     ["No Level"] + ["Level {}".format(str(x)) for x in level],
                     [1] + [int(x) + 1 for x in level],
                 )
@@ -152,7 +152,7 @@ def build_journal_sunburst(
             + [
                 {
                     "args": [{"maxdepth": int(level[-1]) + 2}],
-                    "label": "Entities",
+                    "name": "Entities",
                     "method": "restyle",
                 }
             ],
@@ -176,7 +176,7 @@ def build_journal_sunburst(
     )
 
     fig.update_traces(
-        hovertemplate="<b>%{label}</b><br>Entity Count: %{value}<br>",
+        hovertemplate="<b>%{name}</b><br>Entity Count: %{value}<br>",
     )
 
     if isinstance(save, bool):
@@ -249,8 +249,8 @@ if __name__ == "__main__":
         journal_entities, output="absolute"
     )
 
-    logger.info("Building labelled taxonomy")
-    cooccur_taxonomy_labelled = build_labelled_taxonomy(
+    logger.info("Building named taxonomy")
+    cooccur_taxonomy_named = build_named_taxonomy(
         df=cooccur_taxonomy,
         journal_entities=journal_entities,
         entity_counts=entity_counts,
@@ -262,7 +262,7 @@ if __name__ == "__main__":
     MAIN_JOURNALS = [
         x
         for x in (
-            cooccur_taxonomy_labelled["Main_Journal"]
+            cooccur_taxonomy_named["Main_Journal"]
             .value_counts()[: args.n_journals]
             .index.to_list()
         )
@@ -275,6 +275,6 @@ if __name__ == "__main__":
         save = False
 
     fig = build_journal_sunburst(
-        cooccur_taxonomy_labelled.reset_index(), level=args.levels, save=save
+        cooccur_taxonomy_named.reset_index(), level=args.levels, save=save
     )
 # %%

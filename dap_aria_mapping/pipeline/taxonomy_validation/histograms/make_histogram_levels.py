@@ -15,17 +15,17 @@ from dap_aria_mapping.getters.taxonomies import (
     get_semantic_taxonomy,
 )
 from dap_aria_mapping.getters.openalex import get_openalex_works, get_openalex_entities
-from dap_aria_mapping.utils.semantics import get_sample, filter_entities
-from dap_aria_mapping.utils.labelling import *
+from dap_aria_mapping.utils.entity_selection import get_sample, filter_entities
+from dap_aria_mapping.utils.topic_names import *
 
 
 def dataframe_to_histogram_df(
     dataframe: pd.DataFrame, level: int, n_top: int = 20
 ) -> pd.DataFrame:
-    """Transforms a labelled taxonomy for use in altair histograms.
+    """Transforms a named taxonomy for use in altair histograms.
 
     Args:
-        dataframe (pd.DataFrame): A labelled taxonomy.
+        dataframe (pd.DataFrame): A named taxonomy.
         level (int): The level of the taxonomy to use.
         n_top (int, optional): The number of top topics to use. Defaults to 20.
 
@@ -33,11 +33,11 @@ def dataframe_to_histogram_df(
         pd.DataFrame: A dataframe with the top n entities and their density.
     """
     dataframe = dataframe.loc[
-        dataframe["Level_{}_Entity_Labels".format(str(level))] != "E: "
+        dataframe["Level_{}_Entity_Names".format(str(level))] != "E: "
     ]
     return (
         dataframe.value_counts(
-            "Level_{}_Entity_Labels".format(str(level)), normalize=True
+            "Level_{}_Entity_Names".format(str(level)), normalize=True
         )
         .reset_index()
         .rename(columns={0: "density"})
@@ -121,18 +121,22 @@ if __name__ == "__main__":
         journal_entities, output="absolute"
     )
 
-    logger.info("Building labelled taxonomies")
-    labelled_taxonomies = [
+    levels = args.level if isinstance(args.level, list) else list(args.level)
+
+    logger.info("Building named taxonomies")
+    named_taxonomies = [
         [
             name,
-            build_labelled_taxonomy(
-                taxonomy, journal_entities, entity_counts, entity_journal_counts
+            build_named_taxonomy(
+                taxonomy,
+                journal_entities,
+                entity_counts,
+                entity_journal_counts,
+                max(levels),
             ),
         ]
         for name, taxonomy in taxonomies
     ]
-
-    levels = args.level if isinstance(args.level, list) else list(args.level)
 
     for level in levels:
         chart = alt.vconcat(
@@ -140,14 +144,12 @@ if __name__ == "__main__":
                 (
                     alt.Chart(
                         dataframe_to_histogram_df(df, level, n_top=args.n_top),
-                        title="Main Clusters in Level {} - {}".format(
-                            str(level), label
-                        ),
+                        title="Main Clusters in Level {} - {}".format(str(level), name),
                     )
                     .mark_bar()
                     .encode(
                         x=alt.X(
-                            "Level_{}_Entity_Labels".format(str(level)),
+                            "Level_{}_Entity_Names".format(str(level)),
                             sort="-y",
                             title=None,
                             axis=alt.Axis(labelAngle=25, labelLimit=200),
@@ -156,7 +158,7 @@ if __name__ == "__main__":
                     )
                     .properties(width=800, height=100)
                 )
-                for label, df in labelled_taxonomies
+                for name, df in named_taxonomies
             ]
         )
 

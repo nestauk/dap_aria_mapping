@@ -21,7 +21,7 @@ def get_article_assignments(
     level: Union[str, int] = 1,
 ) -> Dict[str, Dict[str, str]]:
     """Creates a dictionary of journal IDs to entities and the
-    corresponding cluster labels.
+    corresponding cluster names.
 
     Args:
         taxonomy (pd.DataFrame): A dataframe with hierarchical
@@ -33,12 +33,12 @@ def get_article_assignments(
 
     Returns:
         Dict[str, Dict[str, str]]: A dictionary of article IDs to
-            entities and the corresponding cluster labels.
+            entities and the corresponding cluster names.
 
         {
-            article_label: {
-                entity: label,
-                entity: label,
+            article_name: {
+                entity: name,
+                entity: name,
                 ...
             }
             ...
@@ -58,20 +58,20 @@ def get_article_assignments_counts(
     article_assignments: Dict[str, Dict[str, str]]
 ) -> Dict[str, Counter]:
     """Creates a dictionary of article IDs to the counts of
-    cluster labels.
+    cluster names.
 
     Args:
         article_assignments (Dict[str, Dict[str, str]]): A dictionary
             of article IDs to entities and the corresponding cluster
-            labels.
+            names.
 
     Returns:
         Dict[str, Counter]: A dictionary of article IDs to the counts
-            of cluster labels.
+            of cluster names.
 
         {
-            article_label: {
-                Counter[label: count, label: count, ...]
+            article_name: {
+                Counter[name: count, name: count, ...]
             }
             ...
         }
@@ -95,10 +95,10 @@ def get_journal_entities(
 
     Returns:
         Dict[str, Sequence[str]]: A dictionary of journal IDs to
-            entities and the corresponding cluster labels.
+            entities and the corresponding cluster names.
 
         {
-            journal_label: [entity, entity, ...],
+            journal_name: [entity, entity, ...],
             ...
         }
 
@@ -151,11 +151,11 @@ def get_level_entity_counts(
             Defaults to 1.
 
     Returns:
-        Dict[str, Dict[str, int]]: A dictionary of cluster labels to
+        Dict[str, Dict[str, int]]: A dictionary of cluster names to
             entity counts.
 
         {
-            cluster_label: {
+            cluster_name: {
                 entity: count,
                 entity: count,
                 ...
@@ -199,7 +199,7 @@ def get_journal_entity_counts(
             entity counts.
 
         {
-            journal_label: {
+            journal_name: {
                 entity: count,
                 entity, count,
                 ...
@@ -221,22 +221,22 @@ def get_journal_entity_counts(
     return journal_entity_counts
 
 
-def get_cluster_entity_labels(
+def get_cluster_entity_names(
     cluster_counts: Dict[str, List[Tuple[str, int]]], num_entities: int = 10
 ) -> Dict[str, str]:
-    """Creates a dictionary of cluster labels to entities.
+    """Creates a dictionary of cluster names to entities.
 
     Args:
         cluster_counts (Dict[str, List[Tuple[str, int]]]): A dictionary
-            of cluster labels to entity counts.
+            of cluster names to entity counts.
         num_entities (int, optional): Number of entities to include
-            in the label. Defaults to 10.
+            in the name. Defaults to 10.
 
     Returns:
-        Dict[str, str]: A dictionary of cluster labels to entities.
+        Dict[str, str]: A dictionary of cluster names to entities.
 
         {
-            cluster_label: "Entities: entity, entity, ...",
+            cluster_name: "Entities: entity, entity, ...",
             ...
         }
     """
@@ -254,7 +254,7 @@ def get_cluster_entity_labels(
     }
 
 
-# Functions to produce Journal labels
+# Functions to produce Journal names
 def get_entity_journal_counts(
     journal_entities: Dict[str, Sequence[str]], output: str = "absolute"
 ) -> Dict[str, Dict[str, int]]:
@@ -309,7 +309,7 @@ def get_cluster_journal_counts(
 
     Args:
         cluster_counts (Dict[str, Dict[str, int]]): A dictionary of
-            cluster labels to entity counts.
+            cluster names to entity counts.
         journal_entities (Dict[str, Sequence[str]]): A dictionary of
             journal IDs to entities.
 
@@ -318,7 +318,7 @@ def get_cluster_journal_counts(
             each cluster.
 
         {
-            cluster_label: {
+            cluster_name: {
                 journal: count,
                 journal: count,
                 ...
@@ -391,7 +391,7 @@ def get_cluster_journal_ranks(
 
     Args:
         cluster_counts (Dict[str, Dict[str, int]]): A dictionary of
-            cluster labels to entity counts.
+            cluster names to entity counts.
         entity_journal_counts (Dict[str, Dict[str, int]]): A dictionary
             of entity counts in journals.
 
@@ -400,7 +400,7 @@ def get_cluster_journal_ranks(
             each cluster.
 
             {
-                cluster_label: {
+                cluster_name: {
                     journal: value,
                     journal: value,
                     ...
@@ -421,23 +421,23 @@ def get_cluster_journal_ranks(
     )
 
     cluster_journal_rank = defaultdict(dict)
-    for clust_label, clust_dict in cluster_counts.items():
+    for clust_name, clust_dict in cluster_counts.items():
         nconst = deepcopy(sum(clust_dict.values())) if output == "relative" else 1
         if len(clust_dict.keys()) == 0:
-            cluster_journal_rank[clust_label] = {}
+            cluster_journal_rank[clust_name] = {}
             continue
         for entity, ecount in clust_dict.items():
             val = entity_journal_prop[entity]
             for journal, jprop in val.items():
-                jcount = cluster_journal_counts[clust_label][journal]
-                if journal in cluster_journal_rank[clust_label].keys():
-                    cluster_journal_rank[clust_label][journal] += (
+                jcount = cluster_journal_counts[clust_name][journal]
+                if journal in cluster_journal_rank[clust_name].keys():
+                    cluster_journal_rank[clust_name][journal] += (
                         np.log(2 + (ecount / nconst)) ** 2
                         * np.log(1 + (jcount / nconst)) ** 2
                         * jprop
                     )
                 else:
-                    cluster_journal_rank[clust_label][journal] = (
+                    cluster_journal_rank[clust_name][journal] = (
                         np.log(2 + (ecount / nconst)) ** 2
                         * np.log(1 + (jcount / nconst)) ** 2
                         * jprop
@@ -445,20 +445,20 @@ def get_cluster_journal_ranks(
     return cluster_journal_rank
 
 
-def get_cluster_journal_labels(
-    cluster_journal_ranks: Dict[str, Dict[str, int]], num_labels: int = 3
+def get_cluster_journal_names(
+    cluster_journal_ranks: Dict[str, Dict[str, int]], num_names: int = 3
 ) -> Dict[str, str]:
-    """Creates a dictionary of journal labels for each cluster.
+    """Creates a dictionary of journal names for each cluster.
 
     Args:
-        num_labels (int, optional): The number of labels to return.
+        num_names (int, optional): The number of names to return.
             Defaults to 3.
 
     Returns:
-        Dict[str, str]: A dictionary of journal labels for each cluster.
+        Dict[str, str]: A dictionary of journal names for each cluster.
 
             {
-                cluster_label: "Journals: journal, journal, journal",
+                cluster_name: "Journals: journal, journal, journal",
                 ...
             }
     """
@@ -471,7 +471,7 @@ def get_cluster_journal_labels(
         )
 
     return {
-        k: "Journals: " + ", ".join([x[0] for x in v[:num_labels]])
+        k: "Journals: " + ", ".join([x[0] for x in v[:num_names]])
         for k, v in cluster_tuples.items()
     }
 
@@ -497,20 +497,20 @@ def get_main_entity_journal(
     return random.choice(max_journals)
 
 
-def build_labelled_taxonomy(
+def build_named_taxonomy(
     df: pd.DataFrame,
     journal_entities: Dict[str, Sequence[str]],
     entity_counts: Dict[str, int],
     entity_journal_counts: Dict[str, Dict[str, int]],
     levels: int = 3,
 ) -> pd.DataFrame:
-    """Builds a labelled taxonomy from a taxonomy dataframe, a
+    """Builds a named taxonomy from a taxonomy dataframe, a
         dictionary of journal to entities, and a dictionary of
-        cluster to entity counts. The labels are used to name topics
+        cluster to entity counts. The names are used to name topics
         at any level of the taxonomy, substituting for the str ID.
-        Two distinct groups of labels are created:
+        Two distinct groups of names are created:
 
-        - Journal labels: The journals ranking highest in a cluster.
+        - Journal names: The journals ranking highest in a cluster.
             The ranking is based on three factors. For each entity
             in a topic, for each journal that entity appears in, the
             rank is calculated using a weighted average of:
@@ -518,7 +518,7 @@ def build_labelled_taxonomy(
             - The frequency of the entity in the journal.
             - The frequency of the journal in the cluster.
 
-        - Main entity labels: The entities assigned to the cluster
+        - Main entity names: The entities assigned to the cluster
             with the highest frequency across journals. If there are
             multiple entities with the same frequency, one is chosen
             at random.
@@ -532,53 +532,52 @@ def build_labelled_taxonomy(
             in journals.
         entity_journal_counts (Dict[str, Dict[str, int]]): A
             dictionary of entity to journal counts.+
-        levels (int, optional): The number of levels to label. Defaults
+        levels (int, optional): The number of levels to name. Defaults
             to 3.
 
     Returns:
-        pd.DataFrame: A labelled taxonomy dataframe.
+        pd.DataFrame: A named taxonomy dataframe.
     """
-    labelled_taxonomy = deepcopy(df)
+
+    named_taxonomy = deepcopy(df)
     for level in list(range(1, 1 + levels)):
         logger.info(f"Level {str(level)} - Getting level cluster counts")
         cluster_counts = get_level_entity_counts(journal_entities, df, level=level)
 
-        logger.info(f"Level {str(level)} - Getting level entity labels")
-        cluster_labels = get_cluster_entity_labels(cluster_counts, num_entities=2)
+        logger.info(f"Level {str(level)} - Getting level entity names")
+        cluster_names = get_cluster_entity_names(cluster_counts, num_entities=2)
 
-        logger.info(f"Level {str(level)} - Getting level journal labels")
-        journal_labels = pipe(
+        logger.info(f"Level {str(level)} - Getting level journal names")
+        journal_names = pipe(
             get_cluster_journal_ranks(cluster_counts, journal_entities),
-            get_cluster_journal_labels,
+            get_cluster_journal_names,
         )
 
-        logger.info(f"Level {str(level)} - Adding labels to taxonomy")
-        labelled_taxonomy[
-            "Level_{}_Entity_Labels".format(str(level))
-        ] = labelled_taxonomy["Level_{}".format(str(level))].map(cluster_labels)
-        labelled_taxonomy[
-            "Level_{}_Journal_Labels".format(str(level))
-        ] = labelled_taxonomy["Level_{}".format(str(level))].map(journal_labels)
+        logger.info(f"Level {str(level)} - Adding names to taxonomy")
+        named_taxonomy["Level_{}_Entity_Names".format(str(level))] = named_taxonomy[
+            "Level_{}".format(str(level))
+        ].map(cluster_names)
+        named_taxonomy["Level_{}_Journal_Names".format(str(level))] = named_taxonomy[
+            "Level_{}".format(str(level))
+        ].map(journal_names)
 
-    logger.info(f"All levels complete - Adding main journal labels")
-    labelled_taxonomy["Main_Journal"] = labelled_taxonomy.index.map(
+    logger.info(f"All levels complete - Adding main journal names")
+    named_taxonomy["Main_Journal"] = named_taxonomy.index.map(
         lambda x: get_main_entity_journal(
             entity=x, entity_journal_counts=entity_journal_counts
         )
     )
 
     logger.info(f"All levels complete - Adding entity counts")
-    labelled_taxonomy["Entity_Count"] = labelled_taxonomy.index.map(
+    named_taxonomy["Entity_Count"] = named_taxonomy.index.map(
         lambda x: entity_counts[x] if entity_counts[x] != 0 else 1
     )
 
     logger.info(f"All levels complete - Adding journal counts")
-    labelled_taxonomy["Journal_Counts"] = labelled_taxonomy.index.map(
+    named_taxonomy["Journal_Counts"] = named_taxonomy.index.map(
         lambda x: entity_journal_counts[x]
     )
 
-    logger.info(f"All levels complete - Normalising labels (empty -> other)")
-    labelled_taxonomy.replace(
-        "Journals: $|Entities: $", "Other", regex=True, inplace=True
-    )
-    return labelled_taxonomy
+    logger.info(f"All levels complete - Normalising names (empty -> other)")
+    named_taxonomy.replace("Journals: $|Entities: $", "Other", regex=True, inplace=True)
+    return named_taxonomy

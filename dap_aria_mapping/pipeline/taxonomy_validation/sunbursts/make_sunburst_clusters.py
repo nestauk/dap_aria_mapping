@@ -18,26 +18,26 @@ from dap_aria_mapping import logger, PROJECT_DIR
 # %%
 from dap_aria_mapping.getters.taxonomies import get_cooccurrence_taxonomy
 from dap_aria_mapping.getters.openalex import get_openalex_works, get_openalex_entities
-from dap_aria_mapping.utils.semantics import get_sample, filter_entities
-from dap_aria_mapping.utils.labelling import *
+from dap_aria_mapping.utils.entity_selection import get_sample, filter_entities
+from dap_aria_mapping.utils.topic_names import *
 
 
 def propagate_sunburst_cluster_values(
     df: pd.DataFrame,
     level: int,
-    cluster_label: Union[str, bool],
+    cluster_name: Union[str, bool],
     entity_dict: Dict[int, Sequence[str]],
     entity_length: int = 250,
     tail_path: Sequence[str] = ["Entity"],
 ) -> Dict:
-    """Propagate sunburst values from a dataframe of the labelled taxonomy.
+    """Propagate sunburst values from a dataframe of the named taxonomy.
 
     Args:
-        df (pd.DataFrame): A dataframe of the labelled taxonomy.
+        df (pd.DataFrame): A dataframe of the named taxonomy.
         level (int): Level of the taxonomy to propagate values for.
-        cluster_label (Union[str, bool]): The cluster label to propagate values for. If
-            `False`, all cluster labels will be selected. If `str`, the specified cluster
-            label will be selected.
+        cluster_name (Union[str, bool]): The cluster name to propagate values for. If
+            `False`, all cluster Names will be selected. If `str`, the specified cluster
+            name will be selected.
         entity_dict (Dict[int, Sequence[str]]): A dictionary of the top entities to propagate
             values for.
         entity_length (int, optional): The length of top entities to propagate values for.
@@ -49,24 +49,24 @@ def propagate_sunburst_cluster_values(
     """
 
     df = df.loc[df["Entity"].isin(entity_dict[entity_length])]
-    if isinstance(cluster_label, bool):
-        if cluster_label is False:
+    if isinstance(cluster_name, bool):
+        if cluster_name is False:
             pass
-    elif isinstance(cluster_label, str):
-        df = df.loc[df["Level_{}".format(str(level))] == cluster_label]
+    elif isinstance(cluster_name, str):
+        df = df.loc[df["Level_{}".format(str(level))] == cluster_name]
 
     if level == 1:
-        path = ["Level_1_Entity_Labels"] + tail_path
+        path = ["Level_1_Entity_Names"] + tail_path
     elif level != 1:
         path = [
-            "Level_1_Entity_Labels",
-            "Level_{}_Entity_Labels".format(str(level)),
+            "Level_1_Entity_Names",
+            "Level_{}_Entity_Names".format(str(level)),
         ] + tail_path
 
     fig = px.sunburst(df, path=path, values="Count")
     return {
         "ids": [fig.data[0]["ids"]],
-        "labels": [fig.data[0]["labels"]],
+        "Names": [fig.data[0]["Names"]],
         "parents": [fig.data[0]["parents"]],
         "values": [fig.data[0]["values"]],
     }
@@ -78,10 +78,10 @@ def build_cluster_sunburst(
     tail_path: Sequence[str] = ["Entity"],
     save: Union[bool, str] = False,
 ) -> PlotlyFigure:
-    """Build a sunburst plot from a dataframe of the labelled taxonomy.
+    """Build a sunburst plot from a dataframe of the named taxonomy.
 
     Args:
-        df (pd.DataFrame): A dataframe of the labelled taxonomy.
+        df (pd.DataFrame): A dataframe of the named taxonomy.
         entity_dict (Dict[int, Sequence[str]]): A dictionary of the top
             entities to propagate values for.
         tail_path (Sequence[str], optional): The tail path to propagate values for.
@@ -94,7 +94,7 @@ def build_cluster_sunburst(
 
     fig = px.sunburst(
         df.loc[df["Entity"].isin(list(entity_dict.values())[0])],
-        path=["Level_1_Entity_Labels", "Entity"],
+        path=["Level_1_Entity_Names", "Entity"],
         values="Count",
         color_discrete_sequence=px.colors.qualitative.Pastel,
     )
@@ -106,18 +106,18 @@ def build_cluster_sunburst(
                         propagate_sunburst_cluster_values(
                             df=df,
                             level=level,
-                            cluster_label=False,
+                            cluster_name=False,
                             entity_dict=entity_dict,
                             entity_length=length,
                             tail_path=tail,
                         )
                     ],
-                    "label": "{} - Top {} Entities - Level {}".format(
-                        tail_label, str(length), str(level)
+                    "name": "{} - Top {} Entities - Level {}".format(
+                        tail_name, str(length), str(level)
                     ),
                     "method": "restyle",
                 }
-                for tail_label, tail in zip(
+                for tail_name, tail in zip(
                     ["Entities", "Journal & Entities"],
                     [
                         [element for element in tail_path if element != "Journal"],
@@ -149,7 +149,7 @@ def build_cluster_sunburst(
     )
 
     fig.update_traces(
-        hovertemplate="<b>%{label}</b><br>Entity Count: %{value}<br>",
+        hovertemplate="<b>%{name}</b><br>Entity Count: %{value}<br>",
     )
 
     if isinstance(save, bool):
@@ -170,14 +170,14 @@ def build_cluster_sunburst(
 
 
 def dictionary_to_df(dictionary: Dict, level: int) -> pd.DataFrame:
-    """Convert a dictionary of the labelled taxonomy to a dataframe.
+    """Convert a dictionary of the named taxonomy to a dataframe.
 
     Args:
-        dictionary (Dict): A dictionary of the labelled taxonomy.
+        dictionary (Dict): A dictionary of the named taxonomy.
         level (int): The level of the taxonomy to convert.
 
     Returns:
-        pd.DataFrame: A new dataframe of the labelled taxonomy.
+        pd.DataFrame: A new dataframe of the named taxonomy.
     """
     outdf = []
     for clust, entities in dictionary.items():
@@ -242,8 +242,8 @@ if __name__ == "__main__":
         journal_entities, output="absolute"
     )
 
-    logger.info("Building labelled taxonomy")
-    cooccur_taxonomy_labelled = build_labelled_taxonomy(
+    logger.info("Building named taxonomy")
+    cooccur_taxonomy_named = build_named_taxonomy(
         cooccur_taxonomy, journal_entities, entity_counts, entity_journal_counts
     )
 
@@ -274,35 +274,19 @@ if __name__ == "__main__":
 
     cluster_entity_journal_df = pd.merge(
         cluster_entity_journal_df,
-        cooccur_taxonomy_labelled[
-            [col for col in cooccur_taxonomy_labelled.columns if "Entity_Labels" in col]
+        cooccur_taxonomy_named[
+            [col for col in cooccur_taxonomy_named.columns if "Entity_Names" in col]
         ].reset_index(),
         on="Entity",
         how="left",
     )
 
-    logger.info("Creating plot dataframe - exact entity-journal counts")
-    entity_counts_df = []
-    for entity in cooccur_taxonomy_labelled.index:
-        journal_counts = cooccur_taxonomy_labelled.loc[entity]["Journal_Counts"]
-        if len(journal_counts) > 0:
-            rows = []
-            for journal, count in journal_counts.items():
-                rows.append((entity, journal, count))
-            entity_counts_df.append(rows)
-    entity_counts_df = pipe(
-        entity_counts_df,
-        lambda dta: chain(*dta),
-        list,
-        lambda dta: pd.DataFrame(dta, columns=["Entity", "Journal", "Entity_Count"]),
-    )
-
     MAIN_ENTITIES = {
         int(num): (
-            entity_counts_df.groupby("Entity")[["Entity_Count"]]
+            cluster_entity_journal_df.groupby("Entity")[["Count"]]
             .sum()
             .reset_index()
-            .sort_values(by="Entity_Count", ascending=False)[: int(num)]["Entity"]
+            .sort_values(by="Count", ascending=False)[: int(num)]["Entity"]
             .to_list()
         )
         for num in args.n_entities

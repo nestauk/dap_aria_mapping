@@ -994,3 +994,56 @@ def make_cooccurrences(
             arr_sum = np.sum(arr == dfnp, axis=1)
             cooccur_dict[idx] = arr_sum
     return cooccur_dict
+
+
+def normalise_topic_assignment(df: pd.DataFrame, level: int) -> pd.Series:
+    """Normalises the topic assignment of a centroids algorithm for a given level.
+
+    Args:
+        df (pd.DataFrame): A dataframe of topic assignments.
+        level (int): The level of the topic assignment to normalise.
+
+    Returns:
+        pd.Series: A series of normalised topic assignments.
+    """
+    if level > 1:
+        target = df[f"Level_{str(level)}"].str.split("_(ce)?", regex=True).str[-1]
+        dc = {}
+        for level_id in df[f"Level_{str(level-1)}"].unique():
+            d = {
+                v: str(i)
+                for i, v in enumerate(
+                    np.sort(
+                        df.loc[df[f"Level_{str(level-1)}"] == level_id][
+                            f"Level_{str(level)}"
+                        ]
+                        .str.split("_(ce)?", regex=True)
+                        .str[-1]
+                        .unique()
+                        .astype(int)
+                    ).astype(str)
+                )
+            }
+
+            dc.update(d)
+        return target.map(dc)
+
+    else:
+        return df[f"Level_{str(level)}"].str.split("ce").str[-1]
+
+
+def normalise_centroids(df: pd.DataFrame) -> pd.DataFrame:
+    """Normalises the topic assignment of a centroids algorithm.
+
+    Args:
+        df (pd.DataFrame): A dataframe of topic assignments.
+
+    Returns:
+        pd.DataFrame: A dataframe of normalised topic assignments.
+    """
+    max_level = df.columns.str.split("_").str[-1].astype(int).max()
+    for level in range(1, max_level + 1)[::-1]:
+        df[level] = normalise_topic_assignment(df, level)
+    for level in range(1, max_level + 1)[::-1]:
+        df[f"Level_{str(level)}"] = df[list(range(1, level + 1))].agg("_".join, axis=1)
+    return df[[col for col in list(df.columns) if isinstance(col, str)]]

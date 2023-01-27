@@ -16,6 +16,7 @@ from dap_aria_mapping.utils.semantics import (
     make_dataframe,
     make_cooccurrences,
     run_clustering_generators,
+    normalise_centroids,
 )
 
 np.random.seed(42)
@@ -138,10 +139,12 @@ if __name__ == "__main__":
         )
 
         df = make_dataframe(dict_, df_config["label"], df_config["cumulative"])
-        if df_config["name"] == "agglom_dendrogram":
+
+        if name_export == "agglom_dendrogram":
             depth_dendrogram = df.shape[1]
             levels = [int(depth_dendrogram * i) for i in [0.1, 0.3, 0.5, 0.7, 0.9]]
             df = df.iloc[:, levels]
+
         outputs_df.append(df)
 
     logger.info("Running silhouette score export")
@@ -174,6 +177,10 @@ if __name__ == "__main__":
             .rename(columns={"index": "Entity"})
             .set_index("Entity")
         )
+
+        if label == "semantic_centroids":
+            df = normalise_centroids(df)
+
         logger.info(f"Making co-occurrences for {label}")
         cooccur_dict = make_cooccurrences(df)
         logger.info(f"Transforming to co-occurrence dataframe ({label})")

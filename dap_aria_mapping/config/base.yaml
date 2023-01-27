@@ -106,7 +106,7 @@ SEMANTIC_TAXONOMY:
       label: _strict
       cumulative: True
     kmeans_strict_imb:
-      name: kmeans_strict_imb
+      name: semantic_imbalanced
       label: _strict
       cumulative: True
     kmeans_fuzzy:
@@ -122,6 +122,6 @@ SEMANTIC_TAXONOMY:
       label: _strict
       cumulative: True
     kmeans_centroid:
-      name: kmeans_centroid
+      name: semantic_centroids
       label: _centroids
       cumulative: False

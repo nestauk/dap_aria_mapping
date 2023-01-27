@@ -10,7 +10,11 @@ from functools import partial
 from sklearn.cluster import KMeans, AgglomerativeClustering, DBSCAN
 from hdbscan import HDBSCAN
 from dap_aria_mapping import PROJECT_DIR, BUCKET_NAME, logger, config
-from dap_aria_mapping.utils.semantics import make_dataframe, run_clustering_generators
+from dap_aria_mapping.utils.semantics import (
+    make_dataframe,
+    run_clustering_generators,
+    normalise_centroids,
+)
 from dap_aria_mapping.getters.taxonomies import get_embeddings
 from copy import deepcopy
 
@@ -121,20 +125,24 @@ if __name__ == "__main__":
             for k, v in output_dict["labels"].items():
                 output_dict["labels"][k] = v[::-1]
 
-    logger.info("Creating dataframe of clustering results")
-    centroid_kmeans_df = pipe(
-        cluster_outputs[-1],
-        partial(make_dataframe, label=f"_{args.cluster_method}", cumulative=True),
-        lambda df: df.rename(
-            columns={k: "Level_{}".format(int(v) + 1) for v, k in enumerate(df.columns)}
-        ),
-        lambda df: df.reset_index()
-        .rename(columns={"index": "Entity"})
-        .set_index("Entity"),
-    )
-
-    if args.production:
-        logger.info("Saving dataframe of clustering results to S3")
-        centroid_kmeans_df.to_parquet(
-            f"s3://aria-mapping/{OUTPUT_DIR}/assignments/semantic_{args.cluster_method}_clusters.parquet"
+        logger.info("Creating dataframe of clustering results")
+        centroid_kmeans_df = pipe(
+            cluster_outputs[-1],
+            partial(make_dataframe, label=f"_{args.cluster_method}", cumulative=True),
+            lambda df: df.rename(
+                columns={
+                    k: "Level_{}".format(int(v) + 1) for v, k in enumerate(df.columns)
+                }
+            ),
+            lambda df: df.reset_index()
+            .rename(columns={"index": "Entity"})
+            .set_index("Entity"),
         )
+
+        centroid_kmeans_df = normalise_centroids(centroid_kmeans_df)
+
+        if args.production:
+            logger.info("Saving dataframe of clustering results to S3")
+            centroid_kmeans_df.to_parquet(
+                f"s3://aria-mapping/{OUTPUT_DIR}/assignments/semantic_{args.cluster_method}_clusters.parquet"
+            )

@@ -258,7 +258,6 @@ if __name__ == "__main__":
 
     for taxonomy_class, taxonomy_df in named_taxonomies:
         logger.info("Building dictionary - cluster to entity x journal")
-
         cluster_entity_journal_df = [
             pipe(
                 get_cluster_entity_journal_counts(
@@ -270,7 +269,6 @@ if __name__ == "__main__":
             )
             for level in range(1, 1 + max(levels))
         ]
-
         cluster_entity_journal_df = reduce(
             lambda left, right: pd.merge(
                 left,

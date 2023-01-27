@@ -68,7 +68,7 @@ def propagate_sunburst_journal_values(
     )
     return {
         "ids": [fig.data[0]["ids"]],
-        "labels": [fig.data[0]["labels"]],
+        "names": [fig.data[0]["names"]],
         "parents": [fig.data[0]["parents"]],
         "values": [fig.data[0]["values"]],
     }
@@ -114,7 +114,7 @@ def build_journal_sunburst(
             "buttons": [
                 {
                     "method": "update",
-                    "label": "Top Publishing Journals",
+                    "name": "Top Publishing Journals",
                     "args": [
                         propagate_sunburst_journal_values(
                             df, journal=False, level=level
@@ -125,7 +125,7 @@ def build_journal_sunburst(
             + [
                 {
                     "method": "update",
-                    "label": journal,
+                    "name": journal,
                     "args": [
                         propagate_sunburst_journal_values(
                             df, journal=journal, level=level
@@ -152,7 +152,7 @@ def build_journal_sunburst(
             + [
                 {
                     "args": [{"maxdepth": int(level[-1]) + 2}],
-                    "label": "Entities",
+                    "name": "Entities",
                     "method": "restyle",
                 }
             ],
@@ -176,7 +176,7 @@ def build_journal_sunburst(
     )
 
     fig.update_traces(
-        hovertemplate="<b>%{label}</b><br>Entity Count: %{value}<br>",
+        hovertemplate="<b>%{name}</b><br>Entity Count: %{value}<br>",
     )
 
     if isinstance(save, bool):

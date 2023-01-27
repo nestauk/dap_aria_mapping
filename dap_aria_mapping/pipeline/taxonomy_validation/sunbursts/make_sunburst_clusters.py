@@ -66,7 +66,7 @@ def propagate_sunburst_cluster_values(
     fig = px.sunburst(df, path=path, values="Count")
     return {
         "ids": [fig.data[0]["ids"]],
-        "labels": [fig.data[0]["labels"]],
+        "Names": [fig.data[0]["Names"]],
         "parents": [fig.data[0]["parents"]],
         "values": [fig.data[0]["values"]],
     }
@@ -149,7 +149,7 @@ def build_cluster_sunburst(
     )
 
     fig.update_traces(
-        hovertemplate="<b>%{label}</b><br>Entity Count: %{value}<br>",
+        hovertemplate="<b>%{name}</b><br>Entity Count: %{value}<br>",
     )
 
     if isinstance(save, bool):

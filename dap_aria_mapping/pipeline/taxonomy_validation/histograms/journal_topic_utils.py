@@ -86,7 +86,6 @@ def build_unary_data(
             .drop("freq", axis=1)
         ),
     )
-
     dict_entities = get_topic_names(taxonomy_class, "entity", level)
 
     journal_unary_df["Entities"] = journal_unary_df["Topic"].map(dict_entities)

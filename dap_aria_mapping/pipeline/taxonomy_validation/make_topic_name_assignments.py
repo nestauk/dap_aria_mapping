@@ -1,8 +1,7 @@
 import pandas as pd
-import argparse, pickle, boto3
+import argparse, json, boto3
 from toolz import pipe
 from dap_aria_mapping import logger, PROJECT_DIR, BUCKET_NAME
-from typing import Union, Sequence
 from functools import partial
 
 from dap_aria_mapping.getters.taxonomies import (
@@ -11,25 +10,27 @@ from dap_aria_mapping.getters.taxonomies import (
 )
 from dap_aria_mapping.getters.openalex import get_openalex_works, get_openalex_entities
 from dap_aria_mapping.utils.entity_selection import get_sample, filter_entities
-from dap_aria_mapping.utils.labelling import *
+from dap_aria_mapping.utils.topic_names import *
 
 
-def save_labels(taxonomy: str, label_type: str, level: int, labels: Dict) -> None:
-    """Save the labels for a given taxonomy level.
+def save_names(taxonomy: str, name_type: str, level: int, names: Dict) -> None:
+    """Save the topic names for a given taxonomy level.
 
     Args:
         taxonomy (str): A string representing the taxonomy class.
             Can be 'cooccur', 'semantic' or 'semantic_kmeans'.
-        label_type (str): A string representing the labels type.
+        name_type (str): A string representing the topic names type.
         level (int): The level of the taxonomy to use.
-        labels (Dict): A dictionary of the labels.
+        names (Dict): A dictionary of the topic names.
     """
-    title = "outputs/topic_labels/labels_class_{}_labtype_{}_level_{}.pkl".format(
-        taxonomy, label_type, str(level)
+    names = {str(k): v for k, v in names.items()}
+    title = "outputs/topic_names/class_{}_nametype_{}_level_{}.json".format(
+        taxonomy, name_type, str(level)
     )
+
     s3 = boto3.client("s3")
     s3.put_object(
-        Body=pickle.dumps(labels),
+        Body=json.dumps(names),
         Bucket=BUCKET_NAME,
         Key=title,
     )
@@ -53,9 +54,9 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--label_type",
+        "--name_type",
         nargs="+",
-        help="The type of labels to use. Can be 'entity', 'journal', or both.",
+        help="The type of names to use. Can be 'entity', 'journal', or both.",
         default="entity",
     )
 
@@ -116,35 +117,33 @@ if __name__ == "__main__":
                 journal_entities, taxonomy, level=level
             )
 
-            if "entity" in args.label_type:
-                logger.info("Building dictionary - entity to labels")
-                labels = get_cluster_entity_labels(
-                    clust_counts, num_entities=args.n_top
-                )
+            if "entity" in args.name_type:
+                logger.info("Building dictionary - entity to names")
+                names = get_cluster_entity_names(clust_counts, num_entities=args.n_top)
                 if args.save:
                     logger.info("Saving dictionary as pickle")
-                    save_labels(
+                    save_names(
                         taxonomy=taxlabel,
-                        label_type="entity",
+                        name_type="entity",
                         level=level,
-                        labels=labels,
+                        names=names,
                     )
 
-            if "journal" in args.label_type:
-                logger.info("Building dictionary - journal to labels")
+            if "journal" in args.name_type:
+                logger.info("Building dictionary - journal to names")
                 cluster_journal_ranks = get_cluster_journal_ranks(
                     clust_counts, journal_entities, output="relative"
                 )
-                labels = get_cluster_journal_labels(
-                    cluster_journal_ranks, num_labels=args.n_top
+                names = get_cluster_journal_names(
+                    cluster_journal_ranks, num_names=args.n_top
                 )
                 if args.save:
                     logger.info("Saving dictionary as pickle")
-                    save_labels(
+                    save_names(
                         taxonomy=taxlabel,
-                        label_type="journal",
+                        name_type="journal",
                         level=level,
-                        labels=labels,
+                        names=names,
                     )
             logger.info("Finished level {}".format(str(level)))
         logger.info("Finished taxonomy {}".format(taxlabel))

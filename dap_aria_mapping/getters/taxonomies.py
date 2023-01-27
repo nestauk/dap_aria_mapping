@@ -65,3 +65,21 @@ def get_semantic_taxonomy(cluster_object: str = "centroids") -> pd.DataFrame:
         f"outputs/semantic_taxonomy/assignments/semantic_{cluster_object}_clusters.parquet",
         download_as="dataframe",
     )
+
+
+def get_topic_names(taxonomy_class: str, name_type: str, level: int) -> dict:
+    """Downloads topic names from S3 and returns them as a dictionary.
+
+    Args:
+        taxonomy_class (str): The type of taxonomy to download.
+        name_type (str): The type of name to download.
+        level (int): The level of the taxonomy to download.
+
+    Returns:
+        pd.DataFrame: A dictionary containing the topic names.
+    """
+    return download_obj(
+        BUCKET_NAME,
+        f"outputs/topic_names/class_{taxonomy_class}_nametype_{name_type}_level_{str(level)}.json",
+        download_as="dict",
+    )

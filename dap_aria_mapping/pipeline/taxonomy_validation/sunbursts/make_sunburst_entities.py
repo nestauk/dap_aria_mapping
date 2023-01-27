@@ -18,19 +18,19 @@ from dap_aria_mapping import logger, PROJECT_DIR
 # %%
 from dap_aria_mapping.getters.taxonomies import get_cooccurrence_taxonomy
 from dap_aria_mapping.getters.openalex import get_openalex_works, get_openalex_entities
-from dap_aria_mapping.utils.semantics import get_sample, filter_entities
-from dap_aria_mapping.utils.labelling import *
+from dap_aria_mapping.utils.entity_selection import get_sample, filter_entities
+from dap_aria_mapping.utils.topic_names import *
 
 
 def propagate_sunburst_entity_values(
     df: pd.DataFrame, entity_dict: Union[str, bool], entity_length: int = 25
 ) -> Dict:
-    """Propagate sunburst values from a dataframe of the labelled taxonomy.
+    """Propagate sunburst values from a dataframe of the named taxonomy.
         The sunburst values are then used to create a sunburst plot, and the
         resulting data parameters are used to build plotting alternatives
         using plotly's `updatemenus`.
     Args:
-        df (pd.DataFrame): A dataframe of the labelled taxonomy.
+        df (pd.DataFrame): A dataframe of the named taxonomy.
         entity_dict (Union[str, bool]): The entity to propagate values for. If `True`,
             a random entity will be selected. If `False`, all entities will be
             selected. If `str`, the specified entity will be selected.
@@ -48,7 +48,7 @@ def propagate_sunburst_entity_values(
     )
     return {
         "ids": [fig.data[0]["ids"]],
-        "labels": [fig.data[0]["labels"]],
+        "names": [fig.data[0]["names"]],
         "parents": [fig.data[0]["parents"]],
         "values": [fig.data[0]["values"]],
     }
@@ -59,10 +59,10 @@ def build_entity_sunburst(
     entity_dict: Dict[str, Sequence[str]],
     save: Union[bool, str] = False,
 ) -> PlotlyFigure:
-    """Build a sunburst plot from a dataframe of the labelled taxonomy.
+    """Build a sunburst plot from a dataframe of the named taxonomy.
 
     Args:
-        df (pd.DataFrame): A dataframe of the labelled taxonomy.
+        df (pd.DataFrame): A dataframe of the named taxonomy.
         level (Union[Union[int, str], Sequence[Union[int, str]]], optional):
             The level(s) to propagate values for. Defaults to 1.
         save (bool, optional): Whether to save the plot. Defaults to False.
@@ -82,7 +82,7 @@ def build_entity_sunburst(
             "buttons": [
                 {
                     "method": "update",
-                    "label": "Top {} Entities".format(str(length)),
+                    "name": "Top {} Entities".format(str(length)),
                     "args": [
                         propagate_sunburst_entity_values(
                             df, entity_dict=entity_dict, entity_length=length
@@ -103,7 +103,7 @@ def build_entity_sunburst(
         margin=dict(l=10, r=0, b=0, t=10),
     )
 
-    fig.update_traces(hovertemplate="<b>%{label}</b><br>Entity Count: %{value}")
+    fig.update_traces(hovertemplate="<b>%{name}</b><br>Entity Count: %{value}")
 
     if isinstance(save, bool):
         if save:
@@ -158,10 +158,6 @@ if __name__ == "__main__":
         partial(get_sample, score_threshold=80, num_articles=args.n_articles),
         partial(filter_entities, min_freq=10, max_freq=1_000_000, method="absolute"),
     )
-    # oa_entities = get_openalex_entities()
-    # oa_entities = get_sample(
-    #     entities=oa_entities, score_threshold=80, num_articles=args.n_articles
-    # )
 
     logger.info("Building dictionary - journal to entities")
     journal_entities = get_journal_entities(oa_works, oa_entities)
@@ -174,15 +170,15 @@ if __name__ == "__main__":
         journal_entities, output="absolute"
     )
 
-    logger.info("Building labelled taxonomy")
-    cooccur_taxonomy_labelled = build_labelled_taxonomy(
+    logger.info("Building named taxonomy")
+    cooccur_taxonomy_named = build_named_taxonomy(
         cooccur_taxonomy, journal_entities, entity_counts, entity_journal_counts
     )
 
     logger.info("Creating plot dataframe - real counts, not mainjournal ones")
     entity_counts_df = []
-    for entity in cooccur_taxonomy_labelled.index:
-        journal_counts = cooccur_taxonomy_labelled.loc[entity]["Journal_Counts"]
+    for entity in cooccur_taxonomy_named.index:
+        journal_counts = cooccur_taxonomy_named.loc[entity]["Journal_Counts"]
         if len(journal_counts) > 0:
             rows = []
             for journal, count in journal_counts.items():

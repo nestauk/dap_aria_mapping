@@ -107,8 +107,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     logger.info("Loading data - taxonomy")
-    # if not isinstance(args.taxonomy, list):
-    #     args.taxonomy = [args.taxonomy]
     taxonomies = []
     if "cooccur" in args.taxonomy:
         cooccur_taxonomy = get_cooccurrence_taxonomy()
@@ -117,37 +115,18 @@ if __name__ == "__main__":
         semantic_centroids_taxonomy = get_semantic_taxonomy("centroids")
         taxonomies.append(["centroids", semantic_centroids_taxonomy])
     if "imbalanced" in args.taxonomy:
-        semantic_kmeans_taxonomy = get_semantic_taxonomy("kmeans_strict_imb")
+        semantic_kmeans_taxonomy = get_semantic_taxonomy("imbalanced")
         taxonomies.append(["imbalanced", semantic_kmeans_taxonomy])
 
     logger.info("Loading data - works")
     oa_works = get_openalex_works()
 
-    # logger.info("Loading data - entities")
-    # oa_entities = pipe(
-    #     get_openalex_entities(),
-    #     partial(get_sample, score_threshold=80, num_articles=args.n_articles),
-    #     partial(filter_entities, min_freq=10, max_freq=1_000_000, method="absolute"),
-    # )
-
-    with open(
-        PROJECT_DIR
-        / "dap_aria_mapping"
-        / "pipeline"
-        / "taxonomy_validation"
-        / "oa_entities.pkl",
-        "rb",
-    ) as f:
-        oa_entities = pickle.load(f)
-
-    i = 0
-    oa_entities_lite = {}
-    for k, v in oa_entities.items():
-        oa_entities_lite[k] = v
-        i += 1
-        if i > 1_000:
-            break
-    oa_entities = oa_entities_lite
+    logger.info("Loading data - entities")
+    oa_entities = pipe(
+        get_openalex_entities(),
+        partial(get_sample, score_threshold=80, num_articles=args.n_articles),
+        partial(filter_entities, min_freq=10, max_freq=1_000_000, method="absolute"),
+    )
 
     logger.info("Building dictionary - journal to entities")
     journal_entities = get_journal_entities(oa_works, oa_entities)
@@ -188,7 +167,7 @@ if __name__ == "__main__":
 
     for taxonomy_class, taxonomy_df in named_taxonomies:
         logger.info("Building dictionary - cluster to entity x journal")
-        breakpoint()
+
         cluster_entity_journal_df = [
             pipe(
                 get_cluster_entity_journal_counts(
@@ -200,7 +179,7 @@ if __name__ == "__main__":
             )
             for level in range(1, 1 + max(levels))
         ]
-        breakpoint()
+
         cluster_entity_journal_df = reduce(
             lambda left, right: pd.merge(
                 left,
@@ -226,7 +205,6 @@ if __name__ == "__main__":
             sample = args.sample
 
         for level, parent_topic in list(zip(levels, parent_topics)):
-            breakpoint()
             if "unary" in args.histogram:
                 logger.info(f"Building unary data - {taxonomy_class} - level {level}")
                 journal_unary_df = build_unary_data(

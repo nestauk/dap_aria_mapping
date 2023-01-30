@@ -63,10 +63,22 @@ def build_unary_data(
         for journal in SAMPLE_JOURNALS
     }
 
+    if level == 1:
+        n_entities = {k: df["Count"].sum() for k in df["Level_1"].unique()}
+    elif level > 1:
+        n_entities = {
+            k: get_n_entities(df, level, **kwargs)
+            for k in df[f"Level_{str(level)}"].unique()
+        }
+
     journal_unary_df = pipe(
         pd.DataFrame(
-            [(k, val) for k, v in journal_counts.items() for val in v.keys()],
-            columns=["Journal", "Topic"],
+            [
+                (k, val, n_entities[val])
+                for k, v in journal_counts.items()
+                for val in v.keys()
+            ],
+            columns=["Journal", "Topic", "Total_Count"],
         ),
         lambda df: (
             df.assign(freq=df.groupby("Journal")["Topic"].transform("count"))
@@ -79,13 +91,17 @@ def build_unary_data(
 
     journal_unary_df["Entities"] = journal_unary_df["Topic"].map(dict_entities)
 
-    journal_unary_df["Topic"] = clean_topic_ids(journal_unary_df, level)
+    journal_unary_df["Topic"] = clean_topic_ids(journal_unary_df)
 
     return journal_unary_df
 
 
 def make_unary_histogram(
-    df: pd.DataFrame, taxonomy_class: str = None, level: int = 1, **kwargs
+    df: pd.DataFrame,
+    taxonomy_class: str = None,
+    level: int = 1,
+    save: bool = False,
+    **kwargs,
 ) -> alt.Chart:
     """Make a histogram of journals and their relevant associated topics.
 
@@ -97,16 +113,21 @@ def make_unary_histogram(
     Returns:
         alt.Chart: A histogram of journals and their relevant associated topics.
     """
+    if len(df) == 0:
+        return None
+
+    entity_count = str(df["Total_Count"].values[0]) if len(df) > 0 else "0"
+
     if level == 1:
-        title = f"Taxonomy: {taxonomy_class}"
+        title = f"Taxonomy: {taxonomy_class} - Count = {entity_count}"
     else:
         assert (
             "parent_topic" in kwargs.keys()
         ), "Must provide parent_topic argument for levels > 1"
         names = get_topic_names(taxonomy_class, "entity", level - 1)
-        title = f"Taxonomy: {taxonomy_class} - Parent Topic {kwargs['parent_topic']}: {names[kwargs['parent_topic']]}"
+        title = f"Taxonomy: {taxonomy_class} - Parent Topic {kwargs['parent_topic']}: {names[kwargs['parent_topic']]} - Count = {entity_count}"
 
-    return (
+    chart = (
         alt.Chart(df, title=title)
         .mark_bar()
         .encode(
@@ -121,9 +142,24 @@ def make_unary_histogram(
         .interactive()
     )
 
+    if save:
+        chart.save(
+            PROJECT_DIR
+            / "outputs"
+            / "figures"
+            / "taxonomy_validation"
+            / f"{taxonomy_class}_histogram_level_{level}_partopic_{kwargs['parent_topic']}.html"
+        )
+    else:
+        return chart
+
 
 def make_unary_binary_chart(
-    df: pd.DataFrame, taxonomy_class: str = None, level: int = 1, **kwargs
+    df: pd.DataFrame,
+    taxonomy_class: str = None,
+    level: int = 1,
+    save: bool = False,
+    **kwargs,
 ) -> alt.Chart:
     """Make a binary histogram of journals and their relevant associated topics.
 
@@ -135,16 +171,21 @@ def make_unary_binary_chart(
     Returns:
         alt.Chart: A histogram of journals and their relevant associated topics.
     """
+    if len(df) == 0:
+        return None
+
+    entity_count = str(df["Total_Count"].values[0]) if len(df) > 0 else "0"
+
     if level == 1:
-        title = f"Taxonomy: {taxonomy_class}"
+        title = f"Taxonomy: {taxonomy_class} - Count = {entity_count}"
     else:
         assert (
             "parent_topic" in kwargs.keys()
         ), "Must provide parent_topic argument for levels > 1"
         names = get_topic_names(taxonomy_class, "entity", level - 1)
-        title = f"Taxonomy: {taxonomy_class} - Parent Topic {kwargs['parent_topic']}: {names[kwargs['parent_topic']]}"
+        title = f"Taxonomy: {taxonomy_class} - Parent Topic {kwargs['parent_topic']}: {names[kwargs['parent_topic']]} - Count = {entity_count}"
 
-    return (
+    chart = (
         alt.Chart(df, title=title)
         .mark_bar()
         .encode(
@@ -158,6 +199,17 @@ def make_unary_binary_chart(
         .properties(width=1600, height=800)
         .interactive()
     )
+
+    if save:
+        chart.save(
+            PROJECT_DIR
+            / "outputs"
+            / "figures"
+            / "taxonomy_validation"
+            / f"{taxonomy_class}_heatmap_level_{level}_partopic_{kwargs['parent_topic']}.html"
+        )
+    else:
+        return chart
 
 
 def build_frequency_data(
@@ -205,22 +257,38 @@ def build_frequency_data(
         for journal in SAMPLE_JOURNALS
     }
 
+    if level == 1:
+        n_entities = {k: df["Count"].sum() for k in df["Level_1"].unique()}
+    elif level > 1:
+        n_entities = {
+            k: get_n_entities(df, level, **kwargs)
+            for k in df[f"Level_{str(level)}"].unique()
+        }
+
     journal_freq_df = pd.DataFrame(
-        [(k, key, val) for k, v in journal_counts.items() for key, val in v.items()],
-        columns=["Journal", "Topic", "Value"],
+        [
+            (k, key, val, n_entities[key])
+            for k, v in journal_counts.items()
+            for key, val in v.items()
+        ],
+        columns=["Journal", "Topic", "Value", "Total_Count"],
     )
 
     dict_entities = get_topic_names(taxonomy_class, "entity", level)
 
     journal_freq_df["Entities"] = journal_freq_df["Topic"].map(dict_entities)
 
-    journal_freq_df["Topic"] = clean_topic_ids(journal_freq_df, level)
+    journal_freq_df["Topic"] = clean_topic_ids(journal_freq_df)
 
     return journal_freq_df
 
 
 def make_freq_barplot(
-    df: pd.DataFrame, taxonomy_class: str = None, level: int = 1, **kwargs
+    df: pd.DataFrame,
+    taxonomy_class: str = None,
+    level: int = 1,
+    save: bool = False,
+    **kwargs,
 ) -> alt.Chart:
     """Make a stacked barplot of journals and their relevant associated topics.
 
@@ -232,16 +300,20 @@ def make_freq_barplot(
     Returns:
         alt.Chart: A barplot of journals and all their associated topics.
     """
+    if len(df) == 0:
+        return None
+    entity_count = str(df["Total_Count"].values[0]) if len(df) > 0 else "0"
+
     if level == 1:
-        title = f"Taxonomy: {taxonomy_class}"
+        title = f"Taxonomy: {taxonomy_class} - Count = {entity_count}"
     else:
         assert (
             "parent_topic" in kwargs.keys()
         ), "Must provide parent_topic argument for levels > 1"
         names = get_topic_names(taxonomy_class, "entity", level - 1)
-        title = f"Taxonomy: {taxonomy_class} - Parent Topic {kwargs['parent_topic']}: {names[kwargs['parent_topic']]}"
+        title = f"Taxonomy: {taxonomy_class} - Parent Topic {kwargs['parent_topic']}: {names[kwargs['parent_topic']]} - Count = {entity_count}"
 
-    return (
+    chart = (
         alt.Chart(df, title=title)
         .mark_bar()
         .encode(
@@ -262,6 +334,32 @@ def make_freq_barplot(
         .properties(width=1600, height=600)
         .interactive()
     )
+
+    if save:
+        chart.save(
+            PROJECT_DIR
+            / "outputs"
+            / "figures"
+            / "taxonomy_validation"
+            / f"{taxonomy_class}_frequency_level_{level}_partopic_{kwargs['parent_topic']}.html"
+        )
+
+    else:
+        return chart
+
+
+def get_n_entities(df: pd.DataFrame, level: int, **kwargs) -> int:
+    """Get the number of entities at a given level.
+
+    Args:
+        df (pd.DataFrame): A dataframe of Entity x Journal x Level assignments.
+        level (int): The level of the taxonomy to return values for.
+
+    Returns:
+        int: The number of entities at a given level.
+    """
+    df = df.loc[df[f"Level_{str(level - 1)}"].isin([kwargs["parent_topic"]])]
+    return df["Count"].sum()
 
 
 def build_tfidf(np_array: np.ndarray) -> np.ndarray:
@@ -337,6 +435,18 @@ def build_tfidf_data(
         for journal in df["Journal"].unique()
     }
 
+    if level == 1:
+        n_entities = {k: df["Count"].sum() for k in df["Level_1"].unique()}
+    elif level > 1:
+        n_entities = {
+            k: get_n_entities(df, level, **kwargs)
+            for k in (
+                df.loc[df[f"Level_{str(level - 1)}"].isin([kwargs["parent_topic"]])][
+                    f"Level_{str(level)}"
+                ].unique()
+            )
+        }
+
     journal_counts = pipe(
         pd.DataFrame(
             [
@@ -373,16 +483,19 @@ def build_tfidf_data(
     )
 
     dict_entities = get_topic_names(taxonomy_class, "entity", level)
-
     journals_tfidf["Entities"] = journals_tfidf["Topic"].map(dict_entities)
-
-    journals_tfidf["Topic"] = clean_topic_ids(journals_tfidf, level)
+    journals_tfidf["Total_Count"] = journals_tfidf["Topic"].map(n_entities)
+    journals_tfidf["Topic"] = clean_topic_ids(journals_tfidf)
 
     return journals_tfidf
 
 
 def make_tfidf_barplot(
-    df: pd.DataFrame, taxonomy_class: str = None, level: int = 1, **kwargs
+    df: pd.DataFrame,
+    taxonomy_class: str = None,
+    level: int = 1,
+    save: bool = False,
+    **kwargs,
 ) -> alt.Chart:
     """Make a stacked barplot of journals and their relevant associated topics.
 
@@ -394,16 +507,20 @@ def make_tfidf_barplot(
     Returns:
         alt.Chart: A barplot of journals and all their associated topics.
     """
+    if len(df) == 0:
+        return None
+    entity_count = str(df["Total_Count"].values[0]) if len(df) > 0 else "0"
+
     if level == 1:
-        title = f"Taxonomy: {taxonomy_class}"
+        title = f"Taxonomy: {taxonomy_class} - Count = {entity_count}"
     else:
         assert (
             "parent_topic" in kwargs.keys()
         ), "Must provide parent_topic argument for levels > 1"
         names = get_topic_names(taxonomy_class, "entity", level - 1)
-        title = f"Taxonomy: {taxonomy_class} - Parent Topic {kwargs['parent_topic']}: {names[kwargs['parent_topic']]}"
+        title = f"Taxonomy: {taxonomy_class} - Parent Topic {kwargs['parent_topic']}: {names[kwargs['parent_topic']]} - Count = {entity_count}"
 
-    return (
+    chart = (
         alt.Chart(df, title=title)
         .mark_bar()
         .encode(
@@ -424,3 +541,14 @@ def make_tfidf_barplot(
         .properties(width=1600, height=600)
         .interactive()
     )
+
+    if save:
+        chart.save(
+            PROJECT_DIR
+            / "outputs"
+            / "figures"
+            / "taxonomy_validation"
+            / f"{taxonomy_class}_tfidf_level_{level}_partopic_{kwargs['parent_topic']}.html"
+        )
+    else:
+        return chart

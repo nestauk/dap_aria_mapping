@@ -50,25 +50,25 @@ It also contains a series of interactive histograms that display three distinct 
 
 - The **count** of relevant topics for each journal. Relevant topics are defined as those topic assignments that are most prevalent within a journal and whose cumulative share is below 80% of the total number of topic assignments. Note that journals are ordered from most topic diversity to least topic diversity. To build this histogram, execute the following command line:
 
-![1674814098877](image/README/1674814098877.png)
+  `python dap_aria_mapping/pipeline/taxonomy_validation/histograms/make_journal_topic_histograms.py --taxonomy cooccur --histogram unary --level 1 2 --parent_topic None 12 --sample main --threshold 0.8 --n_articles 1000 --save`
 
-`python dap_aria_mapping/pipeline/taxonomy_validation/histograms/make_journal_topic_histograms.py --taxonomy cooccur --histogram unary --level 1 2 --parent_topic None 12 --sample main --threshold 0.8 --n_articles 1000 --save`
+![1674814098877](image/README/1674814098877.png)
 
 - The **relative share** of all topic assignments within journals. This produces stacked barplots normalised to between 0 and 1, and journals are ordered by the relative size of their main topic. To obtain this histogram, run:
 
-`python dap_aria_mapping/pipeline/taxonomy_validation/histograms/make_journal_topic_histograms.py --taxonomy cooccur --histogram frequency --level 1 2 --parent_topic None 12 --sample main --threshold 0.8 --n_articles 1000 --save`
+  `python dap_aria_mapping/pipeline/taxonomy_validation/histograms/make_journal_topic_histograms.py --taxonomy cooccur --histogram frequency --level 1 2 --parent_topic None 12 --sample main --threshold 0.8 --n_articles 1000 --save`
 
 ![1674814107748](image/README/1674814107748.png)
 
 - The **TF-IDF weights** of all topic assignments within journals. This produces a stacked histogram where values are the TF-IDF weights of the journal (D) to topic (N) matrix, and where journals are ordered by the relative size of their largest topic TF-IDF weight. To build this histogram, run:
 
-`python dap_aria_mapping/pipeline/taxonomy_validation/histograms/make_journal_topic_histograms.py --taxonomy cooccur --histogram tfidf --level 1 2 --parent_topic None 12 --sample main --threshold 0.8 --n_articles 1000 --save`
+  `python dap_aria_mapping/pipeline/taxonomy_validation/histograms/make_journal_topic_histograms.py --taxonomy cooccur --histogram tfidf --level 1 2 --parent_topic None 12 --sample main --threshold 0.8 --n_articles 1000 --save`
 
 ![1674814114046](image/README/1674814114046.png)
 
-Note that all three sets of histograms can be exported in a single command execution, as well as different combinations of levels, associated parent topics (when level is more than 1), random samples of journals, random thresholds for the unary plots, and different choices of a taxonomy class.
+Note that all three sets of histograms can be exported in a single command execution, as well as different combinations of levels, associated parent topics (when level is more than 1), random samples of journals, random thresholds for the unary plots, and different choices of a taxonomy class. In order to output all possible histogram combinations, execute the following line:
 
-`python dap_aria_mapping/pipeline/taxonomy_validation/histograms/make_journal_topic_histograms.py --taxonomy cooccur --histogram unary frequency tfidf --level 1 2 --parent_topic None 12 --sample main --threshold 0.8 --n_articles 1000 --save`
+`python dap_aria_mapping/pipeline/taxonomy_validation/histograms/make_journal_topic_histograms.py --taxonomy cooccur imbalanced centroids --histogram unary frequency tfidf --level 1 2 3 4 5 --parent_topic None all all all all --sample main --threshold 0.8 --n_articles 5000 --save`
 
 ## Work in development
 

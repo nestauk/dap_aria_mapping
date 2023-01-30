@@ -39,6 +39,93 @@ def dictionary_to_df(dictionary: Dict, level: int) -> pd.DataFrame:
     )
 
 
+def output_charts(
+    df: pd.DataFrame,
+    taxonomy_class: str,
+    level: int,
+    parent_topic: str,
+    sample: Union[list, int],
+) -> None:
+    """Output charts for a given taxonomy class, level, and parent topic.
+
+    Args:
+        df (pd.DataFrame): A dataframe of Entity x Journal x Level assignments.
+        taxonomy_class (str): The taxonomy class to output charts for.
+        level (int): The level of the taxonomy to output charts for.
+        parent_topic (str): The parent topic to output charts for.
+        sample (Union[list, int]): The sample of entities to output charts for.
+    """
+
+    if "unary" in args.histogram:
+        logger.info(f"Building unary data - {taxonomy_class} - level {level}")
+        journal_unary_df = build_unary_data(
+            df=df,
+            taxonomy_class=taxonomy_class,
+            level=level,
+            parent_topic=parent_topic,
+            threshold=args.threshold,
+            sample=sample,
+        )
+
+        logger.info(f"Creating histogram - {taxonomy_class} - level {level}")
+        make_unary_histogram(
+            journal_unary_df,
+            taxonomy_class=taxonomy_class,
+            level=level,
+            parent_topic=parent_topic,
+            save=args.save,
+        )
+
+        logger.info(f"Creating heatmap - {taxonomy_class} - level {level}")
+        make_unary_binary_chart(
+            journal_unary_df,
+            taxonomy_class=taxonomy_class,
+            level=level,
+            parent_topic=parent_topic,
+            save=args.save,
+        )
+
+    if "frequency" in args.histogram:
+        logger.info(f"Building frequency data - {taxonomy_class} - level {level}")
+        journal_freq_df = build_frequency_data(
+            df=df,
+            taxonomy_class=taxonomy_class,
+            level=level,
+            parent_topic=parent_topic,
+            threshold=1.0,
+            sample=sample,
+        )
+
+        logger.info(f"Creating frequency histogram - {taxonomy_class} - level {level}")
+        make_freq_barplot(
+            journal_freq_df,
+            taxonomy_class=taxonomy_class,
+            level=level,
+            parent_topic=parent_topic,
+            save=args.save,
+        )
+
+    if "tfidf" in args.histogram:
+        logger.info(f"Building TFIDF data - {taxonomy_class} - level {level}")
+        journal_freq_df = build_tfidf_data(
+            df=df,
+            taxonomy_class=taxonomy_class,
+            level=level,
+            parent_topic=parent_topic,
+            threshold=1.0,
+            sample=sample,
+        )
+
+        logger.info(f"Creating TFIDF histogram - {taxonomy_class} - level {level}")
+        make_tfidf_barplot(
+            journal_freq_df,
+            taxonomy_class=taxonomy_class,
+            level=level,
+            parent_topic=parent_topic,
+            save=args.save,
+        )
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
@@ -79,12 +166,16 @@ if __name__ == "__main__":
     parser.add_argument(
         "--parent_topic",
         nargs="+",
-        help="The parent topic of the taxonomy to use. If the level is more than 1, this is required.",
+        help="The parent topic of the taxonomy to use. If the level is more than 1, this is required. Can be"
+        "a single parent topic or a sequence of parent topics, which requires a sequence of levels. Alternatively,"
+        "if `all` is passed with this flag, histograms are created for all possible parent topics.",
     )
 
     parser.add_argument(
         "--sample",
-        help="If `main`, it uses the 50 most frequent journals. Otherwise it accepts an integer for a sample of journals.",
+        help="If `main`, it uses the 50 most frequent journals. Otherwise it accepts an integer for a "
+        "random sample of journals. It also accepts `main{int}` to use the {int} number of most frequent"
+        "journals within a given level / parent_topic combination.",
         default="main",
     )
 
@@ -193,117 +284,23 @@ if __name__ == "__main__":
             cluster_entity_journal_df,
         )
 
-        if args.sample == "main":
-            sample = [
-                x
-                for x in (
-                    taxonomy_df["Main_Journal"].value_counts()[:50].index.to_list()
-                )
-                if "Other" not in x
-            ]
-        else:
-            sample = args.sample
-
         for level, parent_topic in list(zip(levels, parent_topics)):
-            if "unary" in args.histogram:
-                logger.info(f"Building unary data - {taxonomy_class} - level {level}")
-                journal_unary_df = build_unary_data(
+            if parent_topic == "all":
+                for partopic in cluster_entity_journal_df[
+                    f"Level_{str(level-1)}"
+                ].unique():
+                    output_charts(
+                        df=cluster_entity_journal_df,
+                        taxonomy_class=taxonomy_class,
+                        level=level,
+                        parent_topic=partopic,
+                        sample=args.sample,
+                    )
+            else:
+                output_charts(
                     df=cluster_entity_journal_df,
                     taxonomy_class=taxonomy_class,
                     level=level,
                     parent_topic=parent_topic,
-                    threshold=args.threshold,
-                    sample=sample,
+                    sample=args.sample,
                 )
-
-                logger.info(f"Creating histogram - {taxonomy_class} - level {level}")
-                chart = make_unary_histogram(
-                    journal_unary_df,
-                    taxonomy_class=taxonomy_class,
-                    level=level,
-                    parent_topic=parent_topic,
-                )
-                if args.save:
-                    chart.save(
-                        PROJECT_DIR
-                        / "outputs"
-                        / "figures"
-                        / "taxonomy_validation"
-                        / f"unary_histogram_{taxonomy_class}_level_{level}.html"
-                    )
-
-                logger.info(f"Creating heatmap - {taxonomy_class} - level {level}")
-                chart = make_unary_binary_chart(
-                    journal_unary_df,
-                    taxonomy_class=taxonomy_class,
-                    level=level,
-                    parent_topic=parent_topic,
-                )
-                if args.save:
-                    chart.save(
-                        PROJECT_DIR
-                        / "outputs"
-                        / "figures"
-                        / "taxonomy_validation"
-                        / f"unary_heatmap_{taxonomy_class}_level_{level}.html"
-                    )
-
-            if "frequency" in args.histogram:
-                logger.info(
-                    f"Building frequency data - {taxonomy_class} - level {level}"
-                )
-                journal_freq_df = build_frequency_data(
-                    df=cluster_entity_journal_df,
-                    taxonomy_class=taxonomy_class,
-                    level=level,
-                    parent_topic=parent_topic,
-                    threshold=1.0,
-                    sample=sample,
-                )
-
-                logger.info(
-                    f"Creating frequency histogram - {taxonomy_class} - level {level}"
-                )
-                chart = make_freq_barplot(
-                    journal_freq_df,
-                    taxonomy_class=taxonomy_class,
-                    level=level,
-                    parent_topic=parent_topic,
-                )
-                if args.save:
-                    chart.save(
-                        PROJECT_DIR
-                        / "outputs"
-                        / "figures"
-                        / "taxonomy_validation"
-                        / f"frequency_{taxonomy_class}_level_{level}.html"
-                    )
-
-            if "tfidf" in args.histogram:
-                logger.info(f"Building TFIDF data - {taxonomy_class} - level {level}")
-                journal_freq_df = build_tfidf_data(
-                    df=cluster_entity_journal_df,
-                    taxonomy_class=taxonomy_class,
-                    level=level,
-                    parent_topic=parent_topic,
-                    threshold=1.0,
-                    sample=sample,
-                )
-
-                logger.info(
-                    f"Creating TFIDF histogram - {taxonomy_class} - level {level}"
-                )
-                chart = make_tfidf_barplot(
-                    journal_freq_df,
-                    taxonomy_class=taxonomy_class,
-                    level=level,
-                    parent_topic=parent_topic,
-                )
-                if args.save:
-                    chart.save(
-                        PROJECT_DIR
-                        / "outputs"
-                        / "figures"
-                        / "taxonomy_validation"
-                        / f"tfidf_{taxonomy_class}_level_{level}.html"
-                    )

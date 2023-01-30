@@ -97,17 +97,10 @@ def clean_topic_ids(df: pd.DataFrame, level: int) -> List[str]:
     Returns:
         List[str]: A list of topic ids for the given level.
     """
-    breakpoint()
+
     topic_ids = df["Topic"].to_list()
-    if level == 1:
-        if topic_ids[0].startswith("ce"):
-            topic_ids = [x[2:] for x in topic_ids]
-        return [int(x) for x in topic_ids]
-    if level > 1:
-        topic_ids = [str(x).split("_")[-1] for x in df["Topic"].to_list()]
-        if topic_ids[0].startswith("ce"):
-            topic_ids = [x[2:] for x in topic_ids]
-        return [int(x) for x in topic_ids]
+    topic_ids = [str(x).split("_")[-1] for x in df["Topic"].to_list()]
+    return [int(x) for x in topic_ids]
 
 
 def sort_topics(df: pd.DataFrame) -> List[str]:

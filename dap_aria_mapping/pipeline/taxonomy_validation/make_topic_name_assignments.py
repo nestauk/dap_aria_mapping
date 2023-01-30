@@ -92,7 +92,7 @@ if __name__ == "__main__":
         semantic_centroids_taxonomy = get_semantic_taxonomy("centroids")
         taxonomies.append(["centroids", semantic_centroids_taxonomy])
     if "imbalanced" in args.taxonomy:
-        semantic_kmeans_taxonomy = get_semantic_taxonomy("kmeans_strict_imb")
+        semantic_kmeans_taxonomy = get_semantic_taxonomy("imbalanced")
         taxonomies.append(["imbalanced", semantic_kmeans_taxonomy])
 
     logger.info("Loading data - works")

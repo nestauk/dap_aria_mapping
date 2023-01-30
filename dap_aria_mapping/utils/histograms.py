@@ -1,5 +1,5 @@
 import pandas as pd
-import random
+import random, re
 from typing import Union, Dict, List
 
 
@@ -60,39 +60,67 @@ def generate_sample(
         df (pd.DataFrame): A dataframe of Entity x Journal x Level assignments.
         level (int): The level of the taxonomy to return values for.
         sample (Union[str, int]): The sample to use. If "main", the sample will
-            be the top 50 journals in the dataset. If an integer, the sample
-            will be a random sample of that size. If an integer and level > 1,
-            the sample will be a random sample of that size from the journals
-            that are assigned to the parent topics.
+            be the top 50 journals in the dataset at a given level / parent_topic.
+            If an integer, the sample will be a random sample of that size.
 
     Returns:
         List[str]: A list of journals to use for the taxonomy validation.
     """
-    if isinstance(sample, list):
-        SAMPLE_JOURNALS = sample
-    elif all([isinstance(sample, int), level == 1]):
-        SAMPLE_JOURNALS = random.sample(list(df["Journal"].unique()), sample)
-    elif all([isinstance(sample, int), level > 1]):
-        assert (
-            "parent_topic" in kwargs.keys()
-        ), "Must provide parent_topic argument for levels > 1"
-        SAMPLE_JOURNALS = random.sample(
-            list(
-                df.loc[df[f"Level_{str(level - 1)}"].isin([kwargs["parent_topic"]])][
-                    "Journal"
-                ].unique()
-            ),
-            sample,
-        )
+
+    if all([isinstance(sample, str), len(size := re.findall("\d+", sample)) > 0]):
+        sample_size = int(size[-1])
+    elif isinstance(sample, int):
+        sample_size = sample
+    else:
+        sample_size = 50
+
+    if level == 1:
+        if "main" in sample:
+            SAMPLE_JOURNALS = [
+                x
+                for x in (
+                    df["Journal"]
+                    .value_counts()
+                    .sort_values(ascending=False)
+                    .index.to_list()[:sample_size]
+                )
+                if x != "Other"
+            ]
+        else:
+            SAMPLE_JOURNALS = random.sample(list(df["Journal"].unique()), sample_size)
+    elif level > 1:
+        if "main" in sample:
+            SAMPLE_JOURNALS = [
+                x
+                for x in (
+                    df.loc[
+                        df[f"Level_{str(level - 1)}"].isin([kwargs["parent_topic"]])
+                    ]["Journal"]
+                    .value_counts()
+                    .sort_values(ascending=False)
+                    .index.to_list()[:sample_size]
+                )
+                if x != "Other"
+            ]
+        elif isinstance(sample, int):
+            SAMPLE_JOURNALS = random.sample(
+                list(
+                    df.loc[
+                        df[f"Level_{str(level - 1)}"].isin([kwargs["parent_topic"]])
+                    ]["Journal"].unique()
+                ),
+                sample_size,
+            )
+    if not isinstance(SAMPLE_JOURNALS, list):
+        raise KeyError("Sample must be either 'main' or an integer.")
     return SAMPLE_JOURNALS
 
 
-def clean_topic_ids(df: pd.DataFrame, level: int) -> List[str]:
+def clean_topic_ids(df: pd.DataFrame) -> List[str]:
     """Clean the topic ids for a given level of the taxonomy.
 
     Args:
         df (pd.DataFrame): A dataframe of Entity x Journal x Level assignments.
-        level (int): The level of the taxonomy to return values for.
 
     Returns:
         List[str]: A list of topic ids for the given level.

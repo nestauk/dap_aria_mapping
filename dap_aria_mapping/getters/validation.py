@@ -3,7 +3,7 @@ from dap_aria_mapping import BUCKET_NAME
 from typing import Dict
 
 def get_tree_depths(tax_name: str) -> Dict[str, Dict[str, int]]:
-    """gets a dictionary with metrics about the tree depth of the taxonomies
+    """gets a dictionary with metrics about the tree depth of the given taxonomies
 
     Args:
         tax_name (str): name of taxonomy to load results. Options are: cooccur, centroids, imbalanced 

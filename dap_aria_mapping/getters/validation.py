@@ -3,7 +3,6 @@ from dap_aria_mapping import BUCKET_NAME, PROJECT_DIR
 from typing import Dict
 import yaml
 
-
 def get_tree_depths(tax_name: str) -> Dict[str, Dict[str, int]]:
     """gets a dictionary with metrics about the tree depth of the given taxonomies
 

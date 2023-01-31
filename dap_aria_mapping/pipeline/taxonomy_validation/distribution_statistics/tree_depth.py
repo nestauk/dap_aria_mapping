@@ -7,7 +7,7 @@ from nesta_ds_utils.loading_saving.S3 import upload_obj
 from dap_aria_mapping import BUCKET_NAME
 from collections import defaultdict
 
-def _count_at_level(tax: pd.DataFrame(), level: int) -> Tuple[int]:
+def _count_at_level(tax: pd.DataFrame, level: int) -> Tuple[int]:
     """gets the counts of the unique topic groups at a given level of the taxonomy
 
     Args:

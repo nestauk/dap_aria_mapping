@@ -1,7 +1,8 @@
 from nesta_ds_utils.loading_saving.S3 import download_obj
 from dap_aria_mapping import BUCKET_NAME
+from typing import Dict
 
-def get_tree_depths(tax_name: str) -> dict:
+def get_tree_depths(tax_name: str) -> Dict[str, int]:
     """gets a dictionary with metrics about the tree depth of the taxonomies
 
     Args:

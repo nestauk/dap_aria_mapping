@@ -55,7 +55,7 @@ if __name__ == "__main__":
     np.random.seed(args.seed)
     random.seed(args.seed)
 
-    if args.production and any(
+    if args.production and not any(
         ["centroids" in args.cluster_method, "imbalanced" in args.cluster_method]
     ):
         raise ValueError("Production mode only supports centroids config")

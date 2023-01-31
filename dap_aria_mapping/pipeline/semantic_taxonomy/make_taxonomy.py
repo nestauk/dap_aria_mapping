@@ -169,7 +169,6 @@ if __name__ == "__main__":
     if "centroids" in args.cluster_method:
         dataframe = normalise_centroids(dataframe)
 
-    breakpoint()
     if args.production:
         logger.info("Saving dataframe of clustering results to S3")
         dataframe.to_parquet(

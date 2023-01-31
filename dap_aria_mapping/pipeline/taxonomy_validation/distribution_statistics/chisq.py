@@ -34,15 +34,15 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
             description="Taxonomy", formatter_class=argparse.ArgumentDefaultsHelpFormatter
         )
-    parser.add_argument('--taxonomy', required = True,
+    parser.add_argument('--taxonomy', required = True, nargs = "+",
                     help='name of the taxonomy/ies to analyse. Available optons are: cooccur, centroids, imbalanced, a list of multiple, or all')
     
     args = parser.parse_args()
 
-    if args.taxonomy == 'all':
+    if args.taxonomy == ['all']:
         taxonomies = ['cooccur', 'centroids', 'imbalanced']
     else:
-        taxonomies = list(args.taxonomy)
+        taxonomies = args.taxonomy
     
     if 'cooccur' in taxonomies:
         cooccurence_taxonomy = get_cooccurrence_taxonomy()

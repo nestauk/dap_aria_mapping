@@ -67,7 +67,9 @@ def get_semantic_taxonomy(cluster_object: str = "centroids") -> pd.DataFrame:
     )
 
 
-def get_topic_names(taxonomy_class: str, name_type: str, level: int) -> dict:
+def get_topic_names(
+    taxonomy_class: str, name_type: str, level: int, large: bool = False
+) -> dict:
     """Downloads topic names from S3 and returns them as a dictionary.
 
     Args:
@@ -78,8 +80,15 @@ def get_topic_names(taxonomy_class: str, name_type: str, level: int) -> dict:
     Returns:
         pd.DataFrame: A dictionary containing the topic names.
     """
-    return download_obj(
-        BUCKET_NAME,
-        f"outputs/topic_names/class_{taxonomy_class}_nametype_{name_type}_level_{str(level)}.json",
-        download_as="dict",
-    )
+    if large:
+        return download_obj(
+            BUCKET_NAME,
+            f"outputs/topic_names/large_topic_names/class_{taxonomy_class}_nametype_{name_type}_level_{str(level)}.json",
+            download_as="dict",
+        )
+    else:
+        return download_obj(
+            BUCKET_NAME,
+            f"outputs/topic_names/class_{taxonomy_class}_nametype_{name_type}_level_{str(level)}.json",
+            download_as="dict",
+        )

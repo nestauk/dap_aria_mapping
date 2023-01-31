@@ -1,26 +1,12 @@
 import numpy as np
-import pandas as pd
-import re, sklearn
-import matplotlib.axes as mpl_axes
-from sklearn.metrics import silhouette_score
-from sentence_transformers import SentenceTransformer
 from typing import (
-    Union,
     Dict,
-    DefaultDict,
-    List,
-    Any,
-    Set,
-    Type,
     Literal,
     Sequence,
     Tuple,
-    Generator,
 )
-from itertools import product
-from copy import deepcopy
-from collections import Counter, defaultdict
-from itertools import chain, count
+from collections import Counter
+from itertools import chain
 import altair as alt
 
 alt.data_transformers.disable_max_rows()

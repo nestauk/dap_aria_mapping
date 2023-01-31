@@ -52,7 +52,7 @@ This flow outputs three files stored on S3 at `inputs/data_collection/patents/`:
 
 2. **`patents_backward_citations.json`**: A json where the key is a forward patent id and the value is a list of patent ids that the focal patent id is cited by.
 
-3. **`patents_citations_metadata.parquet`**: A parquet file that stores additional forward citation metadata including citation category, citation type, free-text citation in non-patent literature and the citation filing date.
+3. **`patents_forward_citations_metadata.parquet`**: A parquet file that stores additional forward citation metadata including citation category, citation type, free-text citation in non-patent literature and the citation filing date.
 
 Please refer to the [patents data dictionary](https://docs.google.com/spreadsheets/d/1LtfjECVI5pqqwE7oMw1JbwFcUWhUoHgJH_mJ0flw9Fw/edit#gid=1878548964) for additional information on the collection information.
 

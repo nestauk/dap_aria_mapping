@@ -12,12 +12,12 @@ def _count_at_level(tax: pd.DataFrame, level: int) -> Tuple[int]:
 
     Args:
         tax (pd.DataFrame): taxonomy 
-        level (int): level of the taxonomy, first level is 0
+        level (int): level of the taxonomy, first level is 1
 
     Returns:
         Tuple[int]: count of unique values
     """
-    return tax.iloc[:, level].nunique()
+    return tax["Level_{}".format(level)].nunique()
 
 def _p_split(labels_at_level: set, labels_at_next_level: set) -> float:
     """gets the fraction of topics at a given level that split into subtopics at the next level
@@ -40,14 +40,15 @@ def add_tax_metrics(tax: pd.DataFrame) -> Dict[str, int]:
     Returns:
         dict: dictionary with added metrics
     """
-    metrics = defaultdict(int)
+    metrics = {"counts": defaultdict(int), "split_fractions": defaultdict(int)}
     for i, col in enumerate(tax.columns):
         #add the counts of unique values at each level of the taxonomy to the metrics
         #NOTE: given that the last level will carry down if a tree stops splitting, the bottom level contains some higer level groupings
-        metrics["counts"]['{}'.format(i+1)] = _count_at_level(tax, i)
+        metrics["counts"]['{}'.format(i+1)] = _count_at_level(tax, i+1)
         #add the fraction of topics that split at a given level
         if i < len(tax.columns)-1:
-            metrics["split_fractions"]['{}'.format(i+1)] = _p_split(set(tax.iloc[:, i]), set(tax.iloc[:, i+1]))
+            next_col = tax.columns[i+1]
+            metrics["split_fractions"]['{}'.format(i+1)] = _p_split(set(tax[col]), set(tax[next_col]))
 
     return metrics
 
@@ -77,7 +78,7 @@ if __name__ == '__main__':
 
     
     if 'centroids' in taxonomies:
-        centroids_taxonomy = get_semantic_taxonomy(cluster_object='centroids').set_index('tag')
+        centroids_taxonomy = get_semantic_taxonomy(cluster_object='centroids')
         metrics = add_tax_metrics(centroids_taxonomy)
         upload_obj(
             metrics,
@@ -86,7 +87,7 @@ if __name__ == '__main__':
         )
     
     if 'imbalanced' in taxonomies:
-        imbalanced_taxonomy = get_semantic_taxonomy(cluster_object='kmeans_strict_imb').set_index('tag')
+        imbalanced_taxonomy = get_semantic_taxonomy(cluster_object='imbalanced')
         metrics = add_tax_metrics(imbalanced_taxonomy)
         upload_obj(
             metrics,

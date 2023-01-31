@@ -31,24 +31,23 @@ def _p_split(labels_at_level: set, labels_at_next_level: set) -> float:
     """
     return len([x for x in labels_at_level if x not in labels_at_next_level])/len(labels_at_level)
 
-def add_tax_metrics(tax: pd.DataFrame, tax_name: str, metrics: dict) -> dict:
+def add_tax_metrics(tax: pd.DataFrame) -> dict:
     """generates count of unique topics at each level, and percent of topics that split into subtopics at each level
 
     Args:
         tax (pd.DataFrame): taxonomy
-        tax_name (str): name of taxonomy
-        metrics (dict): dictionary to store metrics
 
     Returns:
         dict: dictionary with added metrics
     """
+    metrics = defaultdict(int)
     for i, col in enumerate(tax.columns):
         #add the counts of unique values at each level of the taxonomy to the metrics
         #NOTE: given that the last level will carry down if a tree stops splitting, the bottom level contains some higer level groupings
-        metrics[tax_name]["counts"]['{}'.format(i+1)] = _count_at_level(tax, i)
+        metrics["counts"]['{}'.format(i+1)] = _count_at_level(tax, i)
         #add the fraction of topics that split at a given level
         if i < len(tax.columns)-1:
-            metrics[tax_name]["split_fractions"]['{}'.format(i+1)] = _p_split(set(tax.iloc[:, i]), set(tax.iloc[:, i+1]))
+            metrics["split_fractions"]['{}'.format(i+1)] = _p_split(set(tax.iloc[:, i]), set(tax.iloc[:, i+1]))
 
     return metrics
 
@@ -66,25 +65,36 @@ if __name__ == '__main__':
     else:
         taxonomies = list(args.taxonomy)
     
-    metrics = {tax: {"counts": defaultdict(int), "split_fractions": defaultdict(int)} for tax in taxonomies}
 
     if 'cooccur' in taxonomies:
         cooccurence_taxonomy = get_cooccurrence_taxonomy()
-        metrics = add_tax_metrics(cooccurence_taxonomy, 'cooccur', metrics)
+        metrics = add_tax_metrics(cooccurence_taxonomy)
+        upload_obj(
+            metrics,
+            BUCKET_NAME,
+            'outputs/validation_metrics/taxonomy_depth/cooccurrence.json'
+        )
+
     
     if 'centroids' in taxonomies:
         centroids_taxonomy = get_semantic_taxonomy(cluster_object='centroids').set_index('tag')
-        metrics = add_tax_metrics(centroids_taxonomy, 'centroids', metrics)
+        metrics = add_tax_metrics(centroids_taxonomy)
+        upload_obj(
+            metrics,
+            BUCKET_NAME,
+            'outputs/validation_metrics/taxonomy_depth/centroids.json'
+        )
     
     if 'imbalanced' in taxonomies:
         imbalanced_taxonomy = get_semantic_taxonomy(cluster_object='kmeans_strict_imb').set_index('tag')
-        metrics = add_tax_metrics(imbalanced_taxonomy, 'imbalanced', metrics)
-
-    upload_obj(
+        metrics = add_tax_metrics(imbalanced_taxonomy)
+        upload_obj(
             metrics,
             BUCKET_NAME,
-            'outputs/validation_metrics/taxonomy_depth.json'
+            'outputs/validation_metrics/taxonomy_depth/imbalanced.json'
         )
+
+    
 
 
 

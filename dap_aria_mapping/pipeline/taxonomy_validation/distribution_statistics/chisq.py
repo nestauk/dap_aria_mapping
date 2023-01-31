@@ -54,7 +54,7 @@ if __name__ == '__main__':
     )
     
     if 'centroids' in taxonomies:
-        centroids_taxonomy = get_semantic_taxonomy(cluster_object='centroids').set_index('tag')
+        centroids_taxonomy = get_semantic_taxonomy(cluster_object='centroids')
         metrics = tax_chisq(centroids_taxonomy)
         upload_obj(
         metrics,
@@ -63,7 +63,7 @@ if __name__ == '__main__':
     )
     
     if 'imbalanced' in taxonomies:
-        imbalanced_taxonomy = get_semantic_taxonomy(cluster_object='kmeans_strict_imb').set_index('tag')
+        imbalanced_taxonomy = get_semantic_taxonomy(cluster_object='imbalanced')
         metrics = tax_chisq(imbalanced_taxonomy)
         upload_obj(
         metrics,

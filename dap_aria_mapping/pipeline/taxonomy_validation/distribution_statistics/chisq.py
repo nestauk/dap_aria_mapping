@@ -16,11 +16,11 @@ def tax_chisq(tax: pd.DataFrame) -> Dict[str, int]:
         tax (pd.DataFrame): taxonomy
 
     Returns:
-        dict: dictionary with results
+        Dict: dictionary with results. Format: "Level_(): chisq" for each level of taxonomy.
     """
     metrics = defaultdict(int)
-    for i in range(0, len(tax.columns)):
-        dist = tax.iloc[:, i].value_counts()
+    for i, col in enumerate(tax.columns):
+        dist = tax[col].value_counts()
         total_categories = len(dist)
         total_entities = sum(dist.values)
         f_exp = list(repeat((total_entities/total_categories), times = total_categories))

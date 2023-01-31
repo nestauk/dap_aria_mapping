@@ -10,6 +10,9 @@ def get_tree_depths(tax_name: str) -> Dict[str, Dict[str, int]]:
     Args:
         tax_name (str): name of taxonomy to load results. Options are: cooccur, centroids, imbalanced
 
+    Args:
+        tax_name (str): name of taxonomy to load results. Options are: cooccur, centroids, imbalanced 
+
     Returns:
         dict: size and depth metrics of trees in taxonomy
     """

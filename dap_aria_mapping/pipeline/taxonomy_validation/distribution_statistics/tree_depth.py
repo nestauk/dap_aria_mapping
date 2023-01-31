@@ -72,7 +72,7 @@ if __name__ == '__main__':
         upload_obj(
             metrics,
             BUCKET_NAME,
-            'outputs/validation_metrics/taxonomy_depth/cooccurrence.json'
+            'outputs/validation_metrics/taxonomy_depth/cooccur.json'
         )
 
     

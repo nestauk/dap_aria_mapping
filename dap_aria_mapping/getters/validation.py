@@ -1,5 +1,5 @@
 from nesta_ds_utils.loading_saving.S3 import download_obj
-from dap_aria_mapping import BUCKET_NAME, PROJECT_DIR
+from dap_aria_mapping import BUCKET_NAME
 from typing import Dict
 import yaml
 
@@ -30,7 +30,7 @@ def get_entropy(tax_name: str) -> Dict[str, int]:
         tax_name (str): name of taxonomy to load results. Options are: cooccur, centroids, imbalanced
 
     Returns:
-        dict: key: taxonomy name, value: dict: key: level, value: entropy of frequency distribution
+        dict: key: level, value: entropy of frequency distribution
     """
     return download_obj(
         BUCKET_NAME,
@@ -47,7 +47,7 @@ def get_chisq(tax_name: str) -> Dict[str, int]:
         tax_name (str): name of taxonomy to load results. Options are: cooccur, centroids, imbalanced
 
     Returns:
-        dict: key: taxonomy name, value: dict: key: level, value: chisq stat
+        dict: key: level, value: chisq stat
     """
     return download_obj(
         BUCKET_NAME,

@@ -1,7 +1,7 @@
 from dap_aria_mapping.getters.taxonomies import get_cooccurrence_taxonomy, get_semantic_taxonomy
 import argparse
 from sys import exit
-from typing import Tuple
+from typing import Tuple, Dict
 import pandas as pd
 from nesta_ds_utils.loading_saving.S3 import upload_obj
 from dap_aria_mapping import BUCKET_NAME
@@ -31,7 +31,7 @@ def _p_split(labels_at_level: set, labels_at_next_level: set) -> float:
     """
     return len([x for x in labels_at_level if x not in labels_at_next_level])/len(labels_at_level)
 
-def add_tax_metrics(tax: pd.DataFrame) -> dict:
+def add_tax_metrics(tax: pd.DataFrame) -> Dict[str, int]:
     """generates count of unique topics at each level, and percent of topics that split into subtopics at each level
 
     Args:

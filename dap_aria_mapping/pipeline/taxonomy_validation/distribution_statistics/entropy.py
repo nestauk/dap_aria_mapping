@@ -53,20 +53,30 @@ if __name__ == '__main__':
     if 'cooccur' in taxonomies:
         cooccurence_taxonomy = get_cooccurrence_taxonomy()
         metrics = tax_entropy(cooccurence_taxonomy)
+        upload_obj(
+        metrics,
+        BUCKET_NAME,
+        'outputs/validation_metrics/entropy/cooccur.json'
+    )
     
     if 'centroids' in taxonomies:
         centroids_taxonomy = get_semantic_taxonomy(cluster_object='centroids').set_index('tag')
         metrics = tax_entropy(centroids_taxonomy)
+        upload_obj(
+        metrics,
+        BUCKET_NAME,
+        'outputs/validation_metrics/entropy/centroids.json'
+    )
     
     if 'imbalanced' in taxonomies:
         imbalanced_taxonomy = get_semantic_taxonomy(cluster_object='kmeans_strict_imb').set_index('tag')
         metrics = tax_entropy(imbalanced_taxonomy)
-    
-    upload_obj(
+        upload_obj(
         metrics,
         BUCKET_NAME,
-        'outputs/validation_metrics/entropy.json'
+        'outputs/validation_metrics/entropy/imbalanced.json'
     )
+    
 
     
     

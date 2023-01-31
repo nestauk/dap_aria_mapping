@@ -3,13 +3,15 @@ SEMANTIC_TAXONOMY:
     strict_kmeans: KMeans
     strict_agglom: AgglomerativeClustering
     strict_kmeans_imb: KMeans
+    imbalanced: KMeans
+    imbalanced_test: KMeans
     fuzzy_kmeans: KMeans
     fuzzy_agglom: AgglomerativeClustering
     fuzzy_dbscan: DBSCAN
     fuzzy_hdbscan: HDBSCAN
     dendrogram: AgglomerativeClustering
-    centroids_test: KMeans
     centroids: KMeans
+    centroids_test: KMeans
   CLUSTER_CONFIGS:
     strict_kmeans:
       - n_clusters: 5 # level 1
@@ -64,7 +66,7 @@ SEMANTIC_TAXONOMY:
           - 16
     dendrogram:
       - n_clusters: 100
-    centroids_test:
+    centroids:
       - n_clusters: # level 4
         n_init: 5
         centroids: False
@@ -77,25 +79,49 @@ SEMANTIC_TAXONOMY:
       - n_clusters: # level 1
         n_init: 5
         centroids: True
+  SINGLE_CLUSTER_CONFIGS:
     centroids:
-      - n_clusters: 10000 # level 6
+      - n_clusters: 10000 # level 5
         n_init: 5
         centroids: False
-      - n_clusters: 5000 # level 5
+      - n_clusters: 2500 # level 4
         n_init: 5
         centroids: True
-      - n_clusters: 2000 # level 4
+      - n_clusters: 1000 # level 3
         n_init: 5
         centroids: True
-      - n_clusters: 500 # level 3
+      - n_clusters: 200 # level 2
         n_init: 5
         centroids: True
-      - n_clusters: 100 # level 2
+      - n_clusters: 25 # level 1
+        n_init: 5
+        centroids: True
+    centroids_test:
+      - n_clusters: 200 # level 3
+        n_init: 5
+        centroids: False
+      - n_clusters: 50 # level 2
         n_init: 5
         centroids: True
       - n_clusters: 10 # level 1
         n_init: 5
         centroids: True
+    imbalanced:
+      - n_clusters: 25
+        n_init: 5
+      - n_clusters: 200
+        n_init: 5
+      - n_clusters: 1000
+        n_init: 5
+      - n_clusters: 2500
+        n_init: 5
+      - n_clusters: 10000
+        n_init: 5
+    imbalanced_test:
+      - n_clusters: 25
+        n_init: 5
+      - n_clusters: 100
+        n_init: 5
   DF_CONFIGS:
     kmeans_strict:
       name: kmeans_strict
@@ -106,6 +132,13 @@ SEMANTIC_TAXONOMY:
       label: _strict
       cumulative: True
     kmeans_strict_imb:
+      name: semantic_imbalanced
+      label: _strict
+    imbalanced:
+      name: semantic_imbalanced
+      label: _strict
+      cumulative: True
+    imbalanced_test:
       name: semantic_imbalanced
       label: _strict
       cumulative: True
@@ -121,7 +154,11 @@ SEMANTIC_TAXONOMY:
       name: agglom_dendrogram
       label: _strict
       cumulative: True
-    kmeans_centroid:
+    centroids:
+      name: semantic_centroids
+      label: _centroids
+      cumulative: False
+    centroids_test:
       name: semantic_centroids
       label: _centroids
       cumulative: False

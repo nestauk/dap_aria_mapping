@@ -357,44 +357,58 @@ class ClusteringRoutine(object):
                     [e for e in self.embeddings.index if self.cdict[e] == cluster_group]
                 )
             ]
-            if nested_embeddings.shape[0] < 10:  # Small stump, pass through
+            if nested_embeddings.shape[0] < 10:  # Small stump, discard
+                # Fit and update: Pass through
                 cluster = None
-                self.cdict[nested_embeddings.index[0]].append(0)
-            else:
-                # Cluster proportional to stump sizes
-                if all(
-                    [
-                        self.kwargs.get("imbalanced", False),
-                        param_config.get("n_clusters", False),
-                    ]
-                ):
-                    param_config_imb = deepcopy(param_config)
-                    param_config_imb["n_clusters"] = int(
-                        round(
-                            nested_embeddings.shape[0]
-                            / self.embeddings.shape[0]
-                            * param_config["n_clusters"]
-                        )
+                for entity in nested_embeddings.index:
+                    self.cdict[entity].append("")
+            elif all(
+                [  # Imbalanced case
+                    self.kwargs.get("imbalanced", False),
+                    param_config.get("n_clusters", False),
+                ]
+            ):
+                param_config_imb = deepcopy(param_config)
+                param_config_imb["n_clusters"] = int(
+                    round(
+                        nested_embeddings.shape[0]
+                        / self.embeddings.shape[0]
+                        * param_config["n_clusters"]
                     )
-                    if param_config_imb["n_clusters"] < 2:
-                        param_config_imb["n_clusters"] = 2
+                )
+                if param_config_imb["n_clusters"] < 2:  # nclusters < 2
+                    # Fit and update: Pass through
+                    cluster = None
+                    for entity in nested_embeddings.index:
+                        self.cdict[entity].append("")
+                elif param_config_imb["n_clusters"] >= 2:  # nclusters >= 2
                     cluster = self.method_class(**param_config_imb)
-                else:  # Cluster all stumps equally
-                    if all(
-                        [  # nobservations < nclusters
-                            num_clust := param_config.get("n_clusters", False),
-                            num_clust > nested_embeddings.shape[0],
-                        ]
-                    ):
-                        small_config = deepcopy(param_config)
-                        small_config["n_clusters"] = 2
-                        cluster = self.method_class(**small_config)
-                    else:  # observations > n_clusters
-                        cluster = self.method_class(**param_config)
-                # Fit and update
+                    # Fit and update: Break topic
+                    cluster.fit(nested_embeddings)
+                    update_dictionary(self.cdict, nested_embeddings, cluster)
+
+            elif all(  # Regular case
+                [  # nobservations < nclusters
+                    num_clust := param_config.get("n_clusters", False),
+                    num_clust >= nested_embeddings.shape[0],
+                ]
+            ):
+                # Fit and update: Pass through
+                cluster = None
+                for entity in nested_embeddings.index:
+                    self.cdict[entity].append("")
+            elif all(
+                [  # observations > n_clusters
+                    num_clust := param_config.get("n_clusters", False),
+                    num_clust < nested_embeddings.shape[0],
+                ]
+            ):
+                cluster = self.method_class(**param_config)
+                # Fit and update: Break topic
                 cluster.fit(nested_embeddings)
                 update_dictionary(self.cdict, nested_embeddings, cluster)
-        self.mlist.append(cluster)
+        self.mlist.append(self.method_class(**param_config))
+
         yield {
             "labels": deepcopy(self.cdict),
             "model": deepcopy(self.mlist),
@@ -449,6 +463,7 @@ class ClusteringRoutine(object):
         update_dictionary(self.cdict, self.embeddings, cedict), self.mlist.append(
             cluster
         )
+
         if self.kwargs.get("embeddings_2d", None) is not None:
             yield {
                 "labels": deepcopy(self.cdict),
@@ -931,7 +946,8 @@ def make_dataframe(
     if cumulative:
         for level in range(num_levels):
             for k, v in cluster_outputs["labels"].items():
-                d[k].append("_".join(map(str, v[: (level + 1)])))
+                labels = [x for x in v[: (level + 1)] if x != ""]
+                d[k].append("_".join(map(str, labels)))
     else:
         for level in range(num_levels):
             for k, v in cluster_outputs["labels"].items():
@@ -1006,11 +1022,13 @@ def normalise_topic_assignment(df: pd.DataFrame, level: int) -> pd.Series:
     Returns:
         pd.Series: A series of normalised topic assignments.
     """
-    if level > 1:
+    if level == 1:
+        return df[f"Level_{str(level)}"].str.split("ce").str[-1]
+    elif level > 1:
         target = df[f"Level_{str(level)}"].str.split("_(ce)?", regex=True).str[-1]
         dc = {}
         for level_id in df[f"Level_{str(level-1)}"].unique():
-            d = {
+            level_dict = {
                 v: str(i)
                 for i, v in enumerate(
                     np.sort(
@@ -1025,11 +1043,12 @@ def normalise_topic_assignment(df: pd.DataFrame, level: int) -> pd.Series:
                 )
             }
 
-            dc.update(d)
-        return target.map(dc)
+            if len(level_dict.keys()) == 1:
+                # breakpoint()
+                level_dict[list(level_dict.keys())[-1]] = ""
 
-    else:
-        return df[f"Level_{str(level)}"].str.split("ce").str[-1]
+            dc.update(level_dict)
+        return target.map(dc)
 
 
 def normalise_centroids(df: pd.DataFrame) -> pd.DataFrame:
@@ -1045,5 +1064,21 @@ def normalise_centroids(df: pd.DataFrame) -> pd.DataFrame:
     for level in range(1, max_level + 1)[::-1]:
         df[level] = normalise_topic_assignment(df, level)
     for level in range(1, max_level + 1)[::-1]:
-        df[f"Level_{str(level)}"] = df[list(range(1, level + 1))].agg("_".join, axis=1)
+        df[f"Level_{str(level)}"] = df[list(range(1, level + 1))].agg(
+            lambda row: clean_aggregator(row, level), axis=1
+        )
     return df[[col for col in list(df.columns) if isinstance(col, str)]]
+
+
+def clean_aggregator(row: pd.Series, level: int) -> str:
+    """Cleans the topic assignment of a centroids algorithm for a given level.
+
+    Args:
+        row (pd.Series): A series of topic assignments.
+        level (int): The level of the topic assignment to clean.
+
+    Returns:
+        str: A cleaned topic assignment for the given level.
+    """
+    labels = [x for x in row[: (level + 1)] if x != ""]
+    return "_".join(map(str, labels))

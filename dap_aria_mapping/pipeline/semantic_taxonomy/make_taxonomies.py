@@ -178,7 +178,7 @@ if __name__ == "__main__":
             .set_index("Entity")
         )
 
-        if label == "semantic_centroids":
+        if label == "centroids":
             df = normalise_centroids(df)
 
         logger.info(f"Making co-occurrences for {label}")

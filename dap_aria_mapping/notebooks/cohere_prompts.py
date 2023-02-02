@@ -1,6 +1,12 @@
 # %%
+import json
+import numpy as np
 from dap_aria_mapping.getters.taxonomies import get_topic_names
+from dap_aria_mapping import PROJECT_DIR
 import cohere
+from collections import defaultdict
+from tqdm import tqdm
+from time import sleep
 
 co = cohere.Client("pArhjogTnlZGIUEocMpv1lVZKv3RHsf7KIgTPk0F")
 
@@ -75,20 +81,46 @@ Topic label: Classic authors.
 
 --
 Topic entities: Mona Lisa, Sistine Chapel, The Last Supper, The Starry Night, The Persistence of Memory, The Scream, The Kiss, The Dance, The Water Lilies.
-Topic label:"""
+Topic label:Famous paintings and artists.
 
-# %%
-response = co.generate(
-    model="xlarge",
-    prompt=prompt,
-    max_tokens=40,
-    num_generations=5,
-    temperature=0.6,
-    stop_sequences=["--"],
-)
+--
 
-topic_label = response.generations[0].text
-print(topic_label)
-# %%
-dict_entities = get_topic_names("cooccur", "entity", 1)
+"""
+
+
+def evaluate_entities(dictionary, key, val):
+    eval = prompt + "Topic_entities: " + val[3:] + "\n\nTopic_label:"
+
+    response = co.generate(
+        model="xlarge",
+        prompt=eval,
+        max_tokens=20,
+        num_generations=5,
+        temperature=0.6,
+        stop_sequences=["--"],
+    )
+    topic_label = response.generations[0].text
+    label_processed = (topic_label.split("\n")[0]).strip()
+    dictionary.update({f"Topic {key}": label_processed})
+
+
+taxonomy_class = "entity"
+
+for level in range(1, 6):
+    dict_names = defaultdict(list)
+    dict_entities = get_topic_names("cooccur", taxonomy_class, level, True)
+
+    for key, val in tqdm(dict_entities.items()):
+        sleep(np.random.uniform(1, 5))
+        try:
+            evaluate_entities(dictionary=dict_names, key=key, val=val)
+        except:
+            dict_names.update({"Topic " + key: "Error"})
+    with open(
+        PROJECT_DIR
+        / "outputs"
+        / f"cohere_labels_class_{taxonomy_class}_level_{level}.json",
+        "w",
+    ) as f:
+        json.dump(dict_names, f)
 # %%

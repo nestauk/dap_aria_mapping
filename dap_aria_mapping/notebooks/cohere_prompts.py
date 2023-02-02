@@ -118,7 +118,10 @@ for level in range(1, 6):
             dict_names.update({"Topic " + key: "Error"})
     with open(
         PROJECT_DIR
-        / "outputs"
+        / "dap_aria_mapping"
+        / "notebooks"
+        / "cohere"
+        / "prompt_outputs"
         / f"cohere_labels_class_{taxonomy_class}_level_{level}.json",
         "w",
     ) as f:

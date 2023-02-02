@@ -48,3 +48,47 @@ def get_test_cooccurrence_taxonomy() -> pd.DataFrame:
         "outputs/test_community_detection_clusters.parquet",
         download_as="dataframe",
     )
+
+
+def get_semantic_taxonomy(cluster_object: str = "centroids") -> pd.DataFrame:
+    """Downloads taxonomy from S3 and returns them as a pandas dataframe.
+
+    Args:
+        cluster_object (str, optional): The type of semantic cluster object to download.
+            Defaults to "centroids".
+
+    Returns:
+        pd.DataFrame: A pandas dataframe containing the semantic taxonomy.
+    """
+    return download_obj(
+        BUCKET_NAME,
+        f"outputs/semantic_taxonomy/assignments/semantic_{cluster_object}_clusters.parquet",
+        download_as="dataframe",
+    )
+
+
+def get_topic_names(
+    taxonomy_class: str, name_type: str, level: int, large: bool = False
+) -> dict:
+    """Downloads topic names from S3 and returns them as a dictionary.
+
+    Args:
+        taxonomy_class (str): The type of taxonomy to download.
+        name_type (str): The type of name to download.
+        level (int): The level of the taxonomy to download.
+
+    Returns:
+        pd.DataFrame: A dictionary containing the topic names.
+    """
+    if large:
+        return download_obj(
+            BUCKET_NAME,
+            f"outputs/topic_names/large_topic_names/class_{taxonomy_class}_nametype_{name_type}_level_{str(level)}.json",
+            download_as="dict",
+        )
+    else:
+        return download_obj(
+            BUCKET_NAME,
+            f"outputs/topic_names/class_{taxonomy_class}_nametype_{name_type}_level_{str(level)}.json",
+            download_as="dict",
+        )

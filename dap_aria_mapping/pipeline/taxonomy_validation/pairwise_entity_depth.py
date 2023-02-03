@@ -2,7 +2,7 @@ from dap_aria_mapping.getters.validation import get_topic_groups, get_subtopic_g
 from dap_aria_mapping.getters.taxonomies import get_cooccurrence_taxonomy, get_semantic_taxonomy
 import argparse
 import pandas as pd
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Union
 from collections import defaultdict
 from itertools import combinations
 from nesta_ds_utils.loading_saving.S3 import upload_obj
@@ -29,7 +29,7 @@ def average_pairwise_depth(tax: pd.DataFrame, pairs: List[Tuple[str, str]]) -> i
 
 def generate_pairwise_output(
     tax: pd.DataFrame, 
-    entity_groupings: Dict[str, Dict[str, List[str]]],
+    entity_groupings: Union[Dict[str, Dict[str, Dict[str, list]]], Dict[str, Dict[str, List[str]]]],
     level: str
     ) -> Dict[str, Dict[str, int]]:
     """calculate the average pairwise depth of a given taxonomy for all disciplines 

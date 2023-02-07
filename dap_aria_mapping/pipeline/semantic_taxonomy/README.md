@@ -19,7 +19,7 @@ The utils for the different approaches can be found in `utils.semantics.py` and 
 
 The `make_taxonomy.py` file contains the basic routine and function calls necessary to build a single taxonomy. To run an example, execute the following:
 
-`python dap_aria_mapping/pipeline/semantic_taxonomy/make_taxonomy.py --cluster_method=centroids --plot --production`
+`python dap_aria_mapping/pipeline/semantic_taxonomy/make_taxonomy.py --cluster_method centroids --plot --test`
 
 Note that config either corresponds to a clustering routine defined in the basic config file, or a standalone yaml file with the necessary parameters. These configurations accept lists within cluster parameters - which outputs the product of all possible configurations within a single cluster level -, and lists of cluster parameters, which are interpreted as different levels of the algorithm. See the class docstrings in `utils.semantics.py` for additional details.
 

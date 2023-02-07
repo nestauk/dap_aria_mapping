@@ -1,4 +1,4 @@
-# %%
+
 import numpy as np
 import pandas as pd
 import argparse
@@ -15,7 +15,7 @@ from toolz import pipe
 from functools import partial
 from dap_aria_mapping import logger, PROJECT_DIR
 
-# %%
+
 from dap_aria_mapping.getters.taxonomies import get_cooccurrence_taxonomy
 from dap_aria_mapping.getters.openalex import get_openalex_works, get_openalex_entities
 from dap_aria_mapping.utils.entity_selection import get_sample, filter_entities
@@ -208,4 +208,4 @@ if __name__ == "__main__":
         save = False
 
     fig = build_entity_sunburst(entity_counts_df, save=save, entity_dict=MAIN_ENTITIES)
-# %%
+

@@ -10,14 +10,14 @@ from toolz import pipe
 from functools import partial
 from sklearn.cluster import KMeans, AgglomerativeClustering, DBSCAN
 from hdbscan import HDBSCAN
-from dap_aria_mapping import PROJECT_DIR, BUCKET_NAME, logger, config
+from dap_aria_mapping import PROJECT_DIR, BUCKET_NAME, logger, taxonomy
 from dap_aria_mapping.utils.semantics import (
     make_dataframe,
     run_clustering_generators,
     normalise_centroids,
     make_subplot_embeddings,
 )
-from dap_aria_mapping.getters.taxonomies import get_embeddings
+from dap_aria_mapping.getters.taxonomies import get_entity_embeddings
 
 METHODS = {
     "KMeans": KMeans,
@@ -112,9 +112,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--production",
         action="store_true",
-        help="Whether to run in production mode",
+        help="Whether to overwrite the taxonomy in the S3 bucket",
     )
-
+    parser.add_argument(
+        "--test",
+        action="store_true",
+        help="Whether to run in test mode (only 1000 embeddings)",
+    )
     parser.add_argument(
         "--seed", type=int, default=42, help="Random seed for reproducibility"
     )
@@ -129,8 +133,8 @@ if __name__ == "__main__":
         raise ValueError("Production mode only supports centroids config")
 
     logger.info("Downloading embeddings from S3")
-    embeddings = get_embeddings()
-    if not args.production:
+    embeddings = get_entity_embeddings()
+    if args.test:
         embeddings = embeddings.iloc[:1000, :1000]
         args.cluster_method = args.cluster_method + "_test"
 
@@ -141,7 +145,7 @@ if __name__ == "__main__":
 
     logger.info("Running clustering on embeddings")
     method_taxonomy, config_taxonomy = [
-        config["SEMANTIC_TAXONOMY"][key][args.cluster_method]
+        taxonomy["SEMANTIC_TAXONOMY"][key][args.cluster_method]
         for key in ["CLUSTER_METHODS", "SINGLE_CLUSTER_CONFIGS"]
     ]
     cluster_configs = [[METHODS[method_taxonomy], config_taxonomy]]
@@ -151,7 +155,7 @@ if __name__ == "__main__":
         cluster_configs, embeddings, embeddings_2d=embeddings_2d, imbalanced=imbalanced
     )
 
-    if args.production:
+    if all([args.production, args.test is False]):
         logger.info("Saving clustering results to S3")
         s3 = boto3.client("s3")
         s3.put_object(

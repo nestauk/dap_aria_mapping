@@ -18,7 +18,7 @@ import warnings
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 from IPython.display import display
-import boto3, pickle, json
+import boto3, pickle, json, subprocess
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -60,8 +60,6 @@ except:
     logger.info(
         "Failed to load embeddings. Running pipeline with default (test) parameters"
     )
-    import subprocess
-
     subprocess.run(
         f"python {PROJECT_DIR}/dap_aria_mapping/pipeline/embeddings/make_embeddings.py",
         shell=True,

@@ -1,4 +1,4 @@
-# %%
+
 import numpy as np
 import pandas as pd
 import argparse
@@ -15,7 +15,7 @@ from tqdm import tqdm
 from toolz import pipe
 from dap_aria_mapping import logger, PROJECT_DIR
 
-# %%
+
 from dap_aria_mapping.getters.taxonomies import get_cooccurrence_taxonomy
 from dap_aria_mapping.getters.openalex import get_openalex_works, get_openalex_entities
 from dap_aria_mapping.utils.entity_selection import get_sample, filter_entities
@@ -301,4 +301,4 @@ if __name__ == "__main__":
     fig = build_cluster_sunburst(
         cluster_entity_journal_df, entity_dict=MAIN_ENTITIES, save=save
     )
-# %%
+

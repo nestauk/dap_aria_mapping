@@ -6,9 +6,9 @@ The scripts in this folder generate semantic embeddings based on pre-trained lar
 
 ## Run it locally
 
-To run the encoder locally, run `make_embeddings.py` by executing the following command:
+To run the encoder locally, run `make_entity_embeddings.py` by executing the following command:
 
-`python dap_aria_mapping/pipeline/embeddings/make_embeddings.py --threshold=80 --num_articles=-1 --min_freq=10 --max_freq=1_000_000 --method=absolute --device=cuda --bucket=False`
+`python dap_aria_mapping/pipeline/embeddings/make_entity_embeddings.py --threshold=80 --num_articles=-1 --min_freq=10 --max_freq=1_000_000 --method=absolute --device=cuda --bucket=False`
 
 We filter entities that have a confidence score below 80 (`--threshold`) and those that appear less than or more than a given number of times in the corpus. `--method=absolute` sets these lower and upper bounds using an absolute figure, while alternative `--method=percentile` takes values `0 < --min_freq < max_freq < 100`, where the bounds are set from percentiles given the distribution of entity observations across the corpus.
 

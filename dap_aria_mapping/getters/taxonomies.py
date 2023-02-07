@@ -5,8 +5,8 @@ import pandas as pd
 from toolz import pipe
 
 
-def get_embeddings() -> pd.DataFrame:
-    """Downloads embeddings from S3 and returns them as a pandas dataframe
+def get_entity_embeddings() -> pd.DataFrame:
+    """Downloads entity embeddings from S3 and returns them as a pandas dataframe
 
     Returns:
         pd.DataFrame: Embeddings dataframe
@@ -23,7 +23,11 @@ def get_embeddings() -> pd.DataFrame:
 def get_cooccurrences(
     cluster_object: str = "meta_cluster", bucket_name: str = BUCKET_NAME
 ) -> pd.DataFrame:
-    """Downloads cooccurrences from S3 and returns them as a pandas dataframe
+    """Downloads cooccurrences from S3 and returns them as a pandas dataframe.
+    The possible objects are:
+        - meta_cluster
+        - imbalanced
+        - centroids
 
     Returns:
         pd.DataFrame: Cooccurrences dataframe

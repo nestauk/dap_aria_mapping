@@ -11,18 +11,18 @@ import umap.umap_ as umap
 from sklearn.cluster import KMeans, AgglomerativeClustering, DBSCAN
 from hdbscan import HDBSCAN
 from collections import defaultdict
-from dap_aria_mapping import PROJECT_DIR, BUCKET_NAME, logger, config
+from dap_aria_mapping import PROJECT_DIR, BUCKET_NAME, logger, taxonomy
 from dap_aria_mapping.utils.semantics import (
     make_dataframe,
     make_cooccurrences,
     run_clustering_generators,
     normalise_centroids,
 )
-from dap_aria_mapping.getters.taxonomies import get_embeddings
+from dap_aria_mapping.getters.taxonomies import get_entity_embeddings
 
 np.random.seed(42)
 cluster_configs, df_configs = [
-    config["SEMANTIC_TAXONOMY"][key] for key in ["CLUSTER_CONFIGS", "DF_CONFIGS"]
+    taxonomy["SEMANTIC_TAXONOMY"][key] for key in ["CLUSTER_CONFIGS", "DF_CONFIGS"]
 ]
 
 CLUSTER_CONFIGS = {
@@ -44,7 +44,7 @@ CLUSTER_CONFIGS = {
 if __name__ == "__main__":
 
     logger.info("Downloading embeddings from S3")
-    embeddings = get_embeddings()
+    embeddings = get_entity_embeddings()
 
     embeddings_2d = umap.UMAP(
         n_neighbors=5, min_dist=0.05, n_components=2

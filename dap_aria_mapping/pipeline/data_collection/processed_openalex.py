@@ -331,11 +331,13 @@ class OpenAlexProcessedWorksFlow(FlowSpec):
         """
         s3_resources = boto3.resource("s3")
         bucket = s3_resources.Bucket("aria-mapping")
+        # Get all the keys in the bucket
         all_keys = [
             object_summary.key
             for object_summary
             in bucket.objects.filter(Prefix="inputs/data_collection/processed_openalex/yearly_subsets/")
         ]
+        # Concatenate the parquet appropriate outputs
         for item in ["works", "authorships", "concepts"]:
             all_outputs = [
                 pd.read_parquet(f"s3://aria-mapping/{output}")
@@ -344,17 +346,31 @@ class OpenAlexProcessedWorksFlow(FlowSpec):
             all_dfs = pd.concat(all_outputs)
             s3_url = f"s3://aria-mapping/inputs/data_collection/processed_openalex/{item}.parquet"
             all_dfs.to_parquet(s3_url)
+        # Concatenate the json appropriate outputs
         for item in ["citations", "abstracts"]:
+            output_dict = {}
             all_outputs = [
                 json.loads(s3_resources.Object("aria-mapping", output).get()["Body"].read().decode("utf-8"))
                 for output in all_keys if item in output
             ]
-            all_lists = list(itertools.chain(all_outputs))
-            s3object = s3_resources.Object('aria-mapping',
-                f"s3://aria-mapping/inputs/data_collection/processed_openalex/{item}.parquet")
+            for output in all_outputs:
+                output_dict.update(output)
+            s3object = s3_resources.Object("aria-mapping",
+                f"inputs/data_collection/processed_openalex/{item}.json")
             s3object.put(
-                Body=(bytes(json.dumps(all_lists).encode("UTF-8")))
+                Body=(bytes(json.dumps(output_dict).encode("UTF-8")))
             )
+            if item == "abstracts":
+            # generate file in format {"id": id, "abstract": abstract} for annotation
+                abstracts_for_annotation = [
+                    {"id": key, "abstract": value}
+                    for key, value in output_dict.items()
+                ]
+                s3object = s3_resources.Object("aria-mapping",
+                    f"inputs/data_collection/processed_openalex/{item}_for_annotation.json")
+                s3object.put(
+                    Body=(bytes(json.dumps(abstracts_for_annotation).encode("UTF-8")))
+                )
 
 
 if __name__ == "__main__":

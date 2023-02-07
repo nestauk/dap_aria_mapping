@@ -1,9 +1,10 @@
+<<<<<<< HEAD
 nesta_ds_utils @ git+https://github.com/nestauk/nesta_ds_utils.git
 spacy==3.4.0
-pandas
+pandas==1.5.1
 metaflow==2.7.14
 toolz==0.12.0
-boto3>=1.23.0
+boto3==1.24.93
 pyarrow==10.0.0
 fsspec==2021.11.0
 metaflow==2.7.14
@@ -11,4 +12,9 @@ s3fs==0.4.2
 google-cloud-bigquery==3.4.0
 google-cloud-bigquery-storage==2.16.2
 db-dtypes
+networkx==2.8.8
 scipy==1.9.3
+matplotlib==3.6.2
+umap-learn
+hdbscan==0.8.29
+sentence_transformers==2.2.2

@@ -502,7 +502,7 @@ def build_named_taxonomy(
     journal_entities: Dict[str, Sequence[str]],
     entity_counts: Dict[str, int],
     entity_journal_counts: Dict[str, Dict[str, int]],
-    levels: int = 3,
+    levels: Union[int, Sequence[int]] = 3,
 ) -> pd.DataFrame:
     """Builds a named taxonomy from a taxonomy dataframe, a
         dictionary of journal to entities, and a dictionary of
@@ -532,15 +532,18 @@ def build_named_taxonomy(
             in journals.
         entity_journal_counts (Dict[str, Dict[str, int]]): A
             dictionary of entity to journal counts.+
-        levels (int, optional): The number of levels to name. Defaults
-            to 3.
+        levels (Union[int, Sequence[int]], optional): The number of levels
+            to name. Defaults to 3.
 
     Returns:
         pd.DataFrame: A named taxonomy dataframe.
     """
 
     named_taxonomy = deepcopy(df)
-    for level in list(range(1, 1 + levels)):
+    level_range = (
+        levels if isinstance(levels, list) else list(range(1, 1 + int(levels)))
+    )
+    for level in level_range:
         logger.info(f"Level {str(level)} - Getting level cluster counts")
         cluster_counts = get_level_entity_counts(journal_entities, df, level=level)
 

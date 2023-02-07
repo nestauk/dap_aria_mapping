@@ -82,8 +82,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     logger.info("Loading data - taxonomy")
-    if not isinstance(args.taxonomy, list):
-        args.taxonomy = [args.taxonomy]
     taxonomies = []
     if "cooccur" in args.taxonomy:
         cooccur_taxonomy = get_cooccurrence_taxonomy()

@@ -45,6 +45,44 @@ def dataframe_to_histogram_df(
     )
 
 
+def name_topics(
+    dataframe: pd.DataFrame,
+    journal_entities: Dict[str, Sequence[str]],
+    levels: Union[int, Sequence[int]],
+    args: argparse.Namespace,
+) -> pd.DataFrame:
+    """Create a named taxonomy from a list of most frequent entities.
+
+    Args:
+        dataframe (pd.DataFrame): A taxonomy dataframe, with at least one
+            Level column and one Entity column.
+        journal_entities (Dict[str, Sequence[str]]): A dictionary
+            of journal to entities.
+        levels (Union[int, Sequence[int]]): The number of levels
+            to name.
+        args (argparse.Namespace): The arguments passed to the script.
+
+    Returns:
+        pd.DataFrame: A taxonomy dataframe with named levels.
+    """
+    named_taxonomy = deepcopy(dataframe)
+    level_range = (
+        levels if isinstance(levels, list) else list(range(1, 1 + int(levels)))
+    )
+    for level in level_range:
+        clust_counts = get_level_entity_counts(journal_entities, dataframe, level)
+        cluster_names = get_cluster_entity_names(clust_counts, num_entities=args.n_top)
+
+        named_taxonomy["Level_{}_Entity_Names".format(str(level))] = named_taxonomy[
+            "Level_{}".format(str(level))
+        ].map(cluster_names)
+
+        named_taxonomy.replace(
+            "Journals: $|Entities: $", "Other", regex=True, inplace=True
+        )
+    return named_taxonomy
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
@@ -87,8 +125,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     logger.info("Loading data - taxonomy")
-    if not isinstance(args.taxonomy, list):
-        args.taxonomy = [args.taxonomy]
     taxonomies = []
     if "cooccur" in args.taxonomy:
         cooccur_taxonomy = get_cooccurrence_taxonomy()
@@ -121,20 +157,10 @@ if __name__ == "__main__":
         journal_entities, output="absolute"
     )
 
-    levels = args.level if isinstance(args.level, list) else list(args.level)
-
     logger.info("Building named taxonomies")
+    levels = [int(x) for x in args.level]
     named_taxonomies = [
-        [
-            name,
-            build_named_taxonomy(
-                taxonomy,
-                journal_entities,
-                entity_counts,
-                entity_journal_counts,
-                max(levels),
-            ),
-        ]
+        [name, name_topics(taxonomy, journal_entities, max(levels), args)]
         for name, taxonomy in taxonomies
     ]
 

@@ -42,7 +42,7 @@ The subfolder `sunbursts` includes code for plotting three different sunburst pl
 
 The subfolder `histograms` contains file `make_histogram_levels.py`, which produces histograms across taxonomies for a given level of the hierarchy. To run this code, execute the following command:
 
-`python dap_aria_mapping/pipeline/taxonomy_validation/histograms/make_histogram_levels.py --taxonomy cooccur centroids imbalanced --level 2 --n_top 20 --n_articles 1000`
+`python dap_aria_mapping/pipeline/taxonomy_validation/histograms/make_histogram_levels.py --taxonomy cooccur centroids imbalanced --level 1 2 3 --n_top 20 --n_articles 5000 --save`
 
 ![1674227931523](image/README/1674227931523.png)
 

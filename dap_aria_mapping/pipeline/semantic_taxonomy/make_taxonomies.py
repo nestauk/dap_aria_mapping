@@ -18,6 +18,7 @@ from dap_aria_mapping.utils.semantics import (
     run_clustering_generators,
     normalise_centroids,
 )
+from dap_aria_mapping.getters.taxonomies import get_embeddings
 
 np.random.seed(42)
 cluster_configs, df_configs = [
@@ -43,12 +44,7 @@ CLUSTER_CONFIGS = {
 if __name__ == "__main__":
 
     logger.info("Downloading embeddings from S3")
-    s3 = boto3.client("s3")
-    embeddings_object = s3.get_object(
-        Bucket=BUCKET_NAME, Key="outputs/embeddings/embeddings.pkl"
-    )
-    embeddings = pickle.loads(embeddings_object["Body"].read())
-    embeddings = pd.DataFrame.from_dict(embeddings).T
+    embeddings = get_embeddings()
 
     embeddings_2d = umap.UMAP(
         n_neighbors=5, min_dist=0.05, n_components=2
@@ -130,6 +126,8 @@ if __name__ == "__main__":
     ]
 
     outputs_df = []
+    s3 = boto3.client("s3")
+
     for dict_, df_config in zip(outputs_ls, df_configs):
         name_export = df_config["name"]
         s3.put_object(

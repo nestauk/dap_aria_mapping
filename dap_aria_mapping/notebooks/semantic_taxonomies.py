@@ -289,7 +289,7 @@ cluster_configs = [
 cluster_outputs_c, plot_dicts = run_clustering_generators(
     cluster_configs, embeddings, embeddings_2d=embeddings_2d
 )
-# [HACK] flip order, should be fixed in run_clustering_generators (should run highest level → lowest level)
+# flip order, should be fixed in run_clustering_generators (should run highest level → lowest level)
 for output_dict in cluster_outputs_c:
     for k, v in output_dict["labels"].items():
         output_dict["labels"][k] = v[::-1]
@@ -396,7 +396,7 @@ silhouette_df = pd.DataFrame(results, index=["silhouette"]).T.sort_values(
 display(silhouette_df)
 # %% [markdown]
 # ### Meta Clustering
-# Following the approach of Juan in the [AFS repository](https://github.com/nestauk/afs_neighbourhood_analysis/tree/1b1f1b1dabbebd07e5c85c72d7401107173bf863/afs_neighbourhood_analysis/analysis), we combine the clustering methods to produce a matrix of entity co-occurrences. The objective is to apply community detection algorithms on this.
+# Following the approach of Juan Mateos Garcia in the [AFS repository](https://github.com/nestauk/afs_neighbourhood_analysis/tree/1b1f1b1dabbebd07e5c85c72d7401107173bf863/afs_neighbourhood_analysis/analysis), we combine the clustering methods to produce a matrix of entity co-occurrences. The objective is to apply community detection algorithms on this.
 # %%
 list_dfs = [
     strict_kmeans_df,

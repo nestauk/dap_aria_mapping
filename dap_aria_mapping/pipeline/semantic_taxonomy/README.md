@@ -36,6 +36,8 @@ An alternative to selecting one of several clustering approaches is to employ al
 
 The file `make_taxonomies.py` generates taxonomies using all methods described above, and exports additional outputs over the single routine as it also produces matrices of co-occurrences for each method. In addition, it combines all clustering algorithms, and generates a co-occurrence matrix for the frequencies of co-occurrences among all approaches, which we label `meta_cluster`. These are stored in `s3://aria-mapping/outputs/semantic_taxonomy/cooccurrences/`.
 
+Note that due to the nature of the different clustering algorithms, some post-processing is necessary for some of them. This makes the use of `make_taxonomies.py` difficult, with many parameters needing adjustment to produce any variations of the data.
+
 ## Make a Graph object
 
 In order to use the `meta_cluster` in a community detection algorithm, we use the matrix of co-occurrences as an adjacency matrix to construct a graph object `nx.Graph`. To do so, execute:

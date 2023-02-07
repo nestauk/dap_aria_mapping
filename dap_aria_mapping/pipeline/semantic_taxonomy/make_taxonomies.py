@@ -147,21 +147,6 @@ if __name__ == "__main__":
 
         outputs_df.append(df)
 
-    logger.info("Running silhouette score export")
-    results = {
-        "_".join([k["name"], str(id)]): e
-        for v, k in list(zip(outputs_ls, df_configs))
-        for id, e in enumerate(v["silhouette"])
-    }
-
-    silhouette_df = pd.DataFrame(results, index=["silhouette"]).T.sort_values(
-        "silhouette", ascending=False
-    )
-
-    silhouette_df.to_parquet(
-        f"s3://aria-mapping/outputs/semantic_taxonomy/silhouette_scores.parquet"
-    )
-
     logger.info("Creating meta_cluster object")
     meta_cluster_df = pd.concat(outputs_df, axis=1)
 

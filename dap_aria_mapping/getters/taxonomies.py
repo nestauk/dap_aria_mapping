@@ -1,4 +1,5 @@
 from dap_aria_mapping import BUCKET_NAME
+from nesta_ds_utils.loading_saving.S3 import download_obj
 import boto3, yaml, pickle
 import pandas as pd
 from toolz import pipe

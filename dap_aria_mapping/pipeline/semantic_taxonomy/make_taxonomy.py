@@ -2,6 +2,7 @@ import warnings
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 import argparse, boto3, pickle, random
+from typing import Dict, Tuple, Any, Sequence
 import numpy as np
 import umap.umap_ as umap
 import matplotlib.pyplot as plt
@@ -27,6 +28,74 @@ METHODS = {
 
 OUTPUT_DIR = "outputs/semantic_taxonomy"
 
+
+def plot_centroids(
+    cluster_outputs: Dict[str, Any], embeddings_2d: np.ndarray
+) -> plt.Figure:
+    """Plot centroids for each level of clustering.
+
+    Args:
+        cluster_outputs (Tuple[Dict[str, Any], Sequence[Any]]): The output of the clustering
+            function.
+        embeddings_2d (np.ndarray): A two-dimensional embedding of the embeddings.
+
+    Returns:
+        plt.Figure: A figure with a subplot for each level of clustering.
+    """
+    num_levels = len(cluster_outputs[-1]["silhouette"])
+    fig, axis = plt.subplots(1, num_levels, figsize=(int(num_levels * 8), 8), dpi=300)
+    for idx, cdict in enumerate(cluster_outputs):
+        if not cdict.get("centroid_params", False):
+            axis[idx].scatter(
+                embeddings_2d[:, 0],
+                embeddings_2d[:, 1],
+                c=[e for e in cdict["labels"].values()],
+                s=1,
+            )
+        else:
+            axis[idx].scatter(
+                cdict["centroid_params"]["n_embeddings_2d"][:, 0],
+                cdict["centroid_params"]["n_embeddings_2d"][:, 1],
+                c=cdict["model"][idx].labels_,
+                s=cdict["centroid_params"]["sizes"],
+            )
+        axis[idx].set_title(f"Centroids - Level {idx}")
+    return fig
+
+
+def plot_imbalanced(
+    cluster_outputs: Dict[str, Any],
+    plot_dicts: Sequence[Any],
+    embeddings_2d: np.ndarray,
+) -> plt.Figure:
+    """Plot centroids for each level of clustering.
+
+    Args:
+        cluster_outputs (Tuple[Dict[str, Any], Sequence[Any]]): The output of the clustering
+            function.
+        embeddings_2d (np.ndarray): A two-dimensional embedding of the embeddings.
+
+    Returns:
+        plt.Figure: A figure with a subplot for each level of clustering.
+    """
+    num_levels = len(cluster_outputs[-1]["silhouette"])
+    fig, axis = plt.subplots(1, num_levels, figsize=(int(num_levels * 8), 8), dpi=300)
+
+    for idx, (cdict, cluster) in enumerate(plot_dicts):
+        labels = [int(e) for e in cdict.values()]
+        di = dict(zip(sorted(set(labels)), range(len(set(labels)))))
+        labels = [di[label] for label in labels]
+        _, lvl = divmod(idx, num_levels)
+        make_subplot_embeddings(
+            embeddings=embeddings_2d,
+            clabels=labels,
+            axis=axis.flat[idx],
+            label=f"{cluster[-1]} {str(lvl)}",
+            s=4,
+        )
+    return fig
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -51,7 +120,6 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-
     np.random.seed(args.seed)
     random.seed(args.seed)
 
@@ -64,10 +132,11 @@ if __name__ == "__main__":
     embeddings = get_embeddings()
     if not args.production:
         embeddings = embeddings.iloc[:1000, :1000]
+        args.cluster_method = args.cluster_method + "_test"
 
     logger.info("Running UMAP on embeddings")
     embeddings_2d = umap.UMAP(
-        n_neighbors=5, min_dist=0.05, n_components=2
+        n_neighbors=5, min_dist=0.05, n_components=2, random_state=args.seed
     ).fit_transform(embeddings)
 
     logger.info("Running clustering on embeddings")
@@ -76,9 +145,10 @@ if __name__ == "__main__":
         for key in ["CLUSTER_METHODS", "SINGLE_CLUSTER_CONFIGS"]
     ]
     cluster_configs = [[METHODS[method_taxonomy], config_taxonomy]]
+    imbalanced = True if "imbalanced" in args.cluster_method else False
 
     cluster_outputs, plot_dicts = run_clustering_generators(
-        cluster_configs, embeddings, embeddings_2d=embeddings_2d
+        cluster_configs, embeddings, embeddings_2d=embeddings_2d, imbalanced=imbalanced
     )
 
     if args.production:
@@ -93,60 +163,18 @@ if __name__ == "__main__":
     if args.plot:
         if "centroids" in args.cluster_method:
             logger.info("Creating plot of centroids clustering results")
-            num_levels = len(cluster_outputs[-1]["silhouette"])
-            fig, axis = plt.subplots(
-                1, num_levels, figsize=(int(num_levels * 8), 8), dpi=300
-            )
-            for idx, cdict in enumerate(cluster_outputs):
-                if not cdict.get("centroid_params", False):
-                    axis[idx].scatter(
-                        embeddings_2d[:, 0],
-                        embeddings_2d[:, 1],
-                        c=[e for e in cdict["labels"].values()],
-                        s=1,
-                    )
-                else:
-                    axis[idx].scatter(
-                        cdict["centroid_params"]["n_embeddings_2d"][:, 0],
-                        cdict["centroid_params"]["n_embeddings_2d"][:, 1],
-                        c=cdict["model"][idx].labels_,
-                        s=cdict["centroid_params"]["sizes"],
-                    )
+            fig = plot_centroids(cluster_outputs, embeddings_2d)
         elif "imbalanced" in args.cluster_method:
             logger.info("Creating plot of imbalanced clustering results")
-            num_levels = len(cluster_outputs[-1]["silhouette"])
-            fig, axis = plt.subplots(
-                1, num_levels, figsize=(int(num_levels * 8), 8), dpi=300
-            )
+            fig = plot_imbalanced(cluster_outputs, plot_dicts, embeddings_2d)
 
-            for idx, (cdict, cluster) in enumerate(plot_dicts):
-                labels = [int(e) for e in cdict.values()]
-                di = dict(zip(sorted(set(labels)), range(len(set(labels)))))
-                labels = [di[label] for label in labels]
-                _, lvl = divmod(idx, num_levels)
-                make_subplot_embeddings(
-                    embeddings=embeddings_2d,
-                    clabels=labels,
-                    axis=axis.flat[idx],
-                    label=f"{cluster[-1]} {str(lvl)}",
-                    s=4,
-                )
-        if args.production:
-            fig.savefig(
-                PROJECT_DIR
-                / "outputs"
-                / "figures"
-                / "semantic_taxonomy"
-                / f"semantic_{args.cluster_method}.png"
-            )
-        else:
-            fig.savefig(
-                PROJECT_DIR
-                / "outputs"
-                / "figures"
-                / "semantic_taxonomy"
-                / f"semantic_{args.cluster_method}_test.png"
-            )
+        fig.savefig(
+            PROJECT_DIR
+            / "outputs"
+            / "figures"
+            / "semantic_taxonomy"
+            / f"semantic_{args.cluster_method}.png"
+        )
 
     if "centroids" in args.cluster_method:
         logger.info("Reversing order of centroid labels")

@@ -357,35 +357,34 @@ class ClusteringRoutine(object):
                     [e for e in self.embeddings.index if self.cdict[e] == cluster_group]
                 )
             ]
-            if nested_embeddings.shape[0] < 10:  # Small stump, discard
+            if nested_embeddings.shape[0] < 10:  # Small stump, pass
                 # Fit and update: Pass through
                 cluster = None
                 for entity in nested_embeddings.index:
                     self.cdict[entity].append("")
-            elif all(
-                [  # Imbalanced case
+            elif all(  # Imbalanced case
+                [
                     self.kwargs.get("imbalanced", False),
                     param_config.get("n_clusters", False),
                 ]
             ):
+                # At least create two clusters, more if it's a large component
                 param_config_imb = deepcopy(param_config)
-                param_config_imb["n_clusters"] = int(
-                    round(
-                        nested_embeddings.shape[0]
-                        / self.embeddings.shape[0]
-                        * param_config["n_clusters"]
-                    )
+                param_config_imb["n_clusters"] = max(
+                    int(
+                        round(
+                            nested_embeddings.shape[0]
+                            / self.embeddings.shape[0]
+                            * param_config["n_clusters"]
+                        )
+                    ),
+                    2,
                 )
-                if param_config_imb["n_clusters"] < 2:  # nclusters < 2
-                    # Fit and update: Pass through
-                    cluster = None
-                    for entity in nested_embeddings.index:
-                        self.cdict[entity].append("")
-                elif param_config_imb["n_clusters"] >= 2:  # nclusters >= 2
-                    cluster = self.method_class(**param_config_imb)
-                    # Fit and update: Break topic
-                    cluster.fit(nested_embeddings)
-                    update_dictionary(self.cdict, nested_embeddings, cluster)
+
+                # Fit and update: Break topic
+                cluster = self.method_class(**param_config_imb)
+                cluster.fit(nested_embeddings)
+                update_dictionary(self.cdict, nested_embeddings, cluster)
 
             elif all(  # Regular case
                 [  # nobservations < nclusters
@@ -1044,7 +1043,6 @@ def normalise_topic_assignment(df: pd.DataFrame, level: int) -> pd.Series:
             }
 
             if len(level_dict.keys()) == 1:
-                # breakpoint()
                 level_dict[list(level_dict.keys())[-1]] = ""
 
             dc.update(level_dict)

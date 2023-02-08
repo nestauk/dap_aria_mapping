@@ -196,7 +196,7 @@ if __name__ == "__main__":
             Key=f"{OUTPUT_DIR}/raw_outputs/semantic_{args.cluster_method}.pkl",
         )
     
-    if all([args.production, args.test is False, args.sample_frac is not None]):
+    elif all([args.production, args.test is False, args.sample_frac is not None]):
         logger.info("Saving clustering results to S3")
         s3 = boto3.client("s3")
         s3.put_object(

@@ -155,8 +155,7 @@ if __name__ == "__main__":
         args.cluster_method = args.cluster_method + "_test"
     
     if args.sample_frac is not None:
-        sample_size = int(args.sample_frac * len(embeddings))
-        embeddings = sample(embeddings, k=sample_size)
+        embeddings = embeddings.sample(frac = args.sample_frac)
 
     logger.info("Running UMAP on embeddings")
     embeddings_2d = umap.UMAP(
@@ -237,7 +236,7 @@ if __name__ == "__main__":
             f"s3://aria-mapping/{OUTPUT_DIR}/assignments/semantic_{args.cluster_method}_clusters.parquet"
         )
     
-    if all([args.production, args.sample_frac is not None]):
+    elif all([args.production, args.sample_frac is not None]):
         logger.info("Saving dataframe of clustering results to S3")
         dataframe.to_parquet(
             f"s3://aria-mapping/{OUTPUT_DIR}/assignments/semantic_{args.cluster_method}_{str(int(args.sample_frac*100))}_clusters.parquet"

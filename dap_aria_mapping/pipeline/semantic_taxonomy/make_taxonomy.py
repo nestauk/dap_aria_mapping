@@ -195,6 +195,15 @@ if __name__ == "__main__":
             Bucket=BUCKET_NAME,
             Key=f"{OUTPUT_DIR}/raw_outputs/semantic_{args.cluster_method}.pkl",
         )
+    
+    if all([args.production, args.test is False, args.sample_frac is not None]):
+        logger.info("Saving clustering results to S3")
+        s3 = boto3.client("s3")
+        s3.put_object(
+            Body=pickle.dumps(cluster_outputs),
+            Bucket=BUCKET_NAME,
+            Key=f"{OUTPUT_DIR}/raw_outputs/semantic_{args.cluster_method}_{args.sample_frac*100}.pkl",
+        )
 
     if args.plot:
         plot_folder = PROJECT_DIR / "outputs" / "figures" / "semantic_taxonomy"

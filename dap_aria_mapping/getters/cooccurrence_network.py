@@ -12,7 +12,7 @@ def get_test_cooccurrence_network() -> nx.Graph():
     Returns:
         nx.Graph: networkx graph of term cooccurrences
     """
-    return download_obj(BUCKET_NAME, "outputs/test_cooccurrence_network.pkl")
+    return download_obj(BUCKET_NAME, "outputs/cooccurrence_network/test.pkl")
 
 
 def get_cooccurrence_network(local: bool = False) -> nx.Graph():
@@ -29,4 +29,4 @@ def get_cooccurrence_network(local: bool = False) -> nx.Graph():
             network = pickle.load(f)
         return network
     else:
-        return download_obj(BUCKET_NAME, "outputs/cooccurrence_network.pkl")
+        return download_obj(BUCKET_NAME, "outputs/cooccurrence_network/network.pkl")

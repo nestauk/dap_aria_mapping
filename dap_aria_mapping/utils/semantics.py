@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import re, sklearn
 import matplotlib.axes as mpl_axes
+from sklearn.mixture import GaussianMixture
 from sklearn.metrics import silhouette_score
 from sentence_transformers import SentenceTransformer
 from typing import (
@@ -223,8 +224,8 @@ def update_dictionary(
         for key in embeddings.index:
             cdict[key].append(cluster[key])
     else:
-        for key, date in zip(embeddings.index, cluster.labels_):
-            cdict[key].append(date)
+        for key, val in zip(embeddings.index, cluster.labels_):
+            cdict[key].append(val)
 
 
 def get_silhouette_score(
@@ -320,12 +321,15 @@ class ClusteringRoutine(object):
                 the dictionary of cluster assignments, the cluster object, the silhouette
                 score, and the centroid parameters (if applies).
         """
-        cluster = self.method_class(**param_config)
-        cluster.fit(self.embeddings)
         self.cdict, self.mlist = defaultdict(list), []
-        update_dictionary(self.cdict, self.embeddings, cluster), self.mlist.append(
-            cluster
-        )
+        if param_config.get("gmm"):
+            self.make_gmm_step(param_config)
+        else:
+            cluster = self.method_class(**param_config)
+            cluster.fit(self.embeddings)
+            update_dictionary(self.cdict, self.embeddings, cluster), self.mlist.append(
+                cluster
+            )
         yield {
             "labels": deepcopy(self.cdict),
             "model": deepcopy(self.mlist),
@@ -559,28 +563,96 @@ class ClusteringRoutine(object):
                     }
                 )
 
-    def run_step(self, params_config: Dict[str, Any]) -> Generator:
+    def make_gmm_step(self, param_config: Dict[str, Any]) -> None:
+        """Creates a Gaussian Mixture Model step of a centroid clustering 
+            routine. Updates several dictionaries of cluster assignments,
+            centroid embeddings, and a mapping of centroid to individual tags.
+
+        Args:
+            param_config (Dict[str, Any]): A dictionary of parameters for the GMM.
+        """        
+        threshold = param_config.get("threshold", 0.1)
+        n_components = param_config.get("n_components", 5_000)
+        cluster = GaussianMixture(
+            n_components=n_components, covariance_type="full"
+        )
+        _ = cluster.fit_predict(self.embeddings)
+        preds = {
+            entity: preds > threshold
+            for entity, preds in zip(
+                self.embeddings.index, 
+                cluster.predict_proba(self.embeddings)
+            )
+        }
+        df = pd.DataFrame(
+            [
+                tuple([entity, i]) 
+                for entity, preds in preds.items() 
+                for i, pred in enumerate(preds) 
+                if pred
+            ],
+            columns=["Entity", "Level_1"]
+        )
+
+        overlapping_embeddings = pd.merge(
+            df[["Entity", "Level_1"]], 
+            self.embeddings, 
+            left_on="Entity", 
+            right_index=True,
+            how="left"
+        )
+
+        overlapping_embeddings["Entity"] += (
+            overlapping_embeddings
+            .groupby(["Entity"])
+            .cumcount()
+            .add(1)
+            .astype(str)
+            .radd("_")
+            .mask(
+                overlapping_embeddings
+                .groupby(["Entity"])
+                ["Entity"]
+                .transform("count")==1, ""
+            )
+            .str
+            .replace("_1", "")
+        )
+
+        overlapping_embeddings.set_index("Entity", inplace=True)
+        labels_ = overlapping_embeddings["Level_1"].to_dict()
+        overlapping_embeddings.drop("Level_1", axis=1, inplace=True)
+
+        self.embeddings = overlapping_embeddings
+
+        for key in self.embeddings.index:
+            self.cdict[key].append(labels_[key])
+
+        self.mlist.append(
+            cluster
+        )
+
+    def run_step(self, param_config: Dict[str, Any]) -> Generator:
         """Runs a single step of the clustering routine. This is a generator function
         that yields a dictionary of cluster assignments, a list of clustering models, and
         the silhouette score of the clustering routine.
 
         Args:
-            params_config (Dict[str, Any]): A dictionary of parameters for the clustering
+            param_config (Dict[str, Any]): A dictionary of parameters for the clustering
                 routine.
 
         Yields:
             Generator: A generator that yields a dictionary of cluster assignments, a list
                 of clustering models, and the silhouette score of the clustering routine.
         """
-        centroids = params_config.pop("centroids", False)
+        centroids = param_config.pop("centroids", False)
         if self.nested is False:
-            yield from self.make_init_iteration(params_config)
-            # self.nested = True
+            yield from self.make_init_iteration(param_config)
         else:
             if centroids:
-                yield from self.make_centroid_iteration(params_config)
+                yield from self.make_centroid_iteration(param_config)
             else:
-                yield from self.make_iteration(params_config)
+                yield from self.make_iteration(param_config)
 
     def run_single_routine(
         self,
@@ -604,6 +676,7 @@ class ClusteringRoutine(object):
         self.nested = False
         self.kwargs = kwargs
         yield from self.run_step(config)
+
 
     def run_from_configs(
         self, config: Tuple[Type[sklearn.base.ClusterMixin], Dict[str, Any]], **kwargs
@@ -636,6 +709,7 @@ class ClusteringRoutine(object):
             for param_config in child_config:
                 yield from self.run_step(param_config)
             self.nested = True
+
 
     def __iter__(self):
         return self

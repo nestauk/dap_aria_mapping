@@ -105,6 +105,11 @@ if __name__ == "__main__":
         help="Which cluster config to use",
     )
     parser.add_argument(
+        "--gmm",
+        action="store_true",
+        help="Whether to use GMM for centroids config",
+    )
+    parser.add_argument(
         "--plot",
         action="store_true",
         help="Whether to plot the results (only centroids config)",
@@ -148,6 +153,10 @@ if __name__ == "__main__":
         taxonomy["SEMANTIC_TAXONOMY"][key][args.cluster_method]
         for key in ["CLUSTER_METHODS", "SINGLE_CLUSTER_CONFIGS"]
     ]
+
+    if all([args.gmm, "centroids" in args.cluster_method]):
+        config_taxonomy[0].update({"gmm": True, "n_components": 100})
+
     cluster_configs = [[METHODS[method_taxonomy], config_taxonomy]]
     imbalanced = True if "imbalanced" in args.cluster_method else False
 

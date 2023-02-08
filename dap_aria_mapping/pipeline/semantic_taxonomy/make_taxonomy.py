@@ -147,8 +147,7 @@ if __name__ == "__main__":
         args.cluster_method = args.cluster_method + "_test"
     
     if args.sample_frac is not None:
-        sample_size = int(args.sample_frac * len(embeddings))
-        embeddings = sample(embeddings, k=sample_size)
+        embeddings = embeddings.sample(frac = args.sample_frac)
 
     logger.info("Running UMAP on embeddings")
     embeddings_2d = umap.UMAP(
@@ -176,7 +175,7 @@ if __name__ == "__main__":
             Key=f"{OUTPUT_DIR}/raw_outputs/semantic_{args.cluster_method}.pkl",
         )
     
-    if all([args.production, args.test is False, args.sample_frac is not None]):
+    elif all([args.production, args.test is False, args.sample_frac is not None]):
         logger.info("Saving clustering results to S3")
         s3 = boto3.client("s3")
         s3.put_object(
@@ -185,7 +184,7 @@ if __name__ == "__main__":
             Key=f"{OUTPUT_DIR}/raw_outputs/semantic_{args.cluster_method}_{str(int(args.sample_frac*100))}.pkl",
         )
 
-    if all(args.plot, args.sample_frac is None):
+    if all([args.plot, args.sample_frac is None]):
         if "centroids" in args.cluster_method:
             logger.info("Creating plot of centroids clustering results")
             fig = plot_centroids(cluster_outputs, embeddings_2d)
@@ -228,7 +227,7 @@ if __name__ == "__main__":
             f"s3://aria-mapping/{OUTPUT_DIR}/assignments/semantic_{args.cluster_method}_clusters.parquet"
         )
     
-    if all([args.production, args.sample_frac is not None]):
+    elif all([args.production, args.sample_frac is not None]):
         logger.info("Saving dataframe of clustering results to S3")
         dataframe.to_parquet(
             f"s3://aria-mapping/{OUTPUT_DIR}/assignments/semantic_{args.cluster_method}_{str(int(args.sample_frac*100))}_clusters.parquet"

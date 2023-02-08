@@ -18,6 +18,7 @@ from dap_aria_mapping.utils.semantics import (
     make_subplot_embeddings,
 )
 from dap_aria_mapping.getters.taxonomies import get_entity_embeddings
+from random import sample
 
 METHODS = {
     "KMeans": KMeans,
@@ -123,6 +124,13 @@ if __name__ == "__main__":
         "--seed", type=int, default=42, help="Random seed for reproducibility"
     )
 
+    parser.add_argument(
+        "--sample_frac",
+        type = float,
+        action="store",
+        help="percent of total entities to sample for sensitivity analysis"
+    )
+
     args = parser.parse_args()
     np.random.seed(args.seed)
     random.seed(args.seed)
@@ -137,6 +145,10 @@ if __name__ == "__main__":
     if args.test:
         embeddings = embeddings.iloc[:1000, :1000]
         args.cluster_method = args.cluster_method + "_test"
+    
+    if args.sample_frac is not None:
+        sample_size = int(args.sample_frac * len(embeddings))
+        embeddings = sample(embeddings, k=sample_size)
 
     logger.info("Running UMAP on embeddings")
     embeddings_2d = umap.UMAP(
@@ -163,8 +175,17 @@ if __name__ == "__main__":
             Bucket=BUCKET_NAME,
             Key=f"{OUTPUT_DIR}/raw_outputs/semantic_{args.cluster_method}.pkl",
         )
+    
+    if all([args.production, args.test is False, args.sample_frac is not None]):
+        logger.info("Saving clustering results to S3")
+        s3 = boto3.client("s3")
+        s3.put_object(
+            Body=pickle.dumps(cluster_outputs),
+            Bucket=BUCKET_NAME,
+            Key=f"{OUTPUT_DIR}/raw_outputs/semantic_{args.cluster_method}_{args.sample_frac*100}.pkl",
+        )
 
-    if args.plot:
+    if all(args.plot, args.sample_frac is None):
         if "centroids" in args.cluster_method:
             logger.info("Creating plot of centroids clustering results")
             fig = plot_centroids(cluster_outputs, embeddings_2d)
@@ -201,8 +222,14 @@ if __name__ == "__main__":
     if "centroids" in args.cluster_method:
         dataframe = normalise_centroids(dataframe)
 
-    if args.production:
+    if all([args.production, args.sample_frac is None]):
         logger.info("Saving dataframe of clustering results to S3")
         dataframe.to_parquet(
             f"s3://aria-mapping/{OUTPUT_DIR}/assignments/semantic_{args.cluster_method}_clusters.parquet"
+        )
+    
+    if all([args.production, args.sample_frac]):
+        logger.info("Saving dataframe of clustering results to S3")
+        dataframe.to_parquet(
+            f"s3://aria-mapping/{OUTPUT_DIR}/assignments/semantic_{args.cluster_method}_{args.sample_frac*100}_clusters.parquet"
         )

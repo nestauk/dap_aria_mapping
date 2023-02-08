@@ -74,21 +74,11 @@ def get_cooccurrence_taxonomy(sample: int = None) -> pd.DataFrame:
         Index: entity, Columns: levels of taxonomy, values are expressed as <INT>_<INT> where there is
         an integer to represent
     """
-    if sample:
-        return download_obj(
-            BUCKET_NAME,
-            "outputs/simulations/sample/formatted_outputs/cooccurrence_network_sample_{}.parquet".format(
-                str(sample)
-            ),
-            download_as="dataframe",
-        )
-
-    else:
-        return download_obj(
-            BUCKET_NAME,
-            "outputs/community_detection_taxonomy/tax.parquet",
-            download_as="dataframe",
-        )
+    return download_obj(
+        BUCKET_NAME,
+        "outputs/community_detection_taxonomy/tax.parquet",
+        download_as="dataframe",
+    )
 
 
 def get_test_cooccurrence_taxonomy() -> pd.DataFrame:

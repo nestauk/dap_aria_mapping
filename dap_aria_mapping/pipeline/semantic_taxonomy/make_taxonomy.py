@@ -188,7 +188,7 @@ if __name__ == "__main__":
         imbalanced=imbalanced,
     )
 
-    if all([args.production, args.test is False]):
+    if all([args.production, args.test is False, args.sample_frac is None]):
         logger.info("Saving clustering results to S3")
         s3 = boto3.client("s3")
         s3.put_object(
@@ -240,5 +240,5 @@ if __name__ == "__main__":
     if all([args.production, args.sample_frac]):
         logger.info("Saving dataframe of clustering results to S3")
         dataframe.to_parquet(
-            f"s3://aria-mapping/{OUTPUT_DIR}/assignments/semantic_{args.cluster_method}_{args.sample_frac*100}_clusters.parquet"
+            f"s3://aria-mapping/{OUTPUT_DIR}/assignments/semantic_{args.cluster_method}_{str(int(args.sample_frac*100))}_clusters.parquet"
         )

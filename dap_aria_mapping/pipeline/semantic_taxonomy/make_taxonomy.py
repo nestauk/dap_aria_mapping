@@ -202,7 +202,7 @@ if __name__ == "__main__":
         s3.put_object(
             Body=pickle.dumps(cluster_outputs),
             Bucket=BUCKET_NAME,
-            Key=f"{OUTPUT_DIR}/raw_outputs/semantic_{args.cluster_method}_{args.sample_frac*100}.pkl",
+            Key=f"{OUTPUT_DIR}/raw_outputs/semantic_{args.cluster_method}_{str(int(args.sample_frac*100))}.pkl",
         )
 
     if args.plot:

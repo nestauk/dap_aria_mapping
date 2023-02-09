@@ -17,3 +17,5 @@ matplotlib==3.6.2
 umap-learn
 hdbscan==0.8.29
 sentence_transformers==2.2.2
+streamlit==1.17.0
+protobuf==3.20.3

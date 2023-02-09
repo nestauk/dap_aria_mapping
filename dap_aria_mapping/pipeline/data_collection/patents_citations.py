@@ -261,7 +261,7 @@ class PatentsCitationsFlow(FlowSpec):
 
         if self.production:
             upload_obj(
-                self.backward_citation_dict,
+                self.backward_citations_dict,
                 BUCKET_NAME,
                 "inputs/data_collection/patents/patents_backward_citations.json",
             )

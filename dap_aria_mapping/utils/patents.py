@@ -1,7 +1,37 @@
 """
-Utils related to patents data
+Utils related to collecting patents data
 """
 from typing import List
+
+# from google patents data dictionary
+CITATION_MAPPER = {
+    "A": "technological background",
+    "D": "document cited in application",
+    "E": "earlier patent document",
+    "1": "document cited for other reasons",
+    "O": "Non-written disclosure",
+    "P": "Intermediate document",
+    "T": "theory or principle",
+    "X": "relevant if taken alone",
+    "Y": "relevant if combined with other documents",
+    "CH2": "Chapter 2",
+    "SUP": "Supplementary search report",
+    "ISR": "International search report",
+    "SEA": "Search report",
+    "APP": "Applicant",
+    "EXA": "Examiner",
+    "OPP": "Opposition",
+    "115": "article 115",
+    "PRS": "Pre-grant pre-search",
+    "APL": "Appealed",
+    "FOP": "Filed opposition",
+}
+
+# from google docs about size of query
+MAX_SIZE = 1024000
+
+# thresholding focal ids based on publication year dates
+EARLY_YEAR, LATE_YEAR = 2007, 2017
 
 
 def chunk(lst: List[str], n: int) -> List[List[str]]:

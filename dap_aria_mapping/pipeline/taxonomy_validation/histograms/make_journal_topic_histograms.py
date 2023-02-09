@@ -38,7 +38,7 @@ def dictionary_to_df(dictionary: Dict, level: int) -> pd.DataFrame:
         outdf, columns=["Level_{}".format(str(level)), "Entity", "Journal", "Count"]
     )
 
-
+s
 def output_charts(
     df: pd.DataFrame,
     taxonomy_class: str,

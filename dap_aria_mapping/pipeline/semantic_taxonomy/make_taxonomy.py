@@ -148,8 +148,8 @@ if __name__ == "__main__":
     
     if args.sample_frac is not None:
         embeddings = embeddings.sample(frac = args.sample_frac)
-
-    logger.info("Running UMAP on embeddings")
+    
+    logger.info("Running UMAP on {} embeddings".format(len(embeddings)))
     embeddings_2d = umap.UMAP(
         n_neighbors=5, min_dist=0.05, n_components=2, random_state=args.seed
     ).fit_transform(embeddings)

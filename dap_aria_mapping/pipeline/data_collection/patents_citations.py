@@ -111,16 +111,6 @@ def chunk_bigquery_q(
 class PatentsCitationsFlow(FlowSpec):
     production = Parameter("production", help="Run in production?", default=False)
     # threshold for minimum # of citations to be considered
-    min_citations = Parameter(
-        "min_citations",
-        help=(
-            "The minimum number of citations a patent must have in order for "
-            "it to be included in the search. Default is 3."
-        ),
-        default=3,
-        type=int,
-    )
-
     @step
     def start(self):
         """

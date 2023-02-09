@@ -34,6 +34,20 @@ Output data from these pipelines is stored on S3 in the `inputs/data_collection`
 
 #### Foward citations for measuring disruption
 
+#### OpenAlex
+
+To enable the calculation of the consolidation-disruption (CD) index for OpenAlex works, a separate pipeline must be run. This collects the work IDs and citations of all works that cite the 'focus works' collected by `dap_aria_mapping/pipeline/data_collection/openalex.py`. It is a separate flow as it generates a large number of API calls.
+
+To run this collection, execute the following:
+
+`python dap_aria_mapping/pipeline/data_collection/openalex_forward_citations.py --datastore=s3 run --production=True`
+
+Output data from these pipelines is stored on S3 at `inputs/data_collection/openalex/openalex_forward_citations(_focus_papers_only)_<year>.json`.
+
+⚠️ The default parameters collect citations for works between 2007 and 2022 that have a minimum of 3 citations. This will generate a large volume of API calls and may result in rate limiting. You may want to use the `min_year` and `max_year` parameters to run the pipeline for individual years. The `min_citations` parameter can also be varied to exclude the collection of works that cite focus works with fewer than a particular number of citations.
+
+☁️ This pipeline is set up to run in batch mode. This means that it will run on AWS Batch, and requires some configuration. Please [see below](#getting-up-and-running-with-batch-on-metaflow) for further details if you want to run these flows.
+
 #### Patents
 
 We also collect citation information for patents to calculate the consolidation-distruption (CD) index.
@@ -55,20 +69,6 @@ This flow outputs three files stored on S3 at `inputs/data_collection/patents/`:
 3. **`patents_forward_citations_metadata.parquet`**: A parquet file that stores additional forward citation metadata including citation category, citation type, free-text citation in non-patent literature and the citation filing date.
 
 Please refer to the [patents data dictionary](https://docs.google.com/spreadsheets/d/1LtfjECVI5pqqwE7oMw1JbwFcUWhUoHgJH_mJ0flw9Fw/edit#gid=1878548964) for additional information on the collection information.
-
-#### OpenAlex
-
-To enable the calculation of the consolidation-disruption (CD) index for OpenAlex works, a separate pipeline must be run. This collects the work IDs and citations of all works that cite the 'focus works' collected by `dap_aria_mapping/pipeline/data_collection/openalex.py`. It is a separate flow as it generates a large number of API calls.
-
-To run this collection, execute the following:
-
-`python dap_aria_mapping/pipeline/data_collection/openalex_forward_citations.py --datastore=s3 run --production=True`
-
-Output data from these pipelines is stored on S3 at `inputs/data_collection/openalex/openalex_forward_citations(_focus_papers_only)_<year>.json`.
-
-⚠️ The default parameters collect citations for works between 2007 and 2022 that have a minimum of 3 citations. This will generate a large volume of API calls and may result in rate limiting. You may want to use the `min_year` and `max_year` parameters to run the pipeline for individual years. The `min_citations` parameter can also be varied to exclude the collection of works that cite focus works with fewer than a particular number of citations.
-
-☁️ This pipeline is set up to run in batch mode. This means that it will run on AWS Batch, and requires some configuration. Please [see below](#getting-up-and-running-with-batch-on-metaflow) for further details if you want to run these flows.
 
 ## Getting Up and Running With Batch on Metaflow
 

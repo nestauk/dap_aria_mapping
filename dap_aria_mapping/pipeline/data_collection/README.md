@@ -50,7 +50,7 @@ Output data from these pipelines is stored on S3 at `inputs/data_collection/open
 
 #### Patents
 
-We also collect citation information for patents to calculate the consolidation-distruption (CD) index.
+We also collect citation information for patents in 2007 and 2017 to calculate the consolidation-distruption (CD) index.
 
 We define 'focus patents' as the patent ids collected by `dap_aria_mapping/pipeline/data_collection/openalex.py.`.
 

@@ -158,11 +158,13 @@ if __name__ == "__main__":
     ]
 
     if all([args.gmm, "centroids" in args.cluster_method]):
+        args.cluster_method = args.cluster_method + "_gmm"
         if args.test:
             config_taxonomy[0].update({"gmm": True, "n_components": 100})
         else:
             config_taxonomy[0].update({"gmm": True, "n_components": 10_000})
         if args.pca:
+            args.cluster_method = args.cluster_method + "_pca"
             config_taxonomy[0].update({"pca": True})
 
     cluster_configs = [[METHODS[method_taxonomy], config_taxonomy]]

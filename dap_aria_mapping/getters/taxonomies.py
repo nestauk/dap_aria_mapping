@@ -5,15 +5,23 @@ import pandas as pd
 from toolz import pipe
 
 
-def get_entity_embeddings() -> pd.DataFrame:
+def get_entity_embeddings(discarded: bool = False) -> pd.DataFrame:
     """Downloads entity embeddings from S3 and returns them as a pandas dataframe
+
+    Args:
+        discarded (bool, optional): Whether to include discarded entities. Defaults to False.
 
     Returns:
         pd.DataFrame: Embeddings dataframe
     """
+    if not discarded:
+        obj_pickle = "embeddings"
+    else:
+        obj_pickle = "embeddings_discarded"
+
     s3 = boto3.client("s3")
     embeddings_object = s3.get_object(
-        Bucket=BUCKET_NAME, Key="outputs/embeddings/embeddings.pkl"
+        Bucket=BUCKET_NAME, Key=f"outputs/embeddings/{obj_pickle}.pkl"
     )
     embeddings = pickle.loads(embeddings_object["Body"].read())
     embeddings = pd.DataFrame.from_dict(embeddings).T

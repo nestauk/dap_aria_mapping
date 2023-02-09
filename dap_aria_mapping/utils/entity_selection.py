@@ -16,6 +16,7 @@ def get_sample(
     entities: Dict[str, Sequence[Tuple[str, int]]],
     score_threshold: int = 80,
     num_articles: int = -1,
+    discarded: bool = False,
 ) -> Dict[str, Sequence[str]]:
     """Creates a sample of entities from the entities dictionary,
     where each article contains a list of tuples of the form (entity, score).
@@ -29,6 +30,9 @@ def get_sample(
             If not provided, defaults to 80.
         num_articles (int, optional): The number of articles to sample. If -1,
             all articles are sampled. If not provided, defaults to -1.
+        discarded (bool, optional): Whether to sample discarded entities. If not
+            provided, defaults to False.
+
     Returns:
         Dict[str, Sequence[str]]: A dictionary of entities, where each key is
             an article and each value is a list of entities.
@@ -40,10 +44,16 @@ def get_sample(
         0, 1, len(entities.values())
     )
     sample = {k: v for i, (k, v) in enumerate(entities.items()) if draws[i]}
-    return {
-        k: [e["entity"] for e in v if e["confidence"] >= score_threshold]
-        for k, v in sample.items()
-    }
+    if not discarded:
+        return {
+            k: [e["entity"] for e in v if e["confidence"] >= score_threshold]
+            for k, v in sample.items()
+        }
+    else:
+        return {
+            k: [e["entity"] for e in v if e["confidence"] < score_threshold]
+            for k, v in sample.items()
+        }
 
 
 def filter_entities(

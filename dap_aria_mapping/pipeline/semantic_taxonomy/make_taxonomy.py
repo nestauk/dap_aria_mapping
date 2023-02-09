@@ -29,9 +29,7 @@ METHODS = {
 OUTPUT_DIR = "outputs/semantic_taxonomy"
 
 
-def plot_centroids(
-    cluster_outputs: Dict[str, Any], embeddings_2d: np.ndarray
-) -> plt.Figure:
+def plot_centroids(cluster_outputs: Dict[str, Any]) -> plt.Figure:
     """Plot centroids for each level of clustering.
 
     Args:
@@ -45,17 +43,17 @@ def plot_centroids(
     num_levels = len(cluster_outputs[-1]["silhouette"])
     fig, axis = plt.subplots(1, num_levels, figsize=(int(num_levels * 8), 8), dpi=300)
     for idx, cdict in enumerate(cluster_outputs):
-        if not cdict.get("centroid_params", False):
+        if idx == 0:
             axis[idx].scatter(
-                embeddings_2d[:, 0],
-                embeddings_2d[:, 1],
-                c=[e for e in cdict["labels"].values()],
+                cdict["centroid_params"]["out_embeddings_2d"][:, 0],
+                cdict["centroid_params"]["out_embeddings_2d"][:, 1],
+                c=[e[0] for e in cdict["labels"].values()],
                 s=1,
             )
         else:
             axis[idx].scatter(
-                cdict["centroid_params"]["n_embeddings_2d"][:, 0],
-                cdict["centroid_params"]["n_embeddings_2d"][:, 1],
+                cdict["centroid_params"]["out_embeddings_2d"][:, 0],
+                cdict["centroid_params"]["out_embeddings_2d"][:, 1],
                 c=cdict["model"][idx].labels_,
                 s=cdict["centroid_params"]["sizes"],
             )
@@ -110,6 +108,11 @@ if __name__ == "__main__":
         help="Whether to use GMM for centroids config",
     )
     parser.add_argument(
+        "--pca",
+        action="store_true",
+        help="Whether to use PCA ahead of GMM for centroids config",
+    )
+    parser.add_argument(
         "--plot",
         action="store_true",
         help="Whether to plot the results (only centroids config)",
@@ -155,13 +158,20 @@ if __name__ == "__main__":
     ]
 
     if all([args.gmm, "centroids" in args.cluster_method]):
-        config_taxonomy[0].update({"gmm": True, "n_components": 100})
+        if args.test:
+            config_taxonomy[0].update({"gmm": True, "n_components": 100})
+        else:
+            config_taxonomy[0].update({"gmm": True, "n_components": 10_000})
+        if args.pca:
+            config_taxonomy[0].update({"pca": True})
 
     cluster_configs = [[METHODS[method_taxonomy], config_taxonomy]]
     imbalanced = True if "imbalanced" in args.cluster_method else False
 
     cluster_outputs, plot_dicts = run_clustering_generators(
-        cluster_configs, embeddings, embeddings_2d=embeddings_2d, imbalanced=imbalanced
+        cluster_configs,
+        embeddings,
+        imbalanced=imbalanced,
     )
 
     if all([args.production, args.test is False]):
@@ -174,20 +184,17 @@ if __name__ == "__main__":
         )
 
     if args.plot:
+        plot_folder = PROJECT_DIR / "outputs" / "figures" / "semantic_taxonomy"
+        plot_folder.mkdir(parents=True, exist_ok=True)
+
         if "centroids" in args.cluster_method:
             logger.info("Creating plot of centroids clustering results")
-            fig = plot_centroids(cluster_outputs, embeddings_2d)
+            fig = plot_centroids(cluster_outputs)
         elif "imbalanced" in args.cluster_method:
             logger.info("Creating plot of imbalanced clustering results")
             fig = plot_imbalanced(cluster_outputs, plot_dicts, embeddings_2d)
 
-        fig.savefig(
-            PROJECT_DIR
-            / "outputs"
-            / "figures"
-            / "semantic_taxonomy"
-            / f"semantic_{args.cluster_method}.png"
-        )
+        fig.savefig(plot_folder / f"semantic_{args.cluster_method}.png")
 
     if "centroids" in args.cluster_method:
         logger.info("Reversing order of centroid labels")

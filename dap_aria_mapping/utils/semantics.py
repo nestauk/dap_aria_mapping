@@ -3,8 +3,10 @@ import pandas as pd
 import re, sklearn
 import matplotlib.axes as mpl_axes
 from sklearn.mixture import GaussianMixture
+from sklearn.decomposition import PCA
 from sklearn.metrics import silhouette_score
 from sentence_transformers import SentenceTransformer
+import umap.umap_ as umap
 from typing import (
     Union,
     Dict,
@@ -322,6 +324,10 @@ class ClusteringRoutine(object):
                 score, and the centroid parameters (if applies).
         """
         self.cdict, self.mlist = defaultdict(list), []
+        # embeddings_2d = umap.UMAP(
+        #         n_neighbors=5, min_dist=0.05, n_components=2, random_state=42
+        #     ).fit_transform(self.embeddings)
+
         if param_config.get("gmm"):
             self.make_gmm_step(param_config)
         else:
@@ -334,7 +340,7 @@ class ClusteringRoutine(object):
             "labels": deepcopy(self.cdict),
             "model": deepcopy(self.mlist),
             "silhouette": get_silhouette_score(self.embeddings, self.cdict),
-            "centroid_params": None,
+            "centroid_params": {"out_embeddings_2d": self.embeddings_2d},
         }
 
     def make_iteration(
@@ -416,7 +422,7 @@ class ClusteringRoutine(object):
             "labels": deepcopy(self.cdict),
             "model": deepcopy(self.mlist),
             "silhouette": get_silhouette_score(self.embeddings, self.cdict),
-            "centroid_params": None,
+            "centroid_params": self.kwargs["embeddings_2d"],
         }
 
     def make_centroid_iteration(
@@ -440,6 +446,7 @@ class ClusteringRoutine(object):
         self.centdict = defaultdict(list)
         self.cent2ddict = defaultdict(list)
         self.centmap = defaultdict(list)
+
         clusters = list(list(e) for e in set([tuple(i) for i in self.cdict.values()]))
         if not any(["ce" in str(x) for x in clusters[0]]):
             self.make_centroid_init_step(clusters)
@@ -448,7 +455,7 @@ class ClusteringRoutine(object):
         centroid_embeddings = list(self.centdict.values())
         sizes = [len(x) for x in self.centmap.values()]
         try:
-            n_embeddings_2d = np.vstack([ar for ar in self.cent2ddict.values()])
+            out_embeddings_2d = np.vstack([ar for ar in self.cent2ddict.values()])
         except:
             pass
         cluster = self.method_class(**param_config)
@@ -474,7 +481,7 @@ class ClusteringRoutine(object):
                 "silhouette": get_silhouette_score(self.embeddings, self.cdict),
                 "centroid_params": {
                     "sizes": sizes,
-                    "n_embeddings_2d": n_embeddings_2d,
+                    "out_embeddings_2d": out_embeddings_2d,
                 },
             }
         else:
@@ -564,73 +571,91 @@ class ClusteringRoutine(object):
                 )
 
     def make_gmm_step(self, param_config: Dict[str, Any]) -> None:
-        """Creates a Gaussian Mixture Model step of a centroid clustering 
+        """Creates a Gaussian Mixture Model step of a centroid clustering
             routine. Updates several dictionaries of cluster assignments,
             centroid embeddings, and a mapping of centroid to individual tags.
 
         Args:
             param_config (Dict[str, Any]): A dictionary of parameters for the GMM.
-        """        
+        """
+        embeddings_gmm = deepcopy(self.embeddings)
         threshold = param_config.get("threshold", 0.1)
         n_components = param_config.get("n_components", 5_000)
-        cluster = GaussianMixture(
-            n_components=n_components, covariance_type="full"
-        )
-        _ = cluster.fit_predict(self.embeddings)
+        if param_config.get("pca", False):
+            pca = PCA(
+                n_components=0.5,
+                whiten=True,
+                svd_solver="full",
+                random_state=42,
+            )
+            pca.fit(embeddings_gmm)
+            embeddings_gmm = pd.DataFrame(
+                pca.transform(embeddings_gmm),
+                index=embeddings_gmm.index,
+            )
+
+        cluster = GaussianMixture(n_components=n_components, covariance_type="diag")
+        _ = cluster.fit_predict(embeddings_gmm)
         preds = {
             entity: preds > threshold
             for entity, preds in zip(
-                self.embeddings.index, 
-                cluster.predict_proba(self.embeddings)
+                embeddings_gmm.index, cluster.predict_proba(embeddings_gmm)
             )
         }
         df = pd.DataFrame(
             [
-                tuple([entity, i]) 
-                for entity, preds in preds.items() 
-                for i, pred in enumerate(preds) 
+                tuple([entity, i])
+                for entity, preds in preds.items()
+                for i, pred in enumerate(preds)
                 if pred
             ],
-            columns=["Entity", "Level_1"]
+            columns=["Entity", "Level_1"],
         )
 
         overlapping_embeddings = pd.merge(
-            df[["Entity", "Level_1"]], 
-            self.embeddings, 
-            left_on="Entity", 
+            df[["Entity", "Level_1"]],
+            self.embeddings,
+            left_on="Entity",
             right_index=True,
-            how="left"
+            how="left",
         )
 
+        # Updates 2d embeddings without rerunning UMAP
+        overlapping_2d = pd.DataFrame(
+            zip(self.embeddings.index, self.embeddings_2d),
+            columns=["Entity", "embedding_2d"],
+        )
+        overlapping_2d = pd.merge(
+            df[["Entity"]], overlapping_2d, on="Entity", how="left"
+        )
+        self.embeddings_2d = np.stack(overlapping_2d["embedding_2d"].to_numpy())
+        self.kwargs.update({"embeddings_2d": self.embeddings_2d})
+
         overlapping_embeddings["Entity"] += (
-            overlapping_embeddings
-            .groupby(["Entity"])
+            overlapping_embeddings.groupby(["Entity"])
             .cumcount()
             .add(1)
             .astype(str)
             .radd("_")
             .mask(
-                overlapping_embeddings
-                .groupby(["Entity"])
-                ["Entity"]
-                .transform("count")==1, ""
+                overlapping_embeddings.groupby(["Entity"])["Entity"].transform("count")
+                == 1,
+                "",
             )
-            .str
-            .replace("_1", "")
+            .str.replace("_1", "")
         )
 
         overlapping_embeddings.set_index("Entity", inplace=True)
         labels_ = overlapping_embeddings["Level_1"].to_dict()
         overlapping_embeddings.drop("Level_1", axis=1, inplace=True)
 
+        # enhance embeddings with possibly repeated entities
         self.embeddings = overlapping_embeddings
 
         for key in self.embeddings.index:
             self.cdict[key].append(labels_[key])
 
-        self.mlist.append(
-            cluster
-        )
+        self.mlist.append(cluster)
 
     def run_step(self, param_config: Dict[str, Any]) -> Generator:
         """Runs a single step of the clustering routine. This is a generator function
@@ -646,6 +671,11 @@ class ClusteringRoutine(object):
                 of clustering models, and the silhouette score of the clustering routine.
         """
         centroids = param_config.pop("centroids", False)
+        if all([self.kwargs.get("embeddings_2d", None) is None]):  # centroids
+            self.embeddings_2d = umap.UMAP(
+                n_neighbors=5, min_dist=0.05, n_components=2, random_state=42
+            ).fit_transform(self.embeddings)
+            self.kwargs.update({"embeddings_2d": self.embeddings_2d})
         if self.nested is False:
             yield from self.make_init_iteration(param_config)
         else:
@@ -676,7 +706,6 @@ class ClusteringRoutine(object):
         self.nested = False
         self.kwargs = kwargs
         yield from self.run_step(config)
-
 
     def run_from_configs(
         self, config: Tuple[Type[sklearn.base.ClusterMixin], Dict[str, Any]], **kwargs
@@ -709,7 +738,6 @@ class ClusteringRoutine(object):
             for param_config in child_config:
                 yield from self.run_step(param_config)
             self.nested = True
-
 
     def __iter__(self):
         return self

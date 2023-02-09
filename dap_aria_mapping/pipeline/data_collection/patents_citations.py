@@ -38,8 +38,11 @@ CITATION_MAPPER = {
     "FOP": "Filed opposition",
 }
 
-# from google bigquery docs
+# from google bigquery docs on max string size
 MAX_SIZE = 1024000
+
+# thresholding focal ids based on publication year dates
+EARLY_YEAR, LATE_YEAR = 2007, 2017
 
 
 def base_patents_citation_query() -> str:
@@ -105,6 +108,16 @@ def chunk_bigquery_q(
 
 class PatentsCitationsFlow(FlowSpec):
     production = Parameter("production", help="Run in production?", default=False)
+    # threshold for minimum # of citations to be considered
+    min_citations = Parameter(
+        "min_citations",
+        help=(
+            "The minimum number of citations a patent must have in order for "
+            "it to be included in the search. Default is 3."
+        ),
+        default=3,
+        type=int,
+    )
 
     @step
     def start(self):
@@ -117,8 +130,17 @@ class PatentsCitationsFlow(FlowSpec):
     def get_focal_ids(self):
         """Gets list of focal_ids from patents data"""
         from dap_aria_mapping.getters.patents import get_patents
+        import pandas as pd
 
-        self.publication_numbers = get_patents().publication_number.tolist()
+        # here you can just get the publication numbers from 2007 and 2017
+        self.publication_numbers = (
+            get_patents()
+            .assign(publication_date=lambda x: pd.to_datetime(x.publication_date))
+            .assign(publication_year=lambda x: x.publication_date.dt.year)
+            .pipe(lambda x: x[x.publication_year.isin([EARLY_YEAR, LATE_YEAR])])
+            .publication_number.tolist()
+        )
+
         self.next(self.retrieve_citation_data)
 
     @step
@@ -178,7 +200,7 @@ class PatentsCitationsFlow(FlowSpec):
 
     @step
     def retrieve_forward_citation_data(self):
-        """Retrieve backward citation data from formatted citation data
+        """Retrieve forward citation data from formatted citation data
         i.e. a list of patent ids that a given focal patent cites
         """
         self.forward_citations = (

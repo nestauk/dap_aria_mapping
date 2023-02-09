@@ -14,6 +14,8 @@ from metaflow import FlowSpec, step, Parameter
 from typing import List
 from dap_aria_mapping.utils.patents import format_list_of_strings, chunk
 
+import pandas as pd
+
 # from google patents data dictionary
 CITATION_MAPPER = {
     "A": "technological background",
@@ -130,7 +132,6 @@ class PatentsCitationsFlow(FlowSpec):
     def get_focal_ids(self):
         """Gets list of focal_ids from patents data"""
         from dap_aria_mapping.getters.patents import get_patents
-        import pandas as pd
 
         # here you can just get the publication numbers from 2007 and 2017
         self.publication_numbers = (
@@ -147,7 +148,6 @@ class PatentsCitationsFlow(FlowSpec):
     def retrieve_citation_data(self):
         """Retrieves citation data from BigQuery"""
         from dap_aria_mapping.utils.conn import est_conn
-        import pandas as pd
 
         conn = est_conn()
         base_citations_q = base_patents_citation_query()
@@ -168,8 +168,6 @@ class PatentsCitationsFlow(FlowSpec):
     @step
     def format_citation_data(self):
         """Formats citation data from BiqQuery"""
-        import pandas as pd
-
         citation_df = pd.concat(
             [pd.DataFrame(i) for i in self.citation_results["citation"]],
             keys=self.citation_results.index,
@@ -218,7 +216,6 @@ class PatentsCitationsFlow(FlowSpec):
         """
         from dap_aria_mapping.utils.conn import est_conn
         import itertools
-        import pandas as pd
 
         forward_citation_ids = list(
             set(itertools.chain(*list(self.forward_citations.values())))

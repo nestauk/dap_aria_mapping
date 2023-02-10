@@ -4,14 +4,11 @@ Tests patent citations collection pipeline.
 pytest dap_aria_mapping/pipeline/data_collection/tests/test_patents_citations.py
 """
 import pytest
-import itertools
 
 from dap_aria_mapping.pipeline.data_collection.patents_citations import (
-    base_patents_backward_citation_query,
-    base_patents_forward_citation_query,
+    patents_backward_citation_query,
+    patents_forward_citation_query,
     chunk_bigquery_query,
-    format_citation_data,
-    get_citations,
 )
 
 import pandas as pd
@@ -87,12 +84,14 @@ forward_citations_dict = {
     ],
 }
 
+chunk_size = 2
+
 
 def test_base_patents_backward_citation_query():
     """
     Test base_patents_backward_citation_query function.
     """
-    query = base_patents_backward_citation_query()
+    query = patents_backward_citation_query()
     assert type(query) == str
 
 
@@ -100,7 +99,7 @@ def test_base_patents_forward_citation_query():
     """
     Test base_patents_forward_citation_query function.
     """
-    query = base_patents_forward_citation_query()
+    query = patents_forward_citation_query()
     assert type(query) == str
 
 
@@ -108,47 +107,14 @@ def test_chunk_bigquery_query():
     """
     Test chunk_bigquery_query function.
     """
-    query = base_patents_backward_citation_query()
+    query = patents_backward_citation_query()
     query_chunks = chunk_bigquery_query(
-        publication_numbers=test_focal_ids, base_q=query
+        publication_numbers=test_focal_ids, base_q=query, chunk_size=chunk_size
     )
 
     assert type(query_chunks) == list
-    assert len(query_chunks) == 1
+    assert len(query_chunks) == chunk_size
     assert all(t for t in test_focal_ids if t in query_chunks[0])
-
-
-def test_format_citation_data():
-    """
-    Test format_citation_data function.
-    """
-    base_citations_q = base_patents_backward_citation_query()
-    backward_citations = get_citations(
-        base_citations_q, test_focal_ids, production=False
-    )
-    formatted_citation_data, formatted_citation_data_dict = format_citation_data(
-        backward_citations
-    )
-
-    assert type(formatted_citation_data) == pd.DataFrame
-    assert len(formatted_citation_data.columns) == 9
-    assert type(formatted_citation_data_dict) == dict
-    assert len(formatted_citation_data_dict) == len(test_focal_ids)
-    assert all(t for t in test_focal_ids if t in formatted_citation_data_dict.keys())
-
-
-def test_get_citations():
-    """
-    Test get_citations function.
-    """
-    base_citations_q = base_patents_backward_citation_query()
-    backward_citations = get_citations(
-        base_citations_q, test_focal_ids, production=False
-    )
-
-    assert type(backward_citations) == pd.DataFrame
-    assert len(backward_citations) == len(test_focal_ids)
-    assert len(backward_citations.columns) == 2
 
 
 def test_backward_citations_dict():

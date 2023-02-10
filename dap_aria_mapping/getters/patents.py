@@ -49,19 +49,11 @@ def get_patent_backward_citations() -> Mapping[str, List[str]]:
     )
 
 
-def get_patent_forward_citations_metadata() -> pd.DataFrame:
-    """From S3 loads patent forward citations metadata"""
+# not really sure this is especially helpful but it exists
+def get_patent_cited_by_citations() -> Mapping[str, List[str]]:
+    """From S3 loads patent cited by citations"""
     return download_obj(
         BUCKET_NAME,
-        "inputs/data_collection/patents/patents_forward_citations_metadata.parquet",
-        download_as="dataframe",
-    )
-
-
-def get_patent_backward_citations_metadata() -> pd.DataFrame:
-    """From S3 loads patent backward citations metadata"""
-    return download_obj(
-        BUCKET_NAME,
-        "inputs/data_collection/patents/patents_backward_citations_metadata.parquet",
-        download_as="dataframe",
+        "inputs/data_collection/patents/patents_cited_by_citations.json",
+        download_as="dict",
     )

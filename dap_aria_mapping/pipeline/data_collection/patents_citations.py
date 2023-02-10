@@ -18,154 +18,78 @@ from google.cloud import bigquery
 from dap_aria_mapping.utils.patents import (
     format_list_of_strings,
     chunk,
-    CITATION_MAPPER,
-    MAX_SIZE,
-    EARLY_YEAR,
-    LATE_YEAR,
 )
 
 from dap_aria_mapping.utils.conn import est_conn
+from dap_aria_mapping import logger
+
+# 15 bigquery chunks to run in parallel
+CHUNK_SIZE = 15
+
+# early year time point
+EARLY_YEAR = 2007
+
+# late year time point
+LATE_YEAR = 2017
 
 # create connection to bigquery
-CONN = est_conn()
+conn = est_conn()
 
 
-def base_patents_backward_citation_query() -> str:
+def patents_backward_citation_query() -> str:
     """Returns a query that collects patent citation information
-        (i.e. 'patent citations' in Google Patents front end. AKA backward citations)
+        (i.e. 'patent citations' in Google Patents front end)
         for a list of focal_ids.
 
     Returns:
         str: Base query string.
     """
-    return "SELECT publication_number, citation from `patents-public-data.patents.publications` WHERE publication_number IN ({})"
+    return "SELECT p.publication_number as focal_id, c.publication_number as patent_citation from `patents-public-data.patents.publications` as p, unnest(citation) c WHERE p.publication_number IN ({})"
 
 
-def base_patents_forward_citation_query() -> str:
+def patents_forward_citation_query() -> str:
     """Returns a query that collects patent forward citation information
-    (i.e. 'cited by' in Google Patents front end. AKA frontward citations)
+    (i.e. 'cited by' in Google Patents front end)
     for a list of focal_ids.
 
     Returns:
         str: Base query string.
     """
-    return "SELECT c.publication_number as focal_id, p.publication_number as cited_by from `patents-public-data.patents.publications` as p, unnest(citation) as c WHERE c.publication_number IN ({})"
+    return "SELECT c.publication_number as focal_id, p.publication_number as cited_by from `patents-public-data.patents.publications` as p, unnest(citation) c WHERE c.publication_number IN ({})"
 
 
 def chunk_bigquery_query(
-    publication_numbers: List[str], base_q: str, production: bool = False
+    publication_numbers: List[str],
+    chunk_size: int,
+    base_q: str,
+    production: bool = False,
 ) -> List[List[str]]:
-    """Chunks a bigquery query into smaller queries to accomodate
-        maximum query string length.
+    """Chunk bigquery query into chunk_size number of chunks
 
     Args:
-        publication_numbers (List[str]): List of patent publication numbers.
-        base_q (str): base bigquery query string.
-        production (bool, optional): If in production or not. Defaults to False.
+        publication_numbers (List[str]): List of publication numbers
+        chunk_size (int): Number of chunks to split the query into
+        base_q (str): Base query string
+        production (bool, optional): If query is in production. Defaults to False.
 
     Returns:
-        List[List[str]]: List of bigquery query strings.
+        List[List[str]]: List of query strings
     """
-
     ids = publication_numbers if production else publication_numbers[:10]
-
-    max_q_size = MAX_SIZE - len(base_q)
-    publication_numbers_char_size = len(", ".join(ids))
-
-    chunk_size = len([i for i in range(0, publication_numbers_char_size, max_q_size)])
 
     publication_numbers_chunks = chunk(ids, chunk_size)
 
-    chunk_qs = []
-    for pub_chunk in publication_numbers_chunks:
-        chunk_formatted = format_list_of_strings(pub_chunk)
-        chunk_qs.append(base_q.format(chunk_formatted))
-
-    return chunk_qs
-
-
-def format_citation_data(
-    citation_results: pd.DataFrame,
-) -> Tuple[pd.DataFrame, Dict[str, List[str]]]:
-    """Formats citation data into a dataframe and a dictionary.
-
-    Args:
-        citation_results (pd.DataFrame): BigQuery citation results.
-
-    Returns:
-        Tuple[pd.DataFrame, Dict[str, List[str]]]: Formatted citation dataframe and citations dictionary.
-    """
-
-    citation_df = pd.concat(
-        [pd.DataFrame(i) for i in citation_results["citation"]],
-        keys=citation_results.index,
-    ).reset_index(level=1, drop=True)
-    citation_df_exploded = citation_df[0].apply(pd.Series)
-
-    citations_data = (
-        pd.merge(
-            citation_results,
-            citation_df_exploded,
-            left_index=True,
-            right_index=True,
-        )
-        .drop(columns=["citation"])
-        .rename(
-            columns={
-                "publication_number_x": "focal_publication_number",
-                "publication_number_y": "citation_publication_number",
-            }
-        )
-        .reset_index(drop=True)
-        .assign(type_description=lambda x: x.type.map(CITATION_MAPPER))
-        .assign(category_description=lambda x: x.category.map(CITATION_MAPPER))
-        .query("citation_publication_number != ''")
-    )
-
-    citations_data_dict = (
-        citations_data.groupby("focal_publication_number")
-        .citation_publication_number.apply(list)
-        .to_dict()
-    )
-
-    return citations_data, citations_data_dict
-
-
-def get_citations(
-    query: str,
-    publication_numbers: List[str],
-    conn: bigquery.Client = CONN,
-    production: bool = False,
-) -> pd.DataFrame:
-    """Retrieves citation data from Google BigQuery. If query is too large,
-        it will be chunked into smaller queries. Results are concatenated.
-
-    Args:
-        query (str): Base query string.
-        publication_numbers (List[str]): List of publication numbers.
-        conn (bigquery.Client, optional): BigQuery client. Defaults to CONN.
-        production (bool, optional): If in production. Defaults to False.
-
-    Returns:
-        pd.DataFrame: Citation data.
-    """
-    base_citation_q_chunks = chunk_bigquery_query(
-        publication_numbers,
-        base_q=query,
-        production=production,
-    )
-    if len(base_citation_q_chunks) == 1:
-        citation_results = conn.query(base_citation_q_chunks[0]).to_dataframe()
-    else:
-        citation_results = pd.concat(
-            [conn.query(q).to_dataframe() for q in base_citation_q_chunks]
-        )
-
-    return citation_results
+    return [
+        base_q.format(format_list_of_strings(pub_chunk))
+        for pub_chunk in publication_numbers_chunks
+    ]
 
 
 class PatentsCitationsFlow(FlowSpec):
     production = Parameter("production", help="Run in production?", default=False)
+    chunk_size = Parameter(
+        "chunk_size", help="# of BigQuery queries", default=CHUNK_SIZE
+    )
 
     @step
     def start(self):
@@ -180,7 +104,11 @@ class PatentsCitationsFlow(FlowSpec):
         from dap_aria_mapping.getters.patents import get_patents
 
         # get list of publication numbers i.e. focal ids from patents data for early and late years
-        self.publication_numbers = (
+        logger.info(
+            f"Fetching list of focal ids for year {EARLY_YEAR} and {LATE_YEAR}."
+        )
+
+        publication_numbers = (
             get_patents()
             .assign(publication_date=lambda x: pd.to_datetime(x.publication_date))
             .assign(publication_year=lambda x: x.publication_date.dt.year)
@@ -188,107 +116,152 @@ class PatentsCitationsFlow(FlowSpec):
             .publication_number.tolist()
         )
 
+        self.publication_numbers = (
+            publication_numbers if self.production else publication_numbers[:CHUNK_SIZE]
+        )
+
+        self.publication_numbers_formatted = format_list_of_strings(
+            self.publication_numbers
+        )
+
+        logger.info(
+            f"Retrieving forward and backward citation data for {len(self.publication_numbers)} focal ids."
+        )
+
         self.next(self.retrieve_backward_citation_data)
 
     @step
     def retrieve_backward_citation_data(self):
         """Retrieves backward citation data for a list of initial focal ids from BigQuery"""
+        from nesta_ds_utils.loading_saving.S3 import upload_obj
+        from dap_aria_mapping import BUCKET_NAME
+
+        logger.info(f"Retrieving backward citation data for focal ids.")
 
         # generate bigquery query to retrieve backward citations based on focal ids
-        backward_citations_q = base_patents_backward_citation_query()
+        backward_citations_q = patents_backward_citation_query().format(
+            self.publication_numbers_formatted
+        )
 
         # call BigQuery API using backward_citations_q to retrieve backward citations
-        backward_citations = get_citations(
-            backward_citations_q, self.publication_numbers, production=self.production
+        citation_results = conn.query(backward_citations_q).to_dataframe()
+
+        # format backward citations into dictionary where key is focal id and value is list of backward citations (or 'patent citations' in Google Patents front end)
+        backward_citations = (
+            citation_results.groupby("focal_id").patent_citation.apply(list).to_dict()
         )
-        # format backward citations into dataframe and dictionary where key is focal id and value is list of backward citations (or 'patent citations' in Google Patents front end)
-        (
-            self.backward_citations_clean,
-            self.backward_citations_dict,
-        ) = format_citation_data(backward_citations)
+
+        # upload backward citations to s3
+        if self.production:
+            logger.info("saving backward citation data to s3")
+            upload_obj(
+                backward_citations,
+                BUCKET_NAME,
+                "inputs/data_collection/patents/patents_backward_citations.json",
+            )
 
         self.next(self.retrieve_cited_by_data)
 
     @step
     def retrieve_cited_by_data(self):
-        """Retrieves 'cited by' patent ids from list of focal ids."""
-        # generate bigquery query to retrieve 'cited by' patent ids based on focal ids
-        cited_by_query = base_patents_forward_citation_query()
+        """Retrieves 'cited by' data for a list of initial focal ids from BigQuery"""
+        from nesta_ds_utils.loading_saving.S3 import upload_obj
+        from dap_aria_mapping import BUCKET_NAME
 
-        # call BigQuery API using cited_by_query to retrieve 'cited by' patent ids
-        cited_by_results = get_citations(
-            cited_by_query, self.publication_numbers, production=self.production
+        logger.info(f"Retrieving 'cited by' patent ids for focal ids.")
+
+        # generate bigquery query to retrieve cited by citations based on focal ids
+        cited_by_q = patents_forward_citation_query().format(
+            self.publication_numbers_formatted
         )
+
+        # call BigQuery API using cited_by_q to retrieve cited by citations
+        cited_by_results = conn.query(cited_by_q).to_dataframe()
 
         # generate dictionary of 'cited by' patent ids where key is focal id and value is list of 'cited by' patent ids
         self.cited_by_results_dict = (
             cited_by_results.groupby("focal_id").cited_by.apply(list).to_dict()
         )
 
-        self.next(self.retrieve_forward_citation_data)
+        # don't know if this is needed but just in case - save cited by data to s3
+        if self.production:
+            logger.info("saving backward citation data to s3")
+            upload_obj(
+                self.cited_by_results_dict,
+                BUCKET_NAME,
+                "inputs/data_collection/patents/patents_cited_by_citations.json",
+            )
+
+        self.next(self.generate_forward_citation_query_chunks)
 
     @step
-    def retrieve_forward_citation_data(self):
-        """Using the 'cited by' patent ids, retrieve the 'cites' patent ids to generate forward citations."""
+    def generate_forward_citation_query_chunks(self):
+        """Generates chunks of forward citation queries to be run in parallel"""
         import itertools
+
+        logger.info(f"Generate {self.chunk_size} forward citation queries.")
 
         # flatten list of 'cited by' patent ids
         flat_cited_by_results = list(
             set(itertools.chain(*list(self.cited_by_results_dict.values())))
         )
 
-        # generate bigquery query to retrieve 'cites' patent ids for 'cited by' patent ids
-        base_forward_q = base_patents_backward_citation_query()
-
-        # call BigQuery API using base_forward_q and flat_cited_by_results
-        forward_citations = get_citations(
-            base_forward_q, flat_cited_by_results, production=self.production
+        # we want the backward citations of the 'cited by' patents as the forward citations of the focal patents
+        base_q = patents_backward_citation_query()
+        # generate chunk_size number of query chunks to retrieve forward citation data
+        self.query_chunks = chunk_bigquery_query(
+            publication_numbers=flat_cited_by_results,
+            chunk_size=self.chunk_size,
+            base_q=base_q,
+            production=self.production,
         )
 
-        # clean results and generate forward citations dictionary
-        (
-            self.forward_citations_clean,
-            self.forward_citations_dict,
-        ) = format_citation_data(forward_citations)
-
-        self.next(self.save_data)
+        self.next(self.retrieve_forward_citation_data, foreach="query_chunks")
 
     @step
-    def save_data(self):
-        """Saves forward and backward citations as json/parquet files to s3"""
-        from nesta_ds_utils.loading_saving.S3 import upload_obj
-        from dap_aria_mapping import BUCKET_NAME
+    def retrieve_forward_citation_data(self):
 
-        if self.production:
-            upload_obj(
-                self.backward_citations_dict,
-                BUCKET_NAME,
-                "inputs/data_collection/patents/patents_backward_citations.json",
-            )
-            upload_obj(
-                self.backward_citations_clean,
-                BUCKET_NAME,
-                "inputs/data_collection/patents/patents_backward_citations_metadata.parquet",
-            )
-            upload_obj(
-                self.forward_citations_dict,
-                BUCKET_NAME,
-                "inputs/data_collection/patents/patents_forward_citations.json",
-            )
-            upload_obj(
-                self.forward_citations_clean,
-                BUCKET_NAME,
-                "inputs/data_collection/patents/patents_forward_citations_metadata.parquet",
-            )
-        else:
-            pass
+        logger.info(f"Retrieving forward citation data for focal ids.")
+        # query bigquery to retrieve forward citation data in chunks
+        self.forward_citation_chunks = conn.query(self.input).to_dataframe()
+
+        self.next(self.join)
+
+    @step
+    def join(self, inputs):
+        """Join and clean forward citation results"""
+
+        # join forward citation results
+        logger.info(f"join {self.chunk_size} forward citation results")
+        forward_citation_results = pd.concat(
+            [i.forward_citation_chunks for i in inputs]
+        )
+
+        logger.info(f"{forward_citation_results.shape}")
+
+        # generate forward citations dictionary
+        self.forward_citations = (
+            forward_citation_results.groupby("focal_id")
+            .patent_citation.apply(list)
+            .to_dict()
+        )
 
         self.next(self.end)
 
     @step
     def end(self):
-        """Ends the flow"""
-        pass
+        """saves forward citations to s3"""
+        from nesta_ds_utils.loading_saving.S3 import upload_obj
+        from dap_aria_mapping import BUCKET_NAME
+
+        # save forward citations to s3
+        if self.production:
+            logger.info("saving forward citation data to s3")
+            upload_obj(
+                self.forward_citations,
+                BUCKET_NAME,
+                "inputs/data_collection/patents/patents_forward_citations.json",
+            )
 
 
 if __name__ == "__main__":

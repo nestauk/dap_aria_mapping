@@ -54,7 +54,7 @@ We also collect citation information for patents in 2007 and 2017 to calculate t
 
 We define 'focus patents' as the patent ids collected by `dap_aria_mapping/pipeline/data_collection/openalex.py.`.
 
-To collect the patent forward citations, backward citations and backward citation metadata, run the following flow:
+To collect the patent forward citations and backward citations, run the following flow:
 
 `python dap_aria_mapping/pipeline/data_collection/paents_citations.py run --production=False`
 
@@ -62,13 +62,11 @@ If you run the flow in production (i.e. `production=True`), it will cost money t
 
 This flow outputs three files stored on S3 at `inputs/data_collection/patents/`:
 
-1. **`patents_forward_citations.json`**: A json where the key is a focal patent id and the value is a list of patent ids that cite the focal patent id.
+1. **`patents_backward_citations.json`**: A json where the key is a focal patent id and the value is a list of patent ids that the focal id cites.
 
-2. **`patents_backward_citations.json`**: A json where the key is a forward patent id and the value is a list of patent ids that the focal patent id is cited by.
+2. **`patents_cited_by_citations.json`**: A json where the key is a focal patent id and the value is a list of patent ids that the focal patent id is cited by.
 
-3. **`patents_forward_citations_metadata.parquet`**: A parquet file that stores additional forward citation metadata including citation category, citation type, free-text citation in non-patent literature and the citation filing date.
-
-Please refer to the [patents data dictionary](https://docs.google.com/spreadsheets/d/1LtfjECVI5pqqwE7oMw1JbwFcUWhUoHgJH_mJ0flw9Fw/edit#gid=1878548964) for additional information on the collection information.
+3. **`patents_forward_citations.json`**: A json where the key is a cited by patent id and the value is a list of patents that it cites. A focal id should be present in each dictionary value. 
 
 ## Getting Up and Running With Batch on Metaflow
 

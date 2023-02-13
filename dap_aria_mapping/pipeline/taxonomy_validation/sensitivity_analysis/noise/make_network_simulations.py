@@ -245,7 +245,7 @@ if __name__ == "__main__":
             ]
 
             cooccurrence_data_sample = list(
-                zip(cooccurrence_data_clean, cooccurrence_data_discarded_sample)
+                chain(*zip(cooccurrence_data_clean, cooccurrence_data_discarded_sample))
             )
 
             # build term cooccurrence network

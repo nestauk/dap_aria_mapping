@@ -515,7 +515,9 @@ class ClusteringRoutine(object):
                 index=embeddings_gmm.index,
             )
 
-        cluster = GaussianMixture(n_components=n_components, covariance_type="diag")
+        cluster = GaussianMixture(
+            n_components=n_components, covariance_type="diag", reg_covar=1e-5
+        )
         _ = cluster.fit_predict(embeddings_gmm)
         preds = {
             entity: preds > threshold

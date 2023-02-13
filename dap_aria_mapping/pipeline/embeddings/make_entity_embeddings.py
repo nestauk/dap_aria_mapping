@@ -48,7 +48,6 @@ parser.add_argument(
     action="store_true",
     help="Whether to instead include discarded entities",
 )
-
 parser.add_argument(
     "--bucket",
     default=False,

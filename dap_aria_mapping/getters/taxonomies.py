@@ -1,4 +1,4 @@
-from dap_aria_mapping import BUCKET_NAME
+from dap_aria_mapping import BUCKET_NAME, PROJECT_DIR
 from nesta_ds_utils.loading_saving.S3 import download_obj
 import boto3, yaml, pickle
 import pandas as pd
@@ -55,7 +55,7 @@ def get_taxonomy_config() -> dict:
     Returns:
         dict: config for taxonomy development
     """
-    with open("dap_aria_mapping/config/taxonomy.yaml", "r") as yamlfile:
+    with open(f"{PROJECT_DIR}/dap_aria_mapping/config/taxonomy.yaml", "r") as yamlfile:
         config = yaml.load(yamlfile, Loader=yaml.FullLoader)
     return config
 

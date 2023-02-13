@@ -202,6 +202,9 @@ if __name__ == "__main__":
         cooccurrence_data=cooccurrence_data_discarded,
     )
 
+    del oa_entities, patent_entities
+
+    logger.info("Filtering entities")
     entity_counts = Counter(chain(*cooccurrence_data))
     entities = set(
         [
@@ -216,8 +219,6 @@ if __name__ == "__main__":
         lambda x: set(chain(*x)),
         lambda x: x - entities,
     )
-
-    del oa_entities, patent_entities
 
     cooccurrence_data_clean = [
         [x for x in ls if x in entities] for ls in cooccurrence_data
@@ -250,7 +251,7 @@ if __name__ == "__main__":
             # build term cooccurrence network
             logger.info("Generating network")
             network = build_coocc(
-                cooccurrence_data,
+                cooccurrence_data_sample,
                 edge_attributes=["association_strength"],
                 use_node_weights=True,
             )

@@ -66,7 +66,7 @@ This flow outputs three files stored on S3 at `inputs/data_collection/patents/`:
 
 2. **`patents_cited_by_citations.json`**: A json where the key is a focal patent id and the value is a list of patent ids that the focal patent id is cited by.
 
-3. **`patents_forward_citations.json`**: A json where the key is a cited by patent id and the value is a list of patents that it cites. A focal id should be present in each dictionary value. 
+3. **`patents_forward_citations.json`**: A json where the key is a cited by patent id and the value is a list of patents that it cites. At least one focal id will be present in each dictionary value. 
 
 ## Getting Up and Running With Batch on Metaflow
 

@@ -3,6 +3,7 @@ from nesta_ds_utils.loading_saving.S3 import download_obj
 from dap_aria_mapping import BUCKET_NAME
 from typing import Mapping, Union, List
 import pandas as pd
+from typing import Literal
 
 
 def get_patents() -> pd.DataFrame:
@@ -31,29 +32,66 @@ def get_patent_entities() -> Mapping[str, Mapping[str, Union[str, str]]]:
     )
 
 
-def get_patent_forward_citations() -> Mapping[str, List[str]]:
-    """From S3 loads patent forward citations"""
+def get_patents_forward_citations(
+    year: Literal[2007, 2017] = None,
+) -> Mapping[str, List[str]]:
+    """From S3 loads dictionary where key is patent id and value is list of forward citations.
+
+    Args:
+        year (Literal[2007, 2017], optional): year citations were collected for. Defaults to None.
+
+    Returns:
+        Mapping[str, List[str]]: Dictionary where key is patent id and value is list of forward citations.
+    """
+    directory = "inputs/data_collection/patents/yearly_subsets/"
+    fname = f"patents_forward_citations_{year}.json"
+
     return download_obj(
         BUCKET_NAME,
-        "inputs/data_collection/patents/patents_forward_citations.json",
+        f"{directory}{fname}",
         download_as="dict",
     )
 
 
-def get_patent_backward_citations() -> Mapping[str, List[str]]:
-    """From S3 loads patent backward citations"""
+def get_patents_backward_citations(
+    year: Literal[2007, 2017] = None,
+) -> Mapping[str, List[str]]:
+    """From S3 loads dictionary where key is patent id and value is list of backward citations.
+
+    Args:
+        year (Literal[2007, 2017], optional): year citations were collected for. Defaults to None.
+
+    Returns:
+        Mapping[str, List[str]]: Dictionary where key is patent id and value is list of backward citations.
+    """
+
+    directory = "inputs/data_collection/patents/yearly_subsets/"
+    fname = f"patents_backward_citations_{year}.json"
+
     return download_obj(
         BUCKET_NAME,
-        "inputs/data_collection/patents/patents_backward_citations.json",
+        f"{directory}{fname}",
         download_as="dict",
     )
 
 
 # not really sure this is especially helpful but it exists
-def get_patent_cited_by_citations() -> Mapping[str, List[str]]:
-    """From S3 loads patent cited by citations"""
+def get_patent_cited_by_citations(
+    year: Literal[2007, 2017] = None,
+) -> Mapping[str, List[str]]:
+    """From S3 loads dictionary where key is patent id and value is list of cited by citations.
+
+    Args:
+        year (Literal[2007, 2017], optional): year citations were collected for. Defaults to None.
+
+    Returns:
+        Mapping[str, List[str]]: Dictionary where key is patent id and value is list of cited by citations.
+    """
+    directory = "inputs/data_collection/patents/yearly_subsets/"
+    fname = f"patents_cited_by_citations_{year}.json"
+
     return download_obj(
         BUCKET_NAME,
-        "inputs/data_collection/patents/patents_cited_by_citations.json",
+        f"{directory}{fname}",
         download_as="dict",
     )

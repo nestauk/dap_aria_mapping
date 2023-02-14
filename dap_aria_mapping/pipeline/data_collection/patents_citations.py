@@ -17,20 +17,14 @@ from google.cloud import bigquery
 
 from dap_aria_mapping.utils.patents import (
     format_list_of_strings,
-    chunk,
 )
 
 from dap_aria_mapping.utils.conn import est_conn
 from dap_aria_mapping import logger
+from toolz import partition_all
 
-# 15 bigquery chunks to run in parallel
-CHUNK_SIZE = 15
-
-# early year time point
-EARLY_YEAR = 2007
-
-# late year time point
-LATE_YEAR = 2017
+# of patent ids to include in chunk
+CHUNK_SIZE = 10000
 
 # create connection to bigquery
 conn = est_conn()
@@ -44,7 +38,9 @@ def patents_backward_citation_query() -> str:
     Returns:
         str: Base query string.
     """
-    return "SELECT p.publication_number as focal_id, c.publication_number as patent_citation from `patents-public-data.patents.publications` as p, unnest(citation) c WHERE p.publication_number IN ({})"
+    return """SELECT p.publication_number as focal_id, c.publication_number
+            as patent_citation from `patents-public-data.patents.publications` as p,
+            unnest(citation) c WHERE p.publication_number IN ({})"""
 
 
 def patents_forward_citation_query() -> str:
@@ -55,20 +51,23 @@ def patents_forward_citation_query() -> str:
     Returns:
         str: Base query string.
     """
-    return "SELECT c.publication_number as focal_id, p.publication_number as cited_by from `patents-public-data.patents.publications` as p, unnest(citation) c WHERE c.publication_number IN ({})"
+
+    return """SELECT c.publication_number as focal_id, p.publication_number as cited_by
+    from `patents-public-data.patents.publications` as p,
+    unnest(citation) c WHERE c.publication_number IN ({})"""
 
 
 def chunk_bigquery_query(
     publication_numbers: List[str],
-    chunk_size: int,
     base_q: str,
     production: bool = False,
+    chunk_size: int = CHUNK_SIZE,
 ) -> List[List[str]]:
     """Chunk bigquery query into chunk_size number of chunks
 
     Args:
         publication_numbers (List[str]): List of publication numbers
-        chunk_size (int): Number of chunks to split the query into
+        chunk_size (int): Number of ids to include in each chunk
         base_q (str): Base query string
         production (bool, optional): If query is in production. Defaults to False.
 
@@ -77,7 +76,7 @@ def chunk_bigquery_query(
     """
     ids = publication_numbers if production else publication_numbers[:10]
 
-    publication_numbers_chunks = chunk(ids, chunk_size)
+    publication_numbers_chunks = list(partition_all(chunk_size, ids))
 
     return [
         base_q.format(format_list_of_strings(pub_chunk))
@@ -90,6 +89,7 @@ class PatentsCitationsFlow(FlowSpec):
     chunk_size = Parameter(
         "chunk_size", help="# of BigQuery queries", default=CHUNK_SIZE
     )
+    year = Parameter("year", help="year to collect citations data for", default=2007)
 
     @step
     def start(self):
@@ -104,15 +104,13 @@ class PatentsCitationsFlow(FlowSpec):
         from dap_aria_mapping.getters.patents import get_patents
 
         # get list of publication numbers i.e. focal ids from patents data for early and late years
-        logger.info(
-            f"Fetching list of focal ids for year {EARLY_YEAR} and {LATE_YEAR}."
-        )
+        logger.info(f"Fetching list of focal ids for patents published in {self.year}.")
 
         publication_numbers = (
             get_patents()
             .assign(publication_date=lambda x: pd.to_datetime(x.publication_date))
             .assign(publication_year=lambda x: x.publication_date.dt.year)
-            .pipe(lambda x: x[x.publication_year.isin([EARLY_YEAR, LATE_YEAR])])
+            .pipe(lambda x: x[x.publication_year == self.year])
             .publication_number.tolist()
         )
 
@@ -157,7 +155,7 @@ class PatentsCitationsFlow(FlowSpec):
             upload_obj(
                 backward_citations,
                 BUCKET_NAME,
-                "inputs/data_collection/patents/patents_backward_citations.json",
+                f"inputs/data_collection/patents/yearly_subsets/patents_backward_citations_{str(self.year)}.json",
             )
 
         self.next(self.retrieve_cited_by_data)
@@ -189,7 +187,7 @@ class PatentsCitationsFlow(FlowSpec):
             upload_obj(
                 self.cited_by_results_dict,
                 BUCKET_NAME,
-                "inputs/data_collection/patents/patents_cited_by_citations.json",
+                f"inputs/data_collection/patents/yearly_subsets/patents_cited_by_citations_{str(self.year)}.json",
             )
 
         self.next(self.generate_forward_citation_query_chunks)
@@ -199,7 +197,9 @@ class PatentsCitationsFlow(FlowSpec):
         """Generates chunks of forward citation queries to be run in parallel"""
         import itertools
 
-        logger.info(f"Generate {self.chunk_size} forward citation queries.")
+        logger.info(
+            f"Generate forward citation chunks with {self.chunk_size} patent ids each."
+        )
 
         # flatten list of 'cited by' patent ids
         flat_cited_by_results = list(
@@ -260,7 +260,7 @@ class PatentsCitationsFlow(FlowSpec):
             upload_obj(
                 self.forward_citations,
                 BUCKET_NAME,
-                "inputs/data_collection/patents/patents_forward_citations.json",
+                f"inputs/data_collection/patents/yearly_subsets/patents_forward_citations_{self.year}.json",
             )
 
 

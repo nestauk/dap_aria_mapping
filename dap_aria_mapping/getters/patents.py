@@ -1,9 +1,8 @@
 import pandas as pd
 from nesta_ds_utils.loading_saving.S3 import download_obj
 from dap_aria_mapping import BUCKET_NAME
-from typing import Mapping, Union, List
+from typing import Mapping, Union, List, Literal
 import pandas as pd
-from typing import Literal
 
 
 def get_patents() -> pd.DataFrame:

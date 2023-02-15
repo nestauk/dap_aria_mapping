@@ -2,6 +2,10 @@ import streamlit as st
 import pandas as pd
 from dap_aria_mapping.getters.validation import get_chisq, get_entropy, get_tree_depths, get_pairwise_depth
 import altair as alt
+import os
+import codecs
+from collections import defaultdict
+from dap_aria_mapping import PROJECT_DIR
 from nesta_ds_utils.viz.altair import formatting
 formatting.setup_theme()
 
@@ -132,8 +136,78 @@ def validation_app():
             column=alt.Column('topic:N', title=None, header=alt.Header(labelFontSize=12))
         ).properties(width=150)
         st.altair_chart(subtopic_chart)
+    with st.expander("Sunburst Diagrams"):
+        sunbursts = defaultdict(str)
+        for fn in os.listdir(f"{PROJECT_DIR}/dap_aria_mapping/analysis/validation_viz/journal_plots/sunbursts"):
+            type = fn.split("_")[1].split(".")[0]
+            f = codecs.open(f"{PROJECT_DIR}/dap_aria_mapping/analysis/validation_viz/journal_plots/sunbursts/{fn}", "r")
+            sunbursts[type] = f.read()
+        chart_type_selections = st.selectbox(label = "choose a chart type", options = sunbursts.keys(), index=2)
+        st.components.v1.html(html = sunbursts[chart_type_selections], height = 1500, width = 1900)
+    
+    with st.expander("Number of Topics Present Per Journal"):
+        hists = defaultdict(lambda: defaultdict (lambda: defaultdict (lambda: defaultdict)))
+        for fn in  os.listdir(f"{PROJECT_DIR}/dap_aria_mapping/analysis/validation_viz/journal_plots/histograms"):
+            parsed_fn = fn.split("_")
+            alg_typ = parsed_fn[0]
+            top_level = parsed_fn[3]
+            next_level = parsed_fn[-1].split(".")[0]
+            f = codecs.open(f"{PROJECT_DIR}/dap_aria_mapping/analysis/validation_viz/journal_plots/histograms/{fn}", "r")
+            hists[alg_typ][top_level][next_level] = f.read()
+        
+        alg_selections =  st.selectbox(label = "choose an algorithm", options = hists.keys(), index=0)
+        top_level_selections = st.selectbox(label = "choose the top level", options = sorted(list(hists[alg_selections].keys())), index=0)
+        next_level_selections = st.selectbox(label = "choose the next level", options = hists[alg_selections][top_level_selections].keys(), index=0)
 
+        st.components.v1.html(html = hists[alg_selections][top_level_selections][next_level_selections], height = 1000, scrolling=True)
+    
+    with st.expander("TFIDF Breakdown of Topics per Journal"):
+        tfidf_hists = defaultdict(lambda: defaultdict (lambda: defaultdict (lambda: defaultdict)))
+        for fn in  os.listdir(f"{PROJECT_DIR}/dap_aria_mapping/analysis/validation_viz/journal_plots/tfidf"):
+            parsed_fn = fn.split("_")
+            alg_typ = parsed_fn[0]
+            top_level = parsed_fn[3]
+            next_level = parsed_fn[-1].split(".")[0]
+            f = codecs.open(f"{PROJECT_DIR}/dap_aria_mapping/analysis/validation_viz/journal_plots/tfidf/{fn}", "r")
+            tfidf_hists[alg_typ][top_level][next_level] = f.read()
+        
+        alg_selections =  st.selectbox(label = "choose an algorithm (tfidf)", options = tfidf_hists.keys(), index=0)
+        top_level_selections = st.selectbox(label = "choose the top level (tfidf)", options = sorted(list(tfidf_hists[alg_selections].keys())), index=0)
+        next_level_selections = st.selectbox(label = "choose the next level (tfidf)", options = tfidf_hists[alg_selections][top_level_selections].keys(), index=0)
 
+        st.components.v1.html(html = tfidf_hists[alg_selections][top_level_selections][next_level_selections], height = 1000, scrolling=True)
+    
+    with st.expander("Percentage Breakdown of Topics per Journal"):
+        frequency_hists = defaultdict(lambda: defaultdict (lambda: defaultdict (lambda: defaultdict)))
+        for fn in  os.listdir(f"{PROJECT_DIR}/dap_aria_mapping/analysis/validation_viz/journal_plots/frequency"):
+            parsed_fn = fn.split("_")
+            alg_typ = parsed_fn[0]
+            top_level = parsed_fn[3]
+            next_level = parsed_fn[-1].split(".")[0]
+            f = codecs.open(f"{PROJECT_DIR}/dap_aria_mapping/analysis/validation_viz/journal_plots/frequency/{fn}", "r")
+            frequency_hists[alg_typ][top_level][next_level] = f.read()
+        
+        alg_selections =  st.selectbox(label = "choose an algorithm (percentage breakdown)", options = frequency_hists.keys(), index=0)
+        top_level_selections = st.selectbox(label = "choose the top level (percentage breakdown)", options = sorted(list(frequency_hists[alg_selections].keys())), index=0)
+        next_level_selections = st.selectbox(label = "choose the next level (percentage breakdown)", options = frequency_hists[alg_selections][top_level_selections].keys(), index=0)
+
+        st.components.v1.html(html = frequency_hists[alg_selections][top_level_selections][next_level_selections], height = 1000, scrolling=True)
+
+    with st.expander("Topical Breakdown of Entities (Heatmap)"):
+        heatmaps = defaultdict(lambda: defaultdict (lambda: defaultdict (lambda: defaultdict)))
+        for fn in  os.listdir(f"{PROJECT_DIR}/dap_aria_mapping/analysis/validation_viz/journal_plots/heatmaps"):
+            parsed_fn = fn.split("_")
+            alg_typ = parsed_fn[0]
+            top_level = parsed_fn[3]
+            next_level = parsed_fn[-1].split(".")[0]
+            f = codecs.open(f"{PROJECT_DIR}/dap_aria_mapping/analysis/validation_viz/journal_plots/heatmaps/{fn}", "r")
+            heatmaps[alg_typ][top_level][next_level] = f.read()
+        
+        alg_selections =  st.selectbox(label = "choose an algorithm (heatmap)", options = heatmaps.keys(), index=0)
+        top_level_selections = st.selectbox(label = "choose the top level (heatmap)", options = sorted(list(heatmaps[alg_selections].keys())), index=0)
+        next_level_selections = st.selectbox(label = "choose the next level (heatmap)", options = heatmaps[alg_selections][top_level_selections].keys(), index=0)
+
+        st.components.v1.html(html = heatmaps[alg_selections][top_level_selections][next_level_selections], height = 1000, scrolling=True)
 
 validation_app()
         

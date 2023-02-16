@@ -177,6 +177,10 @@ if __name__ == "__main__":
     np.random.seed(args.seed)
     random.seed(args.seed)
 
+    # load config
+    logger.info("Loading config")
+    config = taxonomy["community_detection"]
+
     # load in raw entity data
     logger.info("Loading raw data")
     oa_entities = get_openalex_entities()
@@ -185,20 +189,20 @@ if __name__ == "__main__":
     # build combined list of lists of entities in each abstract
     logger.info("Building input data")
     cooccurrence_data = generate_cooccurrence_data(
-        oa_entities, min_confidence_threshold=taxonomy["min_entity_confidence"]
+        oa_entities, min_confidence_threshold=config["min_entity_confidence"]
     )
     cooccurrence_data = generate_cooccurrence_data(
         patent_entities,
-        min_confidence_threshold=taxonomy["min_entity_confidence"],
+        min_confidence_threshold=config["min_entity_confidence"],
         cooccurrence_data=cooccurrence_data,
     )
 
     cooccurrence_data_discarded = generate_additional_cooccurrence_data(
-        oa_entities, min_confidence_threshold=taxonomy["min_entity_confidence"]
+        oa_entities, min_confidence_threshold=config["min_entity_confidence"]
     )
     cooccurrence_data_discarded = generate_additional_cooccurrence_data(
         patent_entities,
-        min_confidence_threshold=taxonomy["min_entity_confidence"],
+        min_confidence_threshold=config["min_entity_confidence"],
         cooccurrence_data=cooccurrence_data_discarded,
     )
 
@@ -210,15 +214,18 @@ if __name__ == "__main__":
         [
             x
             for x in entity_counts
-            if entity_counts[x] >= taxonomy["min_entity_frequency"]
+            if entity_counts[x] >= config["min_entity_frequency"]
         ]
     )
+    logger.info(f"Number of unique entities in taxonomy = {len(entities)}")
 
     entities_discarded = pipe(
         cooccurrence_data_discarded,
         lambda x: set(chain(*x)),
         lambda x: x - entities,
     )
+
+    logger.info(f"Number of unique additional entities = {len(entities_discarded)}")
 
     cooccurrence_data_clean = [
         [x for x in ls if x in entities] for ls in cooccurrence_data
@@ -300,7 +307,7 @@ if __name__ == "__main__":
 
             # run Louvain community detection
             logger.info("Splitting network into communities")
-            starting_resolution = taxonomy["starting_resolution"]
+            starting_resolution = config["starting_resolution"]
             initial_partitions = louvain_communities(
                 network,
                 resolution=starting_resolution,
@@ -318,15 +325,15 @@ if __name__ == "__main__":
                     node_list,
                     network,
                     hierarchy,
-                    resolution=starting_resolution + taxonomy["resolution_increments"],
-                    resolution_increments=taxonomy["resolution_increments"],
-                    min_group_size=taxonomy["min_group_size"],
-                    total_iters=taxonomy["max_splits"],
+                    resolution=starting_resolution + config["resolution_increments"],
+                    resolution_increments=config["resolution_increments"],
+                    min_group_size=config["min_group_size"],
+                    total_iters=config["max_splits"],
                 )
 
             # format output as table and save as parquet to S3
             logger.info("Formatting output")
-            output = format_output(hierarchy, taxonomy["max_splits"])
+            output = format_output(hierarchy, config["max_splits"])
             print(output.head())
 
             logger.info("Saving output")

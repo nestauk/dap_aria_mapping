@@ -66,7 +66,7 @@ def propagate_sunburst_cluster_values(
     fig = px.sunburst(df, path=path, values="Count")
     return {
         "ids": [fig.data[0]["ids"]],
-        "Names": [fig.data[0]["Names"]],
+        "labels": [fig.data[0]["labels"]],
         "parents": [fig.data[0]["parents"]],
         "values": [fig.data[0]["values"]],
     }
@@ -112,7 +112,7 @@ def build_cluster_sunburst(
                             tail_path=tail,
                         )
                     ],
-                    "name": "{} - Top {} Entities - Level {}".format(
+                    "label": "{} - Top {} Entities - Level {}".format(
                         tail_name, str(length), str(level)
                     ),
                     "method": "restyle",
@@ -149,7 +149,7 @@ def build_cluster_sunburst(
     )
 
     fig.update_traces(
-        hovertemplate="<b>%{name}</b><br>Entity Count: %{value}<br>",
+        hovertemplate="<b>%{label}</b><br>Entity Count: %{value}<br>",
     )
 
     if isinstance(save, bool):

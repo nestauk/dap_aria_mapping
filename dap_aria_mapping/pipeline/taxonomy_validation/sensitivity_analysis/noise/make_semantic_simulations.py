@@ -26,7 +26,7 @@ METHODS = {
     "HDBSCAN": HDBSCAN,
 }
 
-OUTPUT_DIR = "outputs/validation_metrics/simulations/noise"
+OUTPUT_DIR = "outputs/simulations/noise"
 
 
 def get_configuration(args):
@@ -107,7 +107,7 @@ if __name__ == "__main__":
     embeddings_discarded = embeddings_discarded.loc[
         ~embeddings_discarded.index.isin(embeddings.index)
     ]
-    breakpoint()
+
     if args.test:
         embeddings, embeddings_discarded = (
             embeddings.iloc[:1000, :1000],

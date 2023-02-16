@@ -211,11 +211,7 @@ if __name__ == "__main__":
     logger.info("Filtering entities")
     entity_counts = Counter(chain(*cooccurrence_data))
     entities = set(
-        [
-            x
-            for x in entity_counts
-            if entity_counts[x] >= config["min_entity_frequency"]
-        ]
+        [x for x in entity_counts if entity_counts[x] >= config["min_entity_frequency"]]
     )
     logger.info(f"Number of unique entities in taxonomy = {len(entities)}")
 
@@ -251,9 +247,12 @@ if __name__ == "__main__":
                 for ls in cooccurrence_data_discarded_clean
             ]
 
-            cooccurrence_data_sample = list(
-                chain(*zip(cooccurrence_data_clean, cooccurrence_data_discarded_sample))
-            )
+            cooccurrence_data_sample = [
+                list(chain(*x))
+                for x in zip(
+                    cooccurrence_data_clean, cooccurrence_data_discarded_sample
+                )
+            ]
 
             # build term cooccurrence network
             logger.info("Generating network")
@@ -296,13 +295,13 @@ if __name__ == "__main__":
                     upload_obj(
                         network,
                         BUCKET_NAME,
-                        f"outputs/validation_metrics/simulations/noise/raw_outputs/test_cooccurrence_network_ratio_{ratio}_simul_{simul}.pkl",
+                        f"outputs/simulations/noise/raw_outputs/test_cooccurrence_network_ratio_{ratio}_simul_{simul}.pkl",
                     )
                 else:
                     upload_obj(
                         network,
                         BUCKET_NAME,
-                        f"outputs/validation_metrics/simulations/noise/raw_outputs/cooccurrence_network_ratio_{ratio}_simul_{simul}.pkl",
+                        f"outputs/simulations/noise/raw_outputs/cooccurrence_network_ratio_{ratio}_simul_{simul}.pkl",
                     )
 
             # run Louvain community detection
@@ -347,31 +346,27 @@ if __name__ == "__main__":
                 )
                 logger.info("Saving locally")
                 if args.test:
-                    with open(
+                    output.to_parquet(
                         OUTPUT_PATH
-                        / f"test_community_detection_clusters_{ratio}_simul_{simul}.pkl",
-                        "wb",
-                    ) as f:
-                        pickle.dump(network, f)
+                        / f"test_community_detection_taxonomy_ratio_{ratio_str}_simul_{simul}.parquet"
+                    )
                 else:
-                    with open(
+                    output.to_parquet(
                         OUTPUT_PATH
-                        / f"community_detection_clusters_{ratio}_simul_{simul}.pkl",
-                        "wb",
-                    ) as f:
-                        pickle.dump(network, f)
+                        / f"community_detection_taxonomy_ratio_{ratio_str}_simul_{simul}.parquet"
+                    )
 
             else:
                 logger.info("Saving to S3")
                 if args.test:
                     upload_obj(
-                        network,
+                        output,
                         BUCKET_NAME,
-                        f"outputs/validation_metrics/simulations/noise/formatted_outputs/test_community_detection_clusters_ratio_{ratio}_simul_{simul}.pkl",
+                        f"outputs/simulations/noise/formatted_outputs/test_community_detection_taxonomy_ratio_{ratio}_simul_{simul}.parquet",
                     )
                 else:
                     upload_obj(
-                        network,
+                        output,
                         BUCKET_NAME,
-                        f"outputs/validation_metrics/simulations/noise/formatted_outputs/community_detection_clusters_{ratio}_simul_{simul}.pkl",
+                        f"outputs/simulations/noise/formatted_outputs/community_detection_taxonomy_ratio_{ratio}_simul_{simul}.parquet",
                     )

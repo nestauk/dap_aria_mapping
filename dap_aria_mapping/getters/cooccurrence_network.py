@@ -4,7 +4,7 @@ import networkx as nx
 import pickle
 
 
-def get_test_cooccurrence_network(local) -> nx.Graph():
+def get_test_cooccurrence_network() -> nx.Graph():
     """gets small network of term cooccurrences generated from OpenAlex and Patents Data.
     Script used to generate network can be found in pipeline/taxonomy_development/build_cooccurrence_network.py
     run in test_mode.

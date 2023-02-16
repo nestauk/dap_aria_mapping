@@ -60,21 +60,34 @@ def get_taxonomy_config() -> dict:
     return config
 
 
-def get_cooccurrence_taxonomy() -> pd.DataFrame:
+def get_cooccurrence_taxonomy(sample: int = None) -> pd.DataFrame:
     """gets taxonomy developed using community detection on term cooccurrence network.
         Algorithm to generate taxonomy can be found in pipeline/taxonomy_development/community_detection.py.
         Parameters of taxonomy can be found in config/taxonomy.yaml.
 
+    Args:
+     sample (int, optional): The size of the sample to download - must be one of the option
+            that were run. (i.e. 10, 25, 50, 75, 90). If None, downloads full taxonomy. Defaults to None.
     Returns:
         pd.DataFrame: table describing cluster assignments.
         Index: entity, Columns: levels of taxonomy, values are expressed as <INT>_<INT> where there is
         an integer to represent
     """
-    return download_obj(
-        BUCKET_NAME,
-        "outputs/community_detection_taxonomy/tax.parquet",
-        download_as="dataframe",
-    )
+    if sample:
+        return download_obj(
+            BUCKET_NAME,
+            "outputs/simulations/sample/formatted_outputs/cooccurrence_network_sample_{}.parquet".format(
+                str(sample)
+            ),
+            download_as="dataframe",
+        )
+
+    else:
+        return download_obj(
+            BUCKET_NAME,
+            "outputs/community_detection_taxonomy/tax.parquet",
+            download_as="dataframe",
+        )
 
 
 def get_test_cooccurrence_taxonomy() -> pd.DataFrame:
@@ -95,21 +108,33 @@ def get_test_cooccurrence_taxonomy() -> pd.DataFrame:
     )
 
 
-def get_semantic_taxonomy(cluster_object: str = "centroids") -> pd.DataFrame:
+def get_semantic_taxonomy(
+    cluster_object: str = "centroids", sample: int = None
+) -> pd.DataFrame:
     """Downloads taxonomy from S3 and returns them as a pandas dataframe.
 
     Args:
         cluster_object (str, optional): The type of semantic cluster object to download.
             Defaults to "centroids".
+        sample (int, optional): The size of the sample to download - must be one of the option
+            that were run. (i.e. 10, 25, 50, 75, 90). If None, downloads full taxonomy. Defaults to None.
 
     Returns:
         pd.DataFrame: A pandas dataframe containing the semantic taxonomy.
     """
-    return download_obj(
-        BUCKET_NAME,
-        f"outputs/semantic_taxonomy/assignments/semantic_{cluster_object}_clusters.parquet",
-        download_as="dataframe",
-    )
+    if sample:
+        return download_obj(
+            BUCKET_NAME,
+            f"outputs/simulations/sample/formatted_outputs/semantic_{cluster_object}_clusters_sample_{str(sample)}.parquet",
+            download_as="dataframe",
+        )
+
+    else:
+        return download_obj(
+            BUCKET_NAME,
+            f"outputs/semantic_taxonomy/assignments/semantic_{cluster_object}_clusters.parquet",
+            download_as="dataframe",
+        )
 
 
 def get_topic_names(

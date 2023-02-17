@@ -9,7 +9,7 @@ from nesta_ds_utils.loading_saving.S3 import upload_obj
 from dap_aria_mapping.getters.openalex import get_openalex_entities
 from dap_aria_mapping.getters.cooccurrence_network import (
     get_test_cooccurrence_network,
-    get_cooccurrence_network
+    get_cooccurrence_network,
 )
 
 # from dap_aria_mapping.getters.taxonomies import get_taxonomy_taxonomy
@@ -140,7 +140,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--sample_sizes",
-        type=int,
+        type=float,
         nargs="+",
         default=[0.1, 0.25, 0.5, 0.75],
         help="Sample sizes to use. Default: 0.1 0.25 0.5 0.75",
@@ -176,15 +176,11 @@ if __name__ == "__main__":
     config = taxonomy["community_detection"]
 
     for sample_size_ in args.sample_sizes:
-        sample_str = str(int(sample_size_*100))
-        logger.info(
-            "Sample size: " + str(sample_size_)
-        )
+        sample_str = str(int(sample_size_ * 100))
+        logger.info("Sample size: " + str(sample_size_))
 
         for simul in range(args.n_simulations):
-            logger.info(
-                "Simulation: " + str(simul)
-            )
+            logger.info("Simulation: " + str(simul))
 
             logger.info("Loading data")
             if args.test:

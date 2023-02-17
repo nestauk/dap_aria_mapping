@@ -61,7 +61,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--sample_sizes",
-        type=int,
+        type=float,
         nargs="+",
         default=[0.1, 0.25, 0.5, 0.75],
         help="Sample sizes to use. Default: 0.1 0.25 0.5 0.75",
@@ -103,7 +103,9 @@ if __name__ == "__main__":
     if args.production and not any(
         ["centroids" in args.cluster_method, "imbalanced" in args.cluster_method]
     ):
-        raise ValueError("Production mode only supports centroids or imbalanced configs")
+        raise ValueError(
+            "Production mode only supports centroids or imbalanced configs"
+        )
 
     logger.info("Downloading embeddings from S3")
     embeddings = get_entity_embeddings(discarded=False)
@@ -114,20 +116,24 @@ if __name__ == "__main__":
 
     logger.info("Running clustering on embeddings")
     for sample_size in args.sample_sizes:
-        sample_str = str(int(sample_size*100))
-        logger.info(
-            "Sample size: " + str(sample_size)
-        )
+        sample_str = str(int(sample_size * 100))
+        logger.info("Sample size: " + str(sample_size))
         for simul in range(args.n_simulations):
-            logger.info(
-                "Simulation: " + str(simul)
-            )
-            embeddings = embeddings.sample(frac=sample_size)
+            logger.info("Simulation: " + str(simul))
+            embeddings_sample = embeddings.sample(frac=sample_size)
             cluster_configs = get_configuration(args)
+
+            logger.info("Adjust clusters to size of sample")
+            for param_dict in cluster_configs[0][1]:
+                if "n_clusters" in param_dict:
+                    new_clusters = int(param_dict["n_clusters"] * sample_size)
+                    if new_clusters < 2:
+                        new_clusters = 2
+                    param_dict["n_clusters"] = new_clusters
 
             cluster_outputs, plot_dicts = run_clustering_generators(
                 cluster_configs,
-                embeddings,
+                embeddings_sample,
                 imbalanced=True if "imbalanced" in args.cluster_method else False,
             )
 

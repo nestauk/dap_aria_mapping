@@ -26,7 +26,43 @@ with header1:
 with header2:       
     st.title(":blue[Horizon Scanner]")
 
+st.markdown(":blue[**_Explore patterns and trends in research domains across the UK_**]")
+
+slider, dropdown = st.columns(2)
+with slider:
+    top_n = st.slider(label = "Show me most productive:" , min_value = 0, max_value = 50)
+with dropdown:
+    level = st.selectbox(label = "At the following level of granularity:", options = ["Area", "Discipline", "Topic"])
+
 overview_tab, ed_tab, overlaps_tab = st.tabs(["Overview", "Emergence and Disruption", "Overlaps"])
+
+with overview_tab:
+    volume, alignment = st.columns(2)
+    with volume:
+        st.subheader("Volume of Activity Over Time")
+    with alignment:
+        st.subheader("Trends in Alignment")
+
+with ed_tab:
+    emergence, disruption, novel = st.columns(3)
+    with emergence:
+         st.subheader("Trends in Emergence")
+        
+    with disruption:
+        st.subheader("Trends in Disruption")
+    
+    with novel:
+        st.subheader("Trends in Novelty")
+
+with overlaps_tab:
+    heatmap, link_prediction = st.columns(2)
+    with heatmap:
+        st.subheader("Heatmap of overlaps")
+    with link_prediction:
+        st.subheader("Link prediction of future overlaps")
+    
+
+
 
 #adds the nesta x aria logo at the bottom of each tab, 3 lines below the contents
 st.markdown("")

@@ -32,7 +32,7 @@ def get_patent_entities() -> Mapping[str, Mapping[str, Union[str, str]]]:
 
 def get_patent_topics(tax: str = 'cooccur', level: int = 1) -> Dict[str, List[str]]:
     """gets patent ids tagged with topics from the specified taxonomy
-    at a given level"
+    at a given level
 
     Args:
         tax (str, optional): taxonomy labels to use. Defaults to 'cooccur'.

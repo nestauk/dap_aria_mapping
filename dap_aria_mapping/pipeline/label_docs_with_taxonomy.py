@@ -7,6 +7,7 @@ from nesta_ds_utils.loading_saving.S3 import upload_obj
 import pandas as pd
 import json
 import argparse
+from dap_aria_mapping import logger
 
 def tag_docs_at_level(docs: dict, tax_at_level: pd.Series) -> dict:
     """tag documents with topic labels based on entities present in document
@@ -54,7 +55,7 @@ if __name__ == '__main__':
     
 
     args = parser.parse_args()
-    print("loading taxonomy")
+    logger.info("loading taxonomy")
     if args.taxonomy == 'cooccur':
         taxonomy = get_cooccurrence_taxonomy()
     elif args.taxonomy == 'centroids':
@@ -62,13 +63,13 @@ if __name__ == '__main__':
     elif args.taxonomy == 'imbalanced':
         taxonomy = get_semantic_taxonomy(cluster_object='imbalanced')
     else:
-        print("INVALID TAXONOMY")
+        logger.info("INVALID TAXONOMY")
     
-    print("TAGGING PATENTS WITH TOPICS")
-    print("loading patents data")
+    logger.info("TAGGING PATENTS WITH TOPICS")
+    logger.info("loading patents data")
     patents = get_patent_entities()
     for level in range(1,len(taxonomy.columns)+1):
-        print("starting tagging for level {}".format(level))
+        logger.info("starting tagging for level {}".format(level))
         tax_at_level = taxonomy["Level_{}".format(level)]
         topics_per_doc = tag_docs_at_level(patents, tax_at_level)
         if args.local:
@@ -82,11 +83,11 @@ if __name__ == '__main__':
             )
         
 
-    print("TAGGING OPENALEX WITH TOPICS")
-    print("loading openalex data")
+    logger.info("TAGGING OPENALEX WITH TOPICS")
+    logger.info("loading openalex data")
     openalex = get_openalex_entities()
     for level in range(1,len(taxonomy.columns)+1):
-        print("starting tagging for level {}".format(level))
+        logger.info("starting tagging for level {}".format(level))
         tax_at_level = taxonomy["Level_{}".format(level)]
         topics_per_doc = tag_docs_at_level(openalex, tax_at_level)
         if args.local:

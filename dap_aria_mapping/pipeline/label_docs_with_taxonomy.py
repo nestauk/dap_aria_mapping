@@ -8,16 +8,17 @@ import pandas as pd
 import json
 import argparse
 from dap_aria_mapping import logger
+from typing import Dict, List, Mapping, Union
 
-def tag_docs_at_level(docs: dict, tax_at_level: pd.Series) -> dict:
+def tag_docs_at_level(docs: Mapping[str, Mapping[str, Union[str, str]]], tax_at_level: pd.Series) -> Dict[str, List[str]]:
     """tag documents with topic labels based on entities present in document
 
     Args:
-        docs (dict): dictionary where key: document id, value: list of entity information about each document
+        docs (Mapping): mapping of entity information to document ids
         tax_at_level (pd.Series): taxonomy of entities, index: entity, value: topic of entity at a given level of the taxonomy
 
     Returns:
-        dict: key: documentid, value: list of topics per document at given level of taxonomy 
+        Dict: {document id: [topic label, topic label, etc.]}
     """
     topics_per_doc = defaultdict()
     for docid, entity_list in docs.items():

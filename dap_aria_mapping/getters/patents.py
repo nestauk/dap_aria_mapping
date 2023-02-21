@@ -1,7 +1,7 @@
 import pandas as pd
 from nesta_ds_utils.loading_saving.S3 import download_obj
 from dap_aria_mapping import BUCKET_NAME, AI_GENOMICS_BUCKET_NAME
-from typing import Mapping, Union, Dict
+from typing import Mapping, Union, Dict, List
 import pandas as pd
 
 
@@ -30,7 +30,7 @@ def get_patent_entities() -> Mapping[str, Mapping[str, Union[str, str]]]:
         download_as="dict",
     )
 
-def get_patent_topics(tax: str = 'cooccur', level: int = 1) -> Dict:
+def get_patent_topics(tax: str = 'cooccur', level: int = 1) -> Dict[str, List[str]]:
     """gets patent ids tagged with topics from the specified taxonomy
     at a given level"
 
@@ -41,8 +41,8 @@ def get_patent_topics(tax: str = 'cooccur', level: int = 1) -> Dict:
             options are 1, 2, 3, 4, 5.
 
     Returns:
-        Dict: dictionary with document ids tagged with topic labels of the taxonomy.
-            key: patent id, value: list of topic labels. Labels are formatted as
+        Dict: dictionary with patent ids tagged with topic labels of the taxonomy.
+            key: {patent id: [topic label, topic label, etc.]} where labels are formatted as:
             [LEVEL 1 LABEL]-[LEVEL 2 LABEL]-[ETC]
     """
 

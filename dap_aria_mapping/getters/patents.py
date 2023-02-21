@@ -1,7 +1,7 @@
 import pandas as pd
 from nesta_ds_utils.loading_saving.S3 import download_obj
 from dap_aria_mapping import BUCKET_NAME, AI_GENOMICS_BUCKET_NAME
-from typing import Mapping, Union
+from typing import Mapping, Union, Dict, List
 import pandas as pd
 
 
@@ -27,6 +27,28 @@ def get_patent_entities() -> Mapping[str, Mapping[str, Union[str, str]]]:
     return download_obj(
         BUCKET_NAME,
         "inputs/data_collection/patents/preprocessed_annotated_patents.json",
+        download_as="dict",
+    )
+
+def get_patent_topics(tax: str = 'cooccur', level: int = 1) -> Dict[str, List[str]]:
+    """gets patent ids tagged with topics from the specified taxonomy
+    at a given level
+
+    Args:
+        tax (str, optional): taxonomy labels to use. Defaults to 'cooccur'.
+            PIPELINE HAS CURRENTLY ONLY BEEN RUN FOR COOCURRENCE SO THIS IS THE ONLY OPTION
+        level (int, optional): level of the taxonomy to use. Defaults to 1.
+            options are 1, 2, 3, 4, 5.
+
+    Returns:
+        Dict: dictionary with patent ids tagged with topic labels of the taxonomy.
+            key: {patent id: [topic label, topic label, etc.]} where labels are formatted as:
+            [LEVEL 1 LABEL]-[LEVEL 2 LABEL]-[ETC]
+    """
+
+    return download_obj(
+        BUCKET_NAME,
+        "outputs/docs_with_topics/{}/patents/Level_{}.json".format(tax,str(level)),
         download_as="dict",
     )
 

@@ -64,7 +64,7 @@ def get_cooccurrence_taxonomy() -> pd.DataFrame:
     """
     return download_obj(
         BUCKET_NAME,
-        "outputs/community_detection_clusters.parquet",
+        "outputs/community_detection_taxonomy/tax.parquet",
         download_as="dataframe",
     )
 
@@ -82,7 +82,7 @@ def get_test_cooccurrence_taxonomy() -> pd.DataFrame:
     """
     return download_obj(
         BUCKET_NAME,
-        "outputs/test_community_detection_clusters.parquet",
+        "outputs/community_detection_taxonomy/test.parquet",
         download_as="dataframe",
     )
 

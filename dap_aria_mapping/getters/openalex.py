@@ -78,6 +78,27 @@ def get_openalex_entities() -> Mapping[str, Mapping[str, Union[str, str]]]:
         download_as="dict",
     )
 
+def get_openalex_topics(tax: str = 'cooccur', level: int = 1) -> Dict:
+    """gets openalex document ids tagged with topics from the specified taxonomy
+    at a given level"
+
+    Args:
+        tax (str, optional): taxonomy labels to use. Defaults to 'cooccur'.
+            PIPELINE HAS CURRENTLY ONLY BEEN RUN FOR COOCURRENCE SO THIS IS THE ONLY OPTION
+        level (int, optional): level of the taxonomy to use. Defaults to 1.
+            options are 1, 2, 3, 4, 5.
+
+    Returns:
+        Dict: dictionary with document ids tagged with topic labels of the taxonomy.
+            key: openalex id, value: list of topic labels. Labels are formatted as
+            [LEVEL 1 LABEL]-[LEVEL 2 LABEL]-[ETC]
+    """
+
+    return download_obj(
+        BUCKET_NAME,
+        "outputs/docs_with_topics/{}/openalex/Level_{}.json".format(tax,str(level)),
+        download_as="dict",
+    )
 
 #########TEMPORARY AI GENOMICS GETTERS##########################
 

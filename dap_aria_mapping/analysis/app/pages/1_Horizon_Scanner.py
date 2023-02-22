@@ -28,13 +28,27 @@ with header2:
 
 st.markdown(":blue[**_Explore patterns and trends in research domains across the UK_**]")
 
-slider, dropdown = st.columns(2)
-with slider:
-    top_n = st.slider(label = "Show me most productive:" , min_value = 0, max_value = 50)
-with dropdown:
-    level = st.selectbox(label = "At the following level of granularity:", options = ["Area", "Discipline", "Topic"])
+area_drop, discipline_drop, topic_drop = st.columns(3)
+    
+with area_drop:
+    area = st.selectbox(label = "Select an Area", options = ["All", "Area 1", "Area 2"])
+    discipline = "All"
+    topic = "All"
 
-overview_tab, ed_tab, overlaps_tab = st.tabs(["Overview", "Emergence and Disruption", "Overlaps"])
+with discipline_drop:
+    if area != "All":
+        #In reality, the options for discipline would come from df.loc[df["Level 1"] == area]["Level 2"].unique()
+        discipline = st.selectbox(label = "Select a Discipline", options = ["All", "Discipline 1", "Discipline 2"])
+
+with topic_drop:
+    if discipline != "All":
+        #In reality, the options for discipline would come from df.loc[df["Level 2"] == discipline]["Level 3"].unique()
+        topic = st.selectbox(label = "Select a Topic", options = ["All", "Topic 1", "Topic 2"])
+
+
+total_to_display = st.slider(label = "Show me most productive:" , min_value = 0, max_value = 50)
+
+overview_tab, nd_tab, emergence_tab, overlaps_tab = st.tabs(["Overview", "Novelty and Disruption", "Emergence","Overlaps"])
 
 with overview_tab:
     volume, alignment = st.columns(2)
@@ -43,16 +57,18 @@ with overview_tab:
     with alignment:
         st.subheader("Trends in Alignment")
 
-with ed_tab:
-    emergence, disruption, novel = st.columns(3)
-    with emergence:
-         st.subheader("Trends in Emergence")
+with nd_tab:
+    disruption, novelty = st.columns(2)
         
     with disruption:
         st.subheader("Trends in Disruption")
     
-    with novel:
+    with novelty:
         st.subheader("Trends in Novelty")
+
+with emergence_tab:
+    st.subheader("Placeholder for exploring trends in emergence")
+    st.markdown("Note: this is not clearly defined what this would actually show")
 
 with overlaps_tab:
     heatmap, link_prediction = st.columns(2)

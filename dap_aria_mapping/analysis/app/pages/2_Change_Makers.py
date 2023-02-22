@@ -28,7 +28,7 @@ with header2:
 
 st.markdown(f'<h1 style="color:#EB003B;font-size:16px;">{"<em>Find the people and institutions with the ability to make waves within research areas<em>"}</h1>', unsafe_allow_html=True)
 
-overview_tab, overlaps_tab = st.tabs(["Overview", "Collaboration"])
+overview_tab, collaboration_tab = st.tabs(["Overview", "Collaboration"])
 
 with overview_tab:
     dropdown1, dropdown2, dropdown3 = st.columns(3)
@@ -46,7 +46,15 @@ with overview_tab:
     with stacked_bars:
         st.subheader("Placeholder for Stacked Bars")
 
-with overlaps_tab:
+with collaboration_tab:
+    network_dropdown1, network_dropdown2 = st.columns(2)
+    with network_dropdown1:
+        dataset = st.selectbox(label = "Show me relationships in", options = ["Academia", "Industry"])
+    with network_dropdown2:
+        if dataset == "Academia":
+            groups = st.selectbox(label = "Explore relationships between", options = ["Individuals", "Research Groups", "Institutions"])
+        elif dataset == "Industry":
+            groups = st.selectbox(label = "Explore relationships between", options = ["Individuals", "Companies"])
     st.subheader("Placeholder for network")
 
 

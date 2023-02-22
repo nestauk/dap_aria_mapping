@@ -24,9 +24,9 @@ header1, header2 = st.columns([1,10])
 with header1:
     st.image(icon)
 with header2:       
-    st.title(":blue[Horizon Scanner]")
+    st.markdown(f'<h1 style="color:#0000FF;font-size:72px;">{"Horizon Scanner"}</h1>', unsafe_allow_html=True)
 
-st.markdown(":blue[**_Explore patterns and trends in research domains across the UK_**]")
+st.markdown(f'<h1 style="color:#0000FF;font-size:16px;">{"<em>Explore patterns and trends in research domains across the UK<em>"}</h1>', unsafe_allow_html=True)
 
 area_drop, discipline_drop, topic_drop = st.columns(3)
     

@@ -24,9 +24,9 @@ header1, header2 = st.columns([1,10])
 with header1:
     st.image(icon)
 with header2:       
-    st.title(":red[Change Makers]")
+    st.markdown(f'<h1 style="color:#EB003B;font-size:72px;">{"Change Makers"}</h1>', unsafe_allow_html=True)
 
-st.markdown(":red[**_Find the people and institutions with the ability to make waves within research areas_**]")
+st.markdown(f'<h1 style="color:#EB003B;font-size:16px;">{"<em>Find the people and institutions with the ability to make waves within research areas<em>"}</h1>', unsafe_allow_html=True)
 
 overview_tab, overlaps_tab = st.tabs(["Overview", "Collaboration"])
 

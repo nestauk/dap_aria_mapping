@@ -15,9 +15,15 @@
 #     name: python3
 # ---
 
+# +
 import dap_aria_mapping.getters.openalex as oa
 import dap_aria_mapping.getters.taxonomies as tax
 import pandas as pd
+import altair as alt
+
+# Remove altairs 5000 row limit
+alt.data_transformers.disable_max_rows();
+# -
 
 test = oa.get_openalex_topics()
 
@@ -34,7 +40,31 @@ test_df = pd.DataFrame(
     }
 )
 
-test_df.sample(50)
+len(test_df)
+
+# Calculate the number of topics per document
+test_df.loc[:, 'num_topics'] = test_df.loc[:, 'topics'].apply(len)
+
+test_df.head(1)
+
+# Table with histogram of number of topics per document
+topics_per_document = test_df.groupby('num_topics').agg(counts=('doc_id', 'count')).reset_index()
+
+# Plot the counts and number of topics per document
+(
+    alt
+    .Chart(topics_per_document)
+    .mark_line()
+    .encode(
+        x=alt.X('num_topics'),
+        # log scale for y axis
+        y=alt.Y('counts', scale=alt.Scale(type='log')),
+    )
+)
+
+docs_df = test_df[test_df.num_topics >= 2]
+
+len(docs_df)
 
 works_df = oa.get_openalex_works()
 

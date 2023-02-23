@@ -1,4 +1,5 @@
 from dap_aria_mapping import BUCKET_NAME, PROJECT_DIR
+from typing import Dict
 from nesta_ds_utils.loading_saving.S3 import download_obj
 import boto3, yaml, pickle
 import pandas as pd
@@ -139,7 +140,7 @@ def get_semantic_taxonomy(
 
 def get_topic_names(
     taxonomy_class: str, name_type: str, level: int, large: bool = False
-) -> dict:
+) -> Dict[str, str]:
     """Downloads topic names from S3 and returns them as a dictionary.
 
     Args:

@@ -11,11 +11,16 @@ from toolz import pipe
 from functools import partial
 from sklearn.cluster import KMeans, AgglomerativeClustering, DBSCAN
 from hdbscan import HDBSCAN
+from itertools import chain
 from dap_aria_mapping import PROJECT_DIR, BUCKET_NAME, logger, taxonomy
 from dap_aria_mapping.utils.semantics import (
     make_dataframe,
     run_clustering_generators,
     normalise_centroids,
+)
+from dap_aria_mapping.getters.validation import (
+    get_topic_groups,
+    get_subtopic_groups,
 )
 from dap_aria_mapping.getters.taxonomies import get_entity_embeddings
 
@@ -100,6 +105,24 @@ if __name__ == "__main__":
     np.random.seed(args.seed)
     random.seed(args.seed)
 
+    logger.info("Load pairwise data")
+    entity_groups_topics = get_topic_groups()
+    entity_groups_subtopics = get_subtopic_groups()
+    entities_topics = list(
+        chain(*[ls for l in entity_groups_topics.values() for ls in l.values()])
+    )
+    entities_subtopics = list(
+        chain(
+            *[
+                ls
+                for l in entity_groups_subtopics.values()
+                for d in l.values()
+                for ls in d.values()
+            ]
+        )
+    )
+    pairwise_entities = list(set(entities_topics + entities_subtopics))
+
     if args.production and not any(
         ["centroids" in args.cluster_method, "imbalanced" in args.cluster_method]
     ):
@@ -121,6 +144,15 @@ if __name__ == "__main__":
         for simul in range(args.n_simulations):
             logger.info("Simulation: " + str(simul))
             embeddings_sample = embeddings.sample(frac=sample_size)
+            embeddings_pairwise = embeddings.loc[
+                [
+                    entity
+                    for entity in pairwise_entities
+                    if entity not in embeddings_sample.index
+                ]
+            ]
+            embeddings_sample = pd.concat([embeddings_sample, embeddings_pairwise])
+
             cluster_configs = get_configuration(args)
 
             logger.info("Adjust clusters to size of sample")

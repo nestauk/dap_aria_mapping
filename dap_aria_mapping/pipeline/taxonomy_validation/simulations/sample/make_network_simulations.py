@@ -11,6 +11,10 @@ from dap_aria_mapping.getters.cooccurrence_network import (
     get_test_cooccurrence_network,
     get_cooccurrence_network,
 )
+from dap_aria_mapping.getters.validation import (
+    get_topic_groups,
+    get_subtopic_groups,
+)
 
 # from dap_aria_mapping.getters.taxonomies import get_taxonomy_taxonomy
 from dap_aria_mapping import PROJECT_DIR, BUCKET_NAME, logger, taxonomy
@@ -171,6 +175,24 @@ if __name__ == "__main__":
     np.random.seed(args.seed)
     random.seed(args.seed)
 
+    logger.info("Load pairwise data")
+    entity_groups_topics = get_topic_groups()
+    entity_groups_subtopics = get_subtopic_groups()
+    entities_topics = list(
+        chain(*[ls for l in entity_groups_topics.values() for ls in l.values()])
+    )
+    entities_subtopics = list(
+        chain(
+            *[
+                ls
+                for l in entity_groups_subtopics.values()
+                for d in l.values()
+                for ls in d.values()
+            ]
+        )
+    )
+    pairwise_entities = list(set(entities_topics + entities_subtopics))
+
     # load config
     logger.info("Loading config")
     config = taxonomy["community_detection"]
@@ -189,7 +211,9 @@ if __name__ == "__main__":
                 network = get_cooccurrence_network()
 
             sample_size = int(sample_size_ * network.number_of_nodes())
-            random_nodes = sample(list(network.nodes), k=sample_size)
+            random_nodes = list(
+                set(sample(list(network.nodes), k=sample_size) + pairwise_entities)
+            )
             network.remove_nodes_from([n for n in network if n not in random_nodes])
 
             logger.info("Number of nodes: " + str(network.number_of_nodes()))
@@ -257,5 +281,5 @@ if __name__ == "__main__":
                     upload_obj(
                         output,
                         BUCKET_NAME,
-                        f"outputs/simulations/noise/formatted_outputs/community_detection_taxonomy_sample_{sample_str}_simul_{simul}.parquet",
+                        f"outputs/simulations/sample/formatted_outputs/community_detection_taxonomy_sample_{sample_str}_simul_{simul}.parquet",
                     )

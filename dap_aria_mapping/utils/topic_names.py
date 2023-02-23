@@ -164,14 +164,14 @@ def get_level_entity_counts(
         }
     """
     entity_counts = get_entity_counts(journal_entities)
-
-    level_taxonomy = taxonomy.loc[entity_counts.keys()]
+    entities = [x for x in entity_counts.keys() if x in taxonomy.index]
+    level_taxonomy = taxonomy.loc[entities]
     clust_entities = {}
     for clust in level_taxonomy["Level_{}".format(str(level))].unique():
         clust_entities[clust] = level_taxonomy.loc[
             level_taxonomy["Level_{}".format(str(level))] == clust
         ].index.to_list()
-        
+
     clust_entity_counts = {}
     for k in clust_entities.keys():
         clust_entity_counts[k] = {

@@ -6,7 +6,7 @@ import pickle, argparse
 import boto3
 from copy import deepcopy
 
-from dap_aria_mapping.utils.semantics import (
+from dap_aria_mapping.utils.entity_selection import (
     get_sample,
     filter_entities,
 )
@@ -42,7 +42,12 @@ parser.add_argument("--model", default=MODEL_NAME, help="Name for the model to u
 parser.add_argument(
     "--device", default="cuda" if cuda.is_available() else "cpu", help="Device to use"
 )
-
+parser.add_argument(
+    "--discarded",
+    default=False,
+    action="store_true",
+    help="Whether to instead include discarded entities",
+)
 parser.add_argument(
     "--bucket",
     default=False,
@@ -53,13 +58,23 @@ args = parser.parse_args()
 logger.info("Getting OpenAlex entities")
 openalex_entities = pipe(
     get_openalex_entities(),
-    partial(get_sample, score_threshold=args.threshold, num_articles=args.num_articles),
+    partial(
+        get_sample,
+        score_threshold=args.threshold,
+        num_articles=args.num_articles,
+        discarded=args.discarded,
+    ),
 )
 
 logger.info("Getting patent entities")
 patent_entities = pipe(
     get_patent_entities(),
-    partial(get_sample, score_threshold=args.threshold, num_articles=args.num_articles),
+    partial(
+        get_sample,
+        score_threshold=args.threshold,
+        num_articles=args.num_articles,
+        discarded=args.discarded,
+    ),
 )
 
 entities = deepcopy(openalex_entities)
@@ -79,11 +94,15 @@ entities = pipe(
     list,
 )
 
-
 logger.info("Creating embeddings")
 # embeddings
 encoder = SentenceTransformer(MODEL_NAME, device=args.device)
 embeddings = pipe(entities, encoder.encode, lambda embeds: dict(zip(entities, embeds)))
+
+if args.discarded:
+    pickle_name = "embeddings_discarded"
+else:
+    pickle_name = "embeddings"
 
 logger.info("Saving embeddings")
 if args.bucket:
@@ -91,8 +110,8 @@ if args.bucket:
     s3.put_object(
         Body=pickle.dumps(embeddings),
         Bucket=BUCKET_NAME,
-        Key="outputs/embeddings/embeddings.pkl",
+        Key=f"outputs/embeddings/{pickle_name}.pkl",
     )
 else:
-    with open(f"{PROJECT_DIR}/outputs/embeddings.pkl", "wb") as f:
+    with open(f"{PROJECT_DIR}/outputs/{pickle_name}.pkl", "wb") as f:
         pickle.dump(embeddings, f)

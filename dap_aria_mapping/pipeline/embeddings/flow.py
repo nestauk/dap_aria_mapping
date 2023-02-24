@@ -18,7 +18,10 @@ from copy import deepcopy
 from itertools import chain
 import functools
 
-from dap_aria_mapping.utils.semantics import get_sample, filter_entities
+from dap_aria_mapping.utils.entity_selection import (
+    get_sample,
+    filter_entities,
+)
 
 
 def pip(libraries):

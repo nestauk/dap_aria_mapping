@@ -238,12 +238,6 @@ SIMULATION_RATIOS = {
     "noise": ["00", "05", "07", "08", "11", "14", "18", "24", "31", "39", "51"],
 }
 
-
-# SIMULATION = "noise"
-# OUTPUT_DIR = PROJECT_DIR / "outputs" / "figures" / "taxonomy_validation" / "simulations"
-# (OUTPUT_DIR / SIMULATION).mkdir(parents=True, exist_ok=True)
-
-
 if __name__ == "__main__":
 
     logger.info("Loading data...")

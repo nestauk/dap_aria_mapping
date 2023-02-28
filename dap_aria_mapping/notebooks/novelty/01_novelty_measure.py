@@ -32,7 +32,6 @@
 
 import pandas as pd
 import numpy as np
-from typing import Tuple
 pd.set_option('display.max_colwidth', None)
 import itertools
 
@@ -94,6 +93,31 @@ def generate_dummy_table(n_topics: int = 20, n_rows: int = 1000):
         .agg({'counts': 'sum'})
     )
 
+# Generate a dummy table with document ids and list of topics mentioned in the document
+def generate_dummy_document_table(n_documents: int=1000, n_topics: int=20, max_n_topics_per_document: int=5) -> pd.DataFrame:
+    """
+    Generate a dummy table that has columns "document_id", "years" and "topics".
+
+    Args:
+        n_documents (int, optional): Number of documents to generate. Defaults to 1000.
+        n_topics (int, optional): Number of unique topics to generate. Defaults to 20.
+        max_n_topics_per_document (int, optional): Maximum number of topics per document. Defaults to 5.
+
+    Returns:
+        pd.DataFrame: A dataframe with columns "document_id", "years" and "topics"
+    """
+    # Generate document ids
+    document_ids = [f"document_{i}" for i in range(n_documents)]
+    # Generate a list of random topics for each document like this [topic_1, topic_2, ...]
+    # Make sure that all topics are unique for each document
+    topics = [
+        [f"topic_{i}" for i in np.random.choice(range(n_topics), size=np.random.randint(1, max_n_topics_per_document), replace=False)]
+        for _ in range(n_documents)
+    ]
+    # Years
+    years = np.random.choice(range(2000, 2020), size=(n_documents, 1)).squeeze()
+    # Create a dataframe
+    return pd.DataFrame(data={'document_id': document_ids, 'topics': topics, 'year': years})
 
 
 # +
@@ -130,13 +154,6 @@ def plot_random_topic_pair(df: pd.DataFrame, topic1: str = None, topic2: str = N
     # Plot
     print(f"Plotting {topic1} + {topic2}")
     df.plot(x='year', y='counts')
-
-
-# -
-
-dummy_df = generate_dummy_table(n_rows=10000)
-dummy_df.head(3)
-
 
 # Calculate the commonness measure
 def com(df: pd.DataFrame, year: int, topic_i: str, topic_j: str) -> float:
@@ -176,47 +193,15 @@ def com(df: pd.DataFrame, year: int, topic_i: str, topic_j: str) -> float:
 
 
 
-# +
-topic1, topic2 = select_random_existing_topic_pair(dummy_df)
-
-com(dummy_df, year=2010, topic_i=topic1, topic_j=topic2)
-
-
-# +
-# Generate a dummy table with document ids and list of topics mentioned in the document
-def generate_dummy_document_table(n_documents: int=1000, n_topics: int=20, max_n_topics_per_document: int=5) -> pd.DataFrame:
-    """
-    Generate a dummy table that has columns "document_id", "years" and "topics".
-
-    Args:
-        n_documents (int, optional): Number of documents to generate. Defaults to 1000.
-        n_topics (int, optional): Number of unique topics to generate. Defaults to 20.
-        max_n_topics_per_document (int, optional): Maximum number of topics per document. Defaults to 5.
-
-    Returns:
-        pd.DataFrame: A dataframe with columns "document_id", "years" and "topics"
-    """
-    # Generate document ids
-    document_ids = [f"document_{i}" for i in range(n_documents)]
-    # Generate a list of random topics for each document like this [topic_1, topic_2, ...]
-    # Make sure that all topics are unique for each document
-    topics = [
-        [f"topic_{i}" for i in np.random.choice(range(n_topics), size=np.random.randint(1, max_n_topics_per_document), replace=False)]
-        for _ in range(n_documents)
-    ]
-    # Years
-    years = np.random.choice(range(2000, 2020), size=(n_documents, 1)).squeeze()
-    # Create a dataframe
-    return pd.DataFrame(data={'document_id': document_ids, 'topics': topics, 'year': years})
-
 # Create a document - topic pair table
-def find_document_topic_pairs(document_table: pd.DataFrame) -> pd.DataFrame:
+def find_document_topic_pairs(document_table: pd.DataFrame, id_column: str= 'document_id') -> pd.DataFrame:
     """
     Given a document table with document ids, years and list of topics, create a table with document_ids
     and all pairwise combinations of topics in respective documents
 
     Args:
-        document_table (pd.DataFrame): Dataframe with columns "document_id", "years" and "topics"
+        document_table (pd.DataFrame): Dataframe with columns id_column, "years" and "topics"
+        id_column (str, optional): Name of the column that contains document ids. Defaults to 'document_id'.
 
     Returns:
         pd.DataFrame: A dataframe with columns "document_id", "topic_1", "topic_2", "year"
@@ -224,25 +209,16 @@ def find_document_topic_pairs(document_table: pd.DataFrame) -> pd.DataFrame:
     # Create a list of all document - topic pairs
     document_topic_pairs = []
     for i, row in document_table.iterrows():
-        document_id = row['document_id']
+        document_id = row[id_column]
         year = row['year']
-        topics = row['topics']
+        # deduplicate topics
+        topics = list(set(row['topics']))
         for topic1, topic2 in itertools.combinations(topics, 2):
             document_topic_pairs.append([document_id, topic1, topic2, year])
     # Create a dataframe
-    return pd.DataFrame(data=document_topic_pairs, columns=['document_id', 'topic_1', 'topic_2', 'year'])
+    return pd.DataFrame(data=document_topic_pairs, columns=[id_column, 'topic_1', 'topic_2', 'year'])
 
 
-# -
-
-doc_df = generate_dummy_document_table()
-doc_topics_df = find_document_topic_pairs(doc_df)
-doc_topics_df
-
-
-# +
-# Given a table with document ids, year and topic pairs mentioned in the document,
-# calculate the commonness measure for each topic pair and year
 def calculate_commonness_for_document_topic_pairs(document_topic_pairs: pd.DataFrame) -> pd.DataFrame:
     """
     Given a table with document ids, year and topic pairs mentioned in the document,
@@ -261,7 +237,7 @@ def calculate_commonness_for_document_topic_pairs(document_topic_pairs: pd.DataF
     # Return the dataframe
     return df
 
-def calculate_commoness_for_document_topics(document_df: pd.DataFrame) -> pd.DataFrame:
+def calculate_commoness_for_document_topics(document_df: pd.DataFrame, id_column: str='document_id') -> pd.DataFrame:
     """
     Given a document table with document ids, years and list of topics, calculate the commonness measure
     for each topic pair and year
@@ -273,7 +249,7 @@ def calculate_commoness_for_document_topics(document_df: pd.DataFrame) -> pd.Dat
         pd.DataFrame: A dataframe with columns "topic_1", "topic_2", "year", "commonness"
     """
     # Create a table with document ids, year and topic pairs mentioned in the document
-    document_topic_pairs = find_document_topic_pairs(document_df)
+    document_topic_pairs = find_document_topic_pairs(document_df, id_column=id_column)
     # Calculate the commonness measure for each topic pair and year
     return document_topic_pairs.merge(
         calculate_commonness_for_document_topic_pairs(document_topic_pairs),
@@ -284,12 +260,25 @@ def calculate_commoness_for_document_topics(document_df: pd.DataFrame) -> pd.Dat
 
 # -
 
+dummy_df = generate_dummy_table(n_rows=10000)
+dummy_df.head(3)
+
+# +
+topic1, topic2 = select_random_existing_topic_pair(dummy_df)
+
+com(dummy_df, year=2010, topic_i=topic1, topic_j=topic2)
+# -
+
+doc_df = generate_dummy_document_table()
+doc_topics_df = find_document_topic_pairs(doc_df)
+doc_topics_df
+
 calculate_commoness_for_document_topics(doc_df)
 
 
 # Calculate commonness of a document by aggregating the commonness of all topic pairs mentioned in the document
 # Provide option to choose different aggregation method
-def calculate_commonness_for_document(document_df: pd.DataFrame, aggregation_method: str='mean') -> pd.DataFrame:
+def calculate_commonness_for_document(document_df: pd.DataFrame, aggregation_method: str='mean', id_column='document_id') -> pd.DataFrame:
     """
     Calculate commonness of a document by aggregating the commonness of all topic pairs mentioned in the document
 
@@ -303,13 +292,39 @@ def calculate_commonness_for_document(document_df: pd.DataFrame, aggregation_met
     # Calculate the commonness measure for each topic pair and year
     df = calculate_commoness_for_document_topics(document_df)
     # Aggregate the commonness measure for each document and year
-    df = df.groupby(['document_id', 'year']).agg({'commonness': aggregation_method}).reset_index()
+    df = df.groupby([id_column, 'year']).agg({'commonness': aggregation_method}).reset_index()
     # Return the dataframe
     return df
 
 
 calculate_commonness_for_document(doc_df)
 
+doc_df.head(1)
 
+# # Test the functions on real data
+
+import dap_aria_mapping.getters.openalex as oa
+import dap_aria_mapping.getters.taxonomies as tax
+
+# Metadata
+works_df = oa.get_openalex_works()
+
+topics_dict = oa.get_openalex_topics()
+topics_df = (
+    pd.DataFrame(
+        data={
+            'work_id': list(topics_dict.keys()),
+            'topics': list(topics_dict.values()),
+        }
+    )
+    .merge(works_df[['work_id', 'publication_year']], on='work_id', how='left')
+    .rename(columns={'publication_year': 'year'})
+    .dropna(subset=['year'])
+    .astype({'year': 'int'})
+)
+
+topics_df.sample(5)
+
+calculate_commonness_for_document(topics_df.sample(1000), aggregation_method='mean', id_column='work_id')
 
 

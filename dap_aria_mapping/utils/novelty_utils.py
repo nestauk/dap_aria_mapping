@@ -5,6 +5,47 @@ import pandas as pd
 import itertools
 import numpy as np
 
+
+def preprocess_topics_dict(
+    topics_dict: dict,
+    metadata_df: pd.DataFrame,
+    id_column: str = "work_id",
+    year_column: str = "publication_year",
+) -> pd.DataFrame:
+    """
+    Preprocess a dictionary of topics to a dataframe with columns "document_id", "year" and "topics"
+
+    Args:
+        topics_dict (dict): A dictionary with document IDs as keys and a list of topics as values
+        metadata_df (pd.DataFrame): Metadata dataframe with columns id_column and publication_year
+        id_column (str): Name of the column in metadata_df that contains the document IDs
+        year_column (str): Name of the column in metadata_df that contains the publication year
+
+    Returns:
+        pd.DataFrame: A dataframe with columns "document_id", "year" and "topics"
+    """
+    return (
+        # Convert to dataframe
+        pd.DataFrame(
+            data={
+                id_column: list(topics_dict.keys()),
+                "topics": list(topics_dict.values()),
+            }
+        )
+        # Deduplicate the topics in the list in 'topics' column in each row
+        .assign(topics=lambda df: df["topics"].apply(lambda x: list(set(x))))
+        # Drop rows with less than two topics (as we need at least two topics for a combination to exist)
+        .assign(no_topics=lambda df: df["topics"].apply(lambda x: len(x)))
+        .query("no_topics >= 2")
+        # Merge with metadata to get publication year
+        .merge(metadata_df[[id_column, year_column]], on=id_column, how="left")
+        .rename(columns={year_column: "year"})
+        # Drop rows with missing year, as can't be used for novelty calculation
+        .dropna(subset=["year"])
+        .astype({"year": "int"})
+    )
+
+
 def commoness_score(df: pd.DataFrame, year: int, topic_i: str, topic_j: str) -> float:
     """
     Calculate the commonness score for a given topic pair and year
@@ -52,11 +93,23 @@ def novelty_score(commonness_score: float) -> float:
     return -np.log(commonness_score)
 
 
+def aggregate_document_commonness(
+    commonness_scores: list, percentile: float = 10
+) -> float:
+    """
+    Aggregate commonness scores for a document by taking a specific percentile
+    (default: 10th percentile as in the original paper)
+    """
+    return np.percentile(commonness_scores, percentile)
+
+
 def document_commonness(
-    document_df: pd.DataFrame, aggregation_method: str = "mean", id_column="document_id"
+    document_df: pd.DataFrame,
+    aggregation_method=(lambda x: aggregate_document_commonness(x)),
+    id_column="document_id",
 ) -> pd.DataFrame:
     """
-    Calculate commonness of a document by aggregating the commonness of all topic pairs 
+    Calculate commonness of a document by aggregating the commonness of all topic pairs
     mentioned in the document
 
     Args:
@@ -66,20 +119,20 @@ def document_commonness(
     Returns:
         pd.DataFrame: A dataframe with columns "document_id", "year", "commonness"
     """
-    # Calculate the commonness score for each topic pair and year
-    df = topic_pair_commonness(document_df, id_column=id_column)
-    # Aggregate the commonness score for each document and year
-    df = (
-        df.groupby([id_column, "year"])
+    return (
+        # Calculate the commonness score for each topic pair and year
+        topic_pair_commonness(document_df, id_column=id_column)
+        # Aggregate the commonness score for each document
+        .groupby([id_column, "year"])
         .agg({"commonness": aggregation_method})
         .reset_index()
     )
-    # Return the dataframe
-    return df
 
 
 def document_novelty(
-        document_df: pd.DataFrame, aggregation_method: str = "mean", id_column="document_id"
+    document_df: pd.DataFrame,
+    aggregation_method=(lambda x: aggregate_document_commonness(x)),
+    id_column="document_id",
 ) -> pd.DataFrame:
     """
     Calculate novelty of a document
@@ -171,11 +224,11 @@ def get_document_topic_pairs(
         # Deduplicate topics
         topics = list(set(row["topics"]))
         for topic1, topic2 in itertools.combinations(topics, 2):
-            # Make sure that the topics are sorted alphabetically/numerically
+            # Make sure that the topics are sorted alphabetically/numerically
             if topic1 > topic2:
                 topic1, topic2 = topic2, topic1
             document_topic_pairs.append([document_id, topic1, topic2, year])
-    # Return a dataframe            
+    # Return a dataframe
     return pd.DataFrame(
         data=document_topic_pairs, columns=[id_column, "topic_1", "topic_2", "year"]
     )

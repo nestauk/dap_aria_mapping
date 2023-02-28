@@ -556,6 +556,7 @@ def validation_app():
             st.altair_chart(alt.vconcat(*charts_concat))
 
         else:
+            dfs = []
             # Subtopic
             for alg in taxonomy:
                 for rat in ratio:

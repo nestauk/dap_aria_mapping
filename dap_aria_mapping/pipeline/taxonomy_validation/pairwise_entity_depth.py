@@ -58,8 +58,6 @@ def generate_pairwise_output(
                     pairs = list(combinations(subtopics, 2))
                     average_depth = average_pairwise_depth(tax, pairs)
                     output[area][discipline][topic] = average_depth
-                    
-                
 
     return output
         

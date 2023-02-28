@@ -33,12 +33,7 @@ test
 
 test = oa.get_openalex_topics(level=5)
 
-test_df = pd.DataFrame(
-    data={
-        'doc_id': list(test.keys()),
-        'topics': list(test.values()),
-    }
-)
+
 
 len(test_df)
 

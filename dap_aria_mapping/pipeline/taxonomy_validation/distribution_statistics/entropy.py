@@ -9,7 +9,7 @@ from itertools import repeat
 from typing import Dict
 
 def tax_entropy(tax: pd.DataFrame) -> Dict[str, int]:
-    """ccalculates the KL divergence between the actual distribution of entities/topic and a uniform distribution
+    """calculates the KL divergence between the actual distribution of entities/topic and a uniform distribution
 
     Args:
         tax (pd.DataFrame): taxonomy

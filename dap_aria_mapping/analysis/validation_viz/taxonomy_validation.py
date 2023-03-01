@@ -7,24 +7,23 @@ from dap_aria_mapping.getters.validation import (
     get_tree_depths,
     get_pairwise_depth,
 )
-from dap_aria_mapping.getters.simulations import (
-    get_simulation_topic_sizes,
-    get_simulation_topic_distances,
-    get_simulation_pairwise_combinations,
-)
 import altair as alt
-import os
-import codecs
 from collections import defaultdict
 from itertools import chain
 from dap_aria_mapping import PROJECT_DIR, taxonomy
 from nesta_ds_utils.viz.altair import formatting
+from streamlit_utils import *
 
 formatting.setup_theme()
 alt.data_transformers.disable_max_rows()
 
 
+def rec_dd():
+    return defaultdict(rec_dd)
+
+
 def validation_app():
+
     st.set_page_config(layout="wide")
     st.title("Metrics to Evaluate Various Taxonomies")
     algs = ["cooccur", "centroids", "imbalanced"]
@@ -221,24 +220,28 @@ def validation_app():
         st.altair_chart(subtopic_chart)
 
     st.header("Simulation Metrics")
-    with st.form(key="my_form"):
+
+    (simulation_select,) = st.columns(1)
+
+    with simulation_select:
+        simulation = st.selectbox(
+            "Simulation Type",
+            options=[
+                "noise",
+                "sample",
+            ],
+            index=0,
+        )
+
+    with st.form(key="kello"):
+
         (
-            simulation_select,
             level_select,
             taxonomy_select,
             ratio_select,
             entity_select,
-        ) = st.columns(5)
+        ) = st.columns(4)
 
-        with simulation_select:
-            simulation = st.selectbox(
-                "Simulation Type",
-                options=[
-                    "noise",
-                    "sample",
-                ],
-                index=0,
-            )
         with level_select:
             levels = st.multiselect(
                 "Taxonomy Levels",
@@ -289,27 +292,10 @@ def validation_app():
                 )
         submit_button = st.form_submit_button(label="Submit")
 
-    toggle_sizes = tog.st_toggle_switch(
-        "Show topic size plots",
-        key="display_topic_sizes",
-        default_value=False,
-        label_after=True,
-    )
-
-    if toggle_sizes:
-        st.write("Topic Sizes")
-        dfs = []
-        for alg in taxonomy:
-            for rat in ratio:
-                df = get_simulation_topic_sizes(alg, rat, simulation)
-                df = df.loc[df.level.isin([f"Level_{str(lvl)}" for lvl in levels])]
-                if len(taxonomy) > 1:
-                    df["level"] = df["level"].apply(lambda x: f"{x}_{alg}")
-                if len(ratio) > 1:
-                    df["level"] = df["level"].apply(lambda x: f"{x}_ratio_{rat}")
-                dfs.append(df)
-        df = pd.concat(dfs)
-        df["TopicName"].fillna("No Name", inplace=True)
+    with st.expander(label="Entropy of Distributions of Entities per Topic"):
+        df = get_queried_sizes(
+            taxonomies=taxonomy, ratios=ratio, levels=levels, simulation=simulation
+        )
 
         with entity_select:
             options = list(
@@ -373,43 +359,20 @@ def validation_app():
         if display_size_data:
             st.write(df)
 
-    toggle_distances = tog.st_toggle_switch(
-        "Show centroid distance plots",
-        key="display_topic_distances",
-        default_value=False,
-        label_after=True,
-    )
-
-    if toggle_distances:
-        st.write("Distance to centroids")
-        dfs = []
-        for alg in taxonomy:
-            for rat in ratio:
-                df = get_simulation_topic_distances(alg, rat, simulation)
-                df = (
-                    df.unstack()
-                    .reset_index()
-                    .rename(columns={"level_0": "level", 0: "distance"})
-                    .assign(
-                        level=lambda x: x["level"].str.rstrip("_dist"), taxonomy=alg
-                    )
-                )
-                df = df.loc[df.level.isin([f"Level_{str(lvl)}" for lvl in levels])]
-                if len(taxonomy) > 1:
-                    df["level"] = df["level"].apply(lambda x: f"{x}_{alg}")
-                if len(ratio) > 1:
-                    df["level"] = df["level"].apply(lambda x: f"{x}_ratio_{rat}")
-                dfs.append(df)
-        df = pd.concat(dfs)
-
-        if entity != "All entities":
-            df = df.loc[df.Entity.str.contains("|".join(entity), case=False)]
-
+    with st.expander(label="Topic Distance to Centroid"):
         toggle = tog.st_toggle_switch(
             "Display as time series",
             key="display_time_series",
             default_value=False,
             label_after=True,
+        )
+
+        df = get_queried_distances(
+            taxonomies=taxonomy,
+            ratios=ratio,
+            levels=levels,
+            simulation=simulation,
+            entities=entity,
         )
 
         if not toggle:
@@ -430,26 +393,19 @@ def validation_app():
                 .configure_axis(gridOpacity=0.3),
             )
         else:
-            df = df.groupby(["level"], as_index=False).agg(
-                {"distance": ["mean", "std"]}
-            )
-            df["lci"] = df["distance"]["mean"] - df["distance"]["std"]
-            df["uci"] = df["distance"]["mean"] + df["distance"]["std"]
-            df.columns = ["level", "mean", "std", "lci", "uci"]
-            if any([len(taxonomy) > 1, len(ratio) > 1]):
-                df[["level", "config"]] = df.level.str.split("(?<=\d)_", expand=True)
-            else:
-                df["config"] = f"{taxonomy[0]}_ratio_{ratio[0]}"
+            df_ts = get_timeseries_data(df, taxonomies=taxonomy, ratios=ratio)
 
             chart_mean = (
-                alt.Chart(df)
+                alt.Chart(df_ts)
                 .mark_line(size=4)
                 .encode(
                     x=alt.X("level", title=None),
                     y=alt.Y(
                         "mean",
                         title=None,
-                        scale=alt.Scale(domain=(int(df.lci.min()), int(df.uci.max()))),
+                        scale=alt.Scale(
+                            domain=(int(df_ts.lci.min()), int(df_ts.uci.max()))
+                        ),
                     ),
                     color=alt.Color("config", title=None),
                 )
@@ -457,7 +413,7 @@ def validation_app():
             )
 
             chart_band = (
-                alt.Chart(df)
+                alt.Chart(df_ts)
                 .mark_area(opacity=0.1)
                 .encode(
                     x=alt.X("level", title=None),
@@ -478,47 +434,26 @@ def validation_app():
         if display_distance_data:
             st.write(df)
 
-    toggle_pairwise = tog.st_toggle_switch(
-        "Show pairwise topic plots",
-        key="display_topic_pairwise",
-        default_value=False,
-        label_after=True,
-    )
-
-    if toggle_pairwise:
-        st.write("Pairwise topic plots")
+    with st.expander(label="Pairwise Topic Plots"):
         topic_selection = st.selectbox(
             label="Select a topic class", options=["topic", "subtopic"]
         )
 
+        df_topic, df_subtopic = get_pairwise_data(
+            taxonomies=taxonomy,
+            ratios=ratio,
+            simulation=simulation,
+            topic_selection=topic_selection,
+        )
+
         if topic_selection == "topic":
-            dfs = []
-            for alg in taxonomy:
-                for rat in ratio:
-                    pairwise_subtopic_dict = get_simulation_pairwise_combinations(
-                        alg, rat, simulation, topic_selection
-                    )
-
-                    dfs_ = [
-                        (
-                            pd.DataFrame.from_dict(
-                                pairwise_subtopic_dict[topic][subtopic], orient="index"
-                            )
-                            .reset_index()
-                            .rename(columns={"index": "level"})
-                            .assign(subtopic=subtopic, topic=topic)
-                        )
-                        for topic in pairwise_subtopic_dict.keys()
-                        for subtopic in pairwise_subtopic_dict[topic].keys()
-                    ]
-                    df_ = pd.concat(dfs_)
-                    df_["ratio"], df_["taxonomy"] = rat, alg
-                    dfs.append(df_)
-            df = pd.concat(dfs)
-
             nested_charts = [
                 [
-                    alt.Chart(df.loc[(df["topic"] == topic) & (df["taxonomy"] == alg)])
+                    alt.Chart(
+                        df_topic.loc[
+                            (df_topic["topic"] == topic) & (df_topic["taxonomy"] == alg)
+                        ]
+                    )
                     .mark_bar()
                     .encode(
                         x=alt.X("level:N", axis=alt.Axis(title="")),
@@ -540,7 +475,7 @@ def validation_app():
                         tooltip=["pairs"],
                     )
                     .properties(height=160, width=120)
-                    for topic in df.topic.unique()
+                    for topic in df_topic.topic.unique()
                 ]
                 for alg in taxonomy
             ]
@@ -556,39 +491,13 @@ def validation_app():
             st.altair_chart(alt.vconcat(*charts_concat))
 
         else:
-            dfs = []
-            # Subtopic
-            for alg in taxonomy:
-                for rat in ratio:
-                    pairwise_subtopic_dict = get_simulation_pairwise_combinations(
-                        alg, rat, simulation, topic_selection
-                    )
-
-                    dfs_ = [
-                        (
-                            pd.DataFrame.from_dict(
-                                pairwise_subtopic_dict[topic][subtopic][concept],
-                                orient="index",
-                            )
-                            .reset_index()
-                            .rename(columns={"index": "level"})
-                            .assign(subtopic=subtopic, topic=topic, concept=concept)
-                        )
-                        for topic in pairwise_subtopic_dict.keys()
-                        for subtopic in pairwise_subtopic_dict[topic].keys()
-                        for concept in pairwise_subtopic_dict[topic][subtopic].keys()
-                    ]
-                    df_ = pd.concat(dfs_)
-                    df_["ratio"], df_["taxonomy"] = rat, alg
-                    dfs.append(df_)
-            df = pd.concat(dfs)
-
             nested_charts = [
                 [
                     [
                         alt.Chart(
-                            df.loc[
-                                (df["subtopic"] == subtopic) & (df["taxonomy"] == alg)
+                            df_subtopic.loc[
+                                (df_subtopic["subtopic"] == subtopic)
+                                & (df_subtopic["taxonomy"] == alg)
                             ]
                         )
                         .mark_bar()
@@ -613,9 +522,11 @@ def validation_app():
                             tooltip=["pairs"],
                         )
                         .properties(height=160, width=120)
-                        for subtopic in df.loc[df.topic == topic].subtopic.unique()
+                        for subtopic in df_subtopic.loc[
+                            df_subtopic.topic == topic
+                        ].subtopic.unique()
                     ]
-                    for topic in df.topic.unique()
+                    for topic in df_subtopic.topic.unique()
                 ]
                 for alg in taxonomy
             ]
@@ -632,58 +543,32 @@ def validation_app():
             st.altair_chart(alt.vconcat(*charts_concat))
 
     with st.expander("Number of Topics Present Per Journal"):
-        hists = defaultdict(
-            lambda: defaultdict(lambda: defaultdict(lambda: defaultdict))
-        )
-        for fn in os.listdir(
-            f"{PROJECT_DIR}/dap_aria_mapping/analysis/validation_viz/journal_plots/histograms"
-        ):
-            parsed_fn = fn.split("_")
-            alg_typ = parsed_fn[0]
-            top_level = parsed_fn[3]
-            next_level = parsed_fn[-1].split(".")[0]
-            f = codecs.open(
-                f"{PROJECT_DIR}/dap_aria_mapping/analysis/validation_viz/journal_plots/histograms/{fn}",
-                "r",
-            )
-            hists[alg_typ][top_level][next_level] = f.read()
+        count_hists = get_count_histograms()
 
         alg_selections = st.selectbox(
-            label="choose an algorithm", options=hists.keys(), index=0
+            label="choose an algorithm", options=count_hists.keys(), index=0
         )
         top_level_selections = st.selectbox(
             label="choose the top level",
-            options=sorted(list(hists[alg_selections].keys())),
+            options=sorted(list(count_hists[alg_selections].keys())),
             index=0,
         )
         next_level_selections = st.selectbox(
             label="choose the next level",
-            options=hists[alg_selections][top_level_selections].keys(),
+            options=count_hists[alg_selections][top_level_selections].keys(),
             index=0,
         )
 
         st.components.v1.html(
-            html=hists[alg_selections][top_level_selections][next_level_selections],
-            height=1000,
+            html=count_hists[alg_selections][top_level_selections][
+                next_level_selections
+            ],
+            height=600,
             scrolling=True,
         )
 
     with st.expander("Percentage Breakdown of Topics per Journal"):
-        frequency_hists = defaultdict(
-            lambda: defaultdict(lambda: defaultdict(lambda: defaultdict))
-        )
-        for fn in os.listdir(
-            f"{PROJECT_DIR}/dap_aria_mapping/analysis/validation_viz/journal_plots/frequency"
-        ):
-            parsed_fn = fn.split("_")
-            alg_typ = parsed_fn[0]
-            top_level = parsed_fn[3]
-            next_level = parsed_fn[-1].split(".")[0]
-            f = codecs.open(
-                f"{PROJECT_DIR}/dap_aria_mapping/analysis/validation_viz/journal_plots/frequency/{fn}",
-                "r",
-            )
-            frequency_hists[alg_typ][top_level][next_level] = f.read()
+        frequency_hists = get_frequency_histograms()
 
         alg_selections = st.selectbox(
             label="choose an algorithm (percentage breakdown)",
@@ -705,52 +590,9 @@ def validation_app():
             html=frequency_hists[alg_selections][top_level_selections][
                 next_level_selections
             ],
-            height=1000,
+            height=600,
             scrolling=True,
         )
 
 
 validation_app()
-
-
-# Not to include in the app
-#     with st.expander("Sunburst Diagrams"):
-#         sunbursts = defaultdict(str)
-#         for fn in os.listdir(f"{PROJECT_DIR}/dap_aria_mapping/analysis/validation_viz/journal_plots/sunbursts"):
-#             type = fn.split("_")[1].split(".")[0]
-#             f = codecs.open(f"{PROJECT_DIR}/dap_aria_mapping/analysis/validation_viz/journal_plots/sunbursts/{fn}", "r")
-#             sunbursts[type] = f.read()
-#         chart_type_selections = st.selectbox(label = "choose a chart type", options = sunbursts.keys(), index=2)
-#         st.components.v1.html(html = sunbursts[chart_type_selections], height = 1500, width = 1900)
-
-#     with st.expander("TFIDF Breakdown of Topics per Journal"):
-#         tfidf_hists = defaultdict(lambda: defaultdict (lambda: defaultdict (lambda: defaultdict)))
-#         for fn in  os.listdir(f"{PROJECT_DIR}/dap_aria_mapping/analysis/validation_viz/journal_plots/tfidf"):
-#             parsed_fn = fn.split("_")
-#             alg_typ = parsed_fn[0]
-#             top_level = parsed_fn[3]
-#             next_level = parsed_fn[-1].split(".")[0]
-#             f = codecs.open(f"{PROJECT_DIR}/dap_aria_mapping/analysis/validation_viz/journal_plots/tfidf/{fn}", "r")
-#             tfidf_hists[alg_typ][top_level][next_level] = f.read()
-
-#         alg_selections =  st.selectbox(label = "choose an algorithm (tfidf)", options = tfidf_hists.keys(), index=0)
-#         top_level_selections = st.selectbox(label = "choose the top level (tfidf)", options = sorted(list(tfidf_hists[alg_selections].keys())), index=0)
-#         next_level_selections = st.selectbox(label = "choose the next level (tfidf)", options = tfidf_hists[alg_selections][top_level_selections].keys(), index=0)
-
-#         st.components.v1.html(html = tfidf_hists[alg_selections][top_level_selections][next_level_selections], height = 1000, scrolling=True)
-
-#     with st.expander("Topical Breakdown of Entities (Heatmap)"):
-#         heatmaps = defaultdict(lambda: defaultdict (lambda: defaultdict (lambda: defaultdict)))
-#         for fn in  os.listdir(f"{PROJECT_DIR}/dap_aria_mapping/analysis/validation_viz/journal_plots/heatmaps"):
-#             parsed_fn = fn.split("_")
-#             alg_typ = parsed_fn[0]
-#             top_level = parsed_fn[3]
-#             next_level = parsed_fn[-1].split(".")[0]
-#             f = codecs.open(f"{PROJECT_DIR}/dap_aria_mapping/analysis/validation_viz/journal_plots/heatmaps/{fn}", "r")
-#             heatmaps[alg_typ][top_level][next_level] = f.read()
-
-#         alg_selections =  st.selectbox(label = "choose an algorithm (heatmap)", options = heatmaps.keys(), index=0)
-#         top_level_selections = st.selectbox(label = "choose the top level (heatmap)", options = sorted(list(heatmaps[alg_selections].keys())), index=0)
-#         next_level_selections = st.selectbox(label = "choose the next level (heatmap)", options = heatmaps[alg_selections][top_level_selections].keys(), index=0)
-
-#         st.components.v1.html(html = heatmaps[alg_selections][top_level_selections][next_level_selections], height = 1000, scrolling=True)

@@ -1,0 +1,99 @@
+social_science:
+  economics:
+    micro_economics:
+      [
+        Opportunity cost,
+        Fixed cost,
+        Comparative advantage,
+        Normal good,
+        Demand curve,
+        Game theory,
+        Competitive equilibrium,
+        Marginal cost,
+        Marginal utility,
+        Human capital,
+      ]
+  archaeology:
+    evolutionary_anthropology:
+      [
+        Human evolution,
+        Cultural evolution,
+        Human behavioral ecology,
+        Evolutionary psychology,
+        Sociocultural evolution,
+        Cultural learning,
+        Behavioral ecology,
+        Dual inheritance theory,
+        Paleoanthropology,
+        Evolutionary linguistics,
+      ]
+natural_science:
+  biology:
+    neuroscience:
+      [
+        Nervous system,
+        Neuron,
+        Computational neuroscience,
+        Synapse,
+        Axon,
+        Neuroplasticity,
+        Functional magnetic resonance imaging,
+        Brain mapping,
+        Diffusion MRI,
+        Default mode network,
+        Blood–brain barrier,
+        Brain–computer interface,
+      ]
+  chemistry:
+    neurochemistry:
+      [
+        Neurotransmitter,
+        Glutamic acid,
+        Serotonin,
+        Dopamine,
+        Acetylcholinesterase,
+        Acetylcholine,
+        Cholinergic,
+        Excitotoxicity,
+        NMDA receptor,
+        AMPA receptor,
+      ]
+formal_science:
+  pure_mathematics:
+    linear_algebra:
+      [
+        Matrix (mathematics),
+        Adjacency matrix,
+        Determinant,
+        Linear map,
+        Identity matrix,
+        Permutation matrix,
+        Diagonal matrix,
+        Triangular matrix,
+        LU decomposition,
+        Singular value decomposition,
+      ]
+  applied_mathematics:
+    graph_theory:
+      [
+        Adjacency matrix,
+        Arboricity,
+        Clique problem,
+        Dual graph,
+        Hamiltonian path,
+        Graph coloring,
+        Complex network,
+        Modularity,
+      ]
+    game_theory:
+      [
+        John Forbes Nash Jr.,
+        Nash equilibrium,
+        Evolutionarily stable strategy,
+        Zero-sum game,
+        Evolutionary game theory,
+        John von Neumann,
+        John Maynard Smith,
+        Shapley value,
+        Ultimatum game,
+      ]

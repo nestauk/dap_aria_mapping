@@ -2,8 +2,11 @@ import numpy as np
 import pandas as pd
 import re, sklearn
 import matplotlib.axes as mpl_axes
+from sklearn.mixture import GaussianMixture
+from sklearn.decomposition import PCA
 from sklearn.metrics import silhouette_score
 from sentence_transformers import SentenceTransformer
+import umap.umap_ as umap
 from typing import (
     Union,
     Dict,
@@ -24,85 +27,6 @@ from itertools import chain, count
 import altair as alt
 
 alt.data_transformers.disable_max_rows()
-
-
-def get_sample(
-    entities: Dict[str, Sequence[Tuple[str, int]]],
-    score_threshold: int = 80,
-    num_articles: int = -1,
-) -> Dict[str, Sequence[str]]:
-    """Creates a sample of entities from the entities dictionary,
-    where each article contains a list of tuples of the form (entity, score).
-    The sample size is determined by `num_articles`, and entities with
-    a confidence score below the threshold are removed.
-
-    Args:
-        entities (Dict[str, Sequence[Tuple[str, int]]]): A dictionary of entities,
-            where each key is an article and each value is a list of tuples of the
-            form (entity, score).
-        score_threshold (int, optional): The minimum confidence score for an entity.
-            If not provided, defaults to 80.
-        num_articles (int, optional): The number of articles to sample. If -1,
-            all articles are sampled. If not provided, defaults to -1.
-
-    Returns:
-        Dict[str, Sequence[str]]: A dictionary of entities, where each key is
-            an article and each value is a list of entities.
-    """
-    entities = {k: v for k, v in entities.items() if len(v) > 0}
-    if num_articles == -1:
-        num_articles = len(entities.values())
-    draws = num_articles / len(entities.values()) >= np.random.uniform(
-        0, 1, len(entities.values())
-    )
-    sample = {k: v for i, (k, v) in enumerate(entities.items()) if draws[i]}
-    return {
-        k: [e["entity"] for e in v if e["confidence"] >= score_threshold]
-        for k, v in sample.items()
-    }
-
-
-def filter_entities(
-    entities: Dict[str, Sequence[str]],
-    method: Literal["percentile", "absolute"] = "percentile",
-    min_freq: int = 0,
-    max_freq: int = 100,
-) -> Dict[str, Sequence[str]]:
-    """Filters entities from the entities dictionary, where each article contains
-    a list of entities. The filtering is done by frequency, either as a percentile
-    or as an absolute value.
-
-    Args:
-        entities (Dict[str, Sequence[str]]): A dictionary of entities, where each
-            key is an article and each value is a list of entities.
-        method (Literal[percentile, absolute], optional): The method of filtering.
-            Defaults to "percentile".
-        min_freq (int, optional): The minimum frequency for an entity. If `method`
-            is "percentile", this is the minimum percentile. If `method` is "absolute",
-            this is the minimum absolute frequency. Defaults to 0.
-        max_freq (int, optional): The maximum frequency for an entity. If `method`
-            is "percentile", this is the maximum percentile. If `method` is "absolute",
-            this is the maximum absolute frequency. Defaults to 100.
-
-    Returns:
-        Dict[str, Sequence[str]]: A dictionary of entities, where each key is
-            an article and each value is a list of entities.
-    """
-    assert min_freq < max_freq, "min_freq must be less than max_freq"
-    assert method in [
-        "percentile",
-        "absolute",
-    ], "method must be in ['percentile', 'absolute']"
-    frequencies = Counter(chain(*entities.values()))
-    if method == "percentile":
-        min_freq, max_freq = (
-            np.percentile(list(frequencies.values()), min_freq),
-            np.percentile(list(frequencies.values()), max_freq),
-        )
-    return {
-        k: [e for e in v if min_freq <= frequencies[e] <= max_freq]
-        for k, v in entities.items()
-    }
 
 
 def embed(
@@ -223,8 +147,8 @@ def update_dictionary(
         for key in embeddings.index:
             cdict[key].append(cluster[key])
     else:
-        for key, date in zip(embeddings.index, cluster.labels_):
-            cdict[key].append(date)
+        for key, val in zip(embeddings.index, cluster.labels_):
+            cdict[key].append(val)
 
 
 def get_silhouette_score(
@@ -320,17 +244,24 @@ class ClusteringRoutine(object):
                 the dictionary of cluster assignments, the cluster object, the silhouette
                 score, and the centroid parameters (if applies).
         """
-        cluster = self.method_class(**param_config)
-        cluster.fit(self.embeddings)
         self.cdict, self.mlist = defaultdict(list), []
-        update_dictionary(self.cdict, self.embeddings, cluster), self.mlist.append(
-            cluster
-        )
+        # embeddings_2d = umap.UMAP(
+        #         n_neighbors=5, min_dist=0.05, n_components=2, random_state=42
+        #     ).fit_transform(self.embeddings)
+
+        if param_config.get("gmm"):
+            self.make_gmm_step(param_config)
+        else:
+            cluster = self.method_class(**param_config)
+            cluster.fit(self.embeddings)
+            update_dictionary(self.cdict, self.embeddings, cluster), self.mlist.append(
+                cluster
+            )
         yield {
             "labels": deepcopy(self.cdict),
             "model": deepcopy(self.mlist),
             "silhouette": get_silhouette_score(self.embeddings, self.cdict),
-            "centroid_params": None,
+            "centroid_params": {"out_embeddings_2d": self.embeddings_2d},
         }
 
     def make_iteration(
@@ -412,7 +343,7 @@ class ClusteringRoutine(object):
             "labels": deepcopy(self.cdict),
             "model": deepcopy(self.mlist),
             "silhouette": get_silhouette_score(self.embeddings, self.cdict),
-            "centroid_params": None,
+            "centroid_params": self.kwargs["embeddings_2d"],
         }
 
     def make_centroid_iteration(
@@ -436,6 +367,7 @@ class ClusteringRoutine(object):
         self.centdict = defaultdict(list)
         self.cent2ddict = defaultdict(list)
         self.centmap = defaultdict(list)
+
         clusters = list(list(e) for e in set([tuple(i) for i in self.cdict.values()]))
         if not any(["ce" in str(x) for x in clusters[0]]):
             self.make_centroid_init_step(clusters)
@@ -444,7 +376,7 @@ class ClusteringRoutine(object):
         centroid_embeddings = list(self.centdict.values())
         sizes = [len(x) for x in self.centmap.values()]
         try:
-            n_embeddings_2d = np.vstack([ar for ar in self.cent2ddict.values()])
+            out_embeddings_2d = np.vstack([ar for ar in self.cent2ddict.values()])
         except:
             pass
         cluster = self.method_class(**param_config)
@@ -470,7 +402,7 @@ class ClusteringRoutine(object):
                 "silhouette": get_silhouette_score(self.embeddings, self.cdict),
                 "centroid_params": {
                     "sizes": sizes,
-                    "n_embeddings_2d": n_embeddings_2d,
+                    "out_embeddings_2d": out_embeddings_2d,
                 },
             }
         else:
@@ -559,28 +491,122 @@ class ClusteringRoutine(object):
                     }
                 )
 
-    def run_step(self, params_config: Dict[str, Any]) -> Generator:
+    def make_gmm_step(self, param_config: Dict[str, Any]) -> None:
+        """Creates a Gaussian Mixture Model step of a centroid clustering
+            routine. Updates several dictionaries of cluster assignments,
+            centroid embeddings, and a mapping of centroid to individual tags.
+
+        Args:
+            param_config (Dict[str, Any]): A dictionary of parameters for the GMM.
+        """
+        embeddings_gmm = deepcopy(self.embeddings)
+        threshold = param_config.get("threshold", 0.1)
+        n_components = param_config.get("n_components", 5_000)
+        if param_config.get("pca", False):
+            pca = PCA(
+                n_components=0.5,
+                whiten=True,
+                svd_solver="full",
+                random_state=42,
+            )
+            pca.fit(embeddings_gmm)
+            embeddings_gmm = pd.DataFrame(
+                pca.transform(embeddings_gmm),
+                index=embeddings_gmm.index,
+            )
+
+        cluster = GaussianMixture(
+            n_components=n_components, covariance_type="diag", reg_covar=1e-5
+        )
+        _ = cluster.fit_predict(embeddings_gmm)
+        preds = {
+            entity: preds > threshold
+            for entity, preds in zip(
+                embeddings_gmm.index, cluster.predict_proba(embeddings_gmm)
+            )
+        }
+        df = pd.DataFrame(
+            [
+                tuple([entity, i])
+                for entity, preds in preds.items()
+                for i, pred in enumerate(preds)
+                if pred
+            ],
+            columns=["Entity", "Level_1"],
+        )
+
+        overlapping_embeddings = pd.merge(
+            df[["Entity", "Level_1"]],
+            self.embeddings,
+            left_on="Entity",
+            right_index=True,
+            how="left",
+        )
+
+        # Updates 2d embeddings without rerunning UMAP
+        overlapping_2d = pd.DataFrame(
+            zip(self.embeddings.index, self.embeddings_2d),
+            columns=["Entity", "embedding_2d"],
+        )
+        overlapping_2d = pd.merge(
+            df[["Entity"]], overlapping_2d, on="Entity", how="left"
+        )
+        self.embeddings_2d = np.stack(overlapping_2d["embedding_2d"].to_numpy())
+        self.kwargs.update({"embeddings_2d": self.embeddings_2d})
+
+        overlapping_embeddings["Entity"] += (
+            overlapping_embeddings.groupby(["Entity"])
+            .cumcount()
+            .add(1)
+            .astype(str)
+            .radd("_")
+            .mask(
+                overlapping_embeddings.groupby(["Entity"])["Entity"].transform("count")
+                == 1,
+                "",
+            )
+            .str.replace("_1", "")
+        )
+
+        overlapping_embeddings.set_index("Entity", inplace=True)
+        labels_ = overlapping_embeddings["Level_1"].to_dict()
+        overlapping_embeddings.drop("Level_1", axis=1, inplace=True)
+
+        # enhance embeddings with possibly repeated entities
+        self.embeddings = overlapping_embeddings
+
+        for key in self.embeddings.index:
+            self.cdict[key].append(labels_[key])
+
+        self.mlist.append(cluster)
+
+    def run_step(self, param_config: Dict[str, Any]) -> Generator:
         """Runs a single step of the clustering routine. This is a generator function
         that yields a dictionary of cluster assignments, a list of clustering models, and
         the silhouette score of the clustering routine.
 
         Args:
-            params_config (Dict[str, Any]): A dictionary of parameters for the clustering
+            param_config (Dict[str, Any]): A dictionary of parameters for the clustering
                 routine.
 
         Yields:
             Generator: A generator that yields a dictionary of cluster assignments, a list
                 of clustering models, and the silhouette score of the clustering routine.
         """
-        centroids = params_config.pop("centroids", False)
+        param_config = deepcopy(param_config)
+        centroids = param_config.pop("centroids", False)
+        if all([self.kwargs.get("embeddings_2d", None) is None]):
+            self.embeddings_2d = umap.UMAP(
+                n_neighbors=5, min_dist=0.05, n_components=2, random_state=42
+            ).fit_transform(self.embeddings)
+            self.kwargs.update({"embeddings_2d": self.embeddings_2d})
         if self.nested is False:
-            yield from self.make_init_iteration(params_config)
-            # self.nested = True
+            yield from self.make_init_iteration(param_config)
         else:
             if centroids:
-                yield from self.make_centroid_iteration(params_config)
+                yield from self.make_centroid_iteration(param_config)
             else:
-                yield from self.make_iteration(params_config)
+                yield from self.make_iteration(param_config)
 
     def run_single_routine(
         self,

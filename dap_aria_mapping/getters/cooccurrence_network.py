@@ -3,6 +3,7 @@ from dap_aria_mapping import BUCKET_NAME
 import networkx as nx
 import pickle
 
+
 def get_test_cooccurrence_network() -> nx.Graph():
     """gets small network of term cooccurrences generated from OpenAlex and Patents Data.
     Script used to generate network can be found in pipeline/taxonomy_development/build_cooccurrence_network.py
@@ -12,7 +13,7 @@ def get_test_cooccurrence_network() -> nx.Graph():
     Returns:
         nx.Graph: networkx graph of term cooccurrences
     """
-    return download_obj(BUCKET_NAME, "outputs/test_cooccurrence_network.pkl")
+    return download_obj(BUCKET_NAME, "outputs/cooccurrence_network/test.pkl")
 
 
 def get_cooccurrence_network(local: bool = False) -> nx.Graph():
@@ -25,8 +26,8 @@ def get_cooccurrence_network(local: bool = False) -> nx.Graph():
         nx.Graph: networkx graph of term cooccurrences
     """
     if local:
-        with open("outputs/cooccurrence_network.pkl", "rb") as f:
+        with open("outputs/cooccurrence_network/network.pkl", "rb") as f:
             network = pickle.load(f)
         return network
     else:
-        return download_obj(BUCKET_NAME, "outputs/cooccurrence_network.pkl")
+        return download_obj(BUCKET_NAME, "outputs/cooccurrence_network/network.pkl")

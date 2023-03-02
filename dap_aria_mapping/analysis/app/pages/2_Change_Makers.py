@@ -42,9 +42,11 @@ with overview_tab:
     quad_chart, stacked_bars = st.columns(2)
 
     with quad_chart:
-        st.subheader("Placeholder for Quad Chart")
+        st.subheader("{} {}".format(indicator, group))
+        st.markdown("This would be used to show where individuals/institutions are on the axis of high-low disruptiveness (etc.) vs. volume within certain topics. PDs may want to find {} that haven't put out much research yet (low volume) but that research is highly {}.".format(group.lower(),indicator.lower()))
     with stacked_bars:
-        st.subheader("Placeholder for Stacked Bars")
+        st.subheader("Overlaps")
+        st.markdown("This would show a breakdown of other research topics that the {} are looking at to help illustrate where there are opportunities for collaboration".format(group.lower()))
 
 with collaboration_tab:
     network_dropdown1, network_dropdown2 = st.columns(2)
@@ -55,7 +57,8 @@ with collaboration_tab:
             groups = st.selectbox(label = "Explore relationships between", options = ["Individuals", "Research Groups", "Institutions"])
         elif dataset == "Industry":
             groups = st.selectbox(label = "Explore relationships between", options = ["Individuals", "Companies"])
-    st.subheader("Placeholder for network")
+    st.subheader("Collaboration Network")
+    st.markdown("This would show how {} work together. It would help PDs identify {} that may be cut off or working  in isolation, as well as those that are in the center of activity within their area of interest".format(groups.lower(), groups.lower()))
 
 
 #adds the nesta x aria logo at the bottom of each tab, 3 lines below the contents

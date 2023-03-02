@@ -48,34 +48,40 @@ with topic_drop:
 
 total_to_display = st.slider(label = "Show me most productive:" , min_value = 0, max_value = 50)
 
-overview_tab, nd_tab, emergence_tab, overlaps_tab = st.tabs(["Overview", "Novelty and Disruption", "Emergence","Overlaps"])
+overview_tab, disruption_tab, novelty_tab, overlaps_tab = st.tabs(["Overview", "Disruption", "Novelty","Overlaps"])
 
 with overview_tab:
     volume, alignment = st.columns(2)
     with volume:
-        st.subheader("Volume of Activity Over Time")
+        st.subheader("Trends in Emergence")
+        st.markdown("This would show trends in growth over time for areas/domains/topics, allowing users to analyse patterns recognizing that certain areas produce more/less content than others")
     with alignment:
         st.subheader("Trends in Alignment")
+        st.markdown("This could illustrate if research is becoming more/less aligned with industry in certain areas")
 
-with nd_tab:
-    disruption, novelty = st.columns(2)
+with disruption_tab:
+    disruption_trends, disruption_drilldown = st.columns(2)
         
-    with disruption:
+    with disruption_trends:
         st.subheader("Trends in Disruption")
+        st.markdown("This could show if certain domains/areas have been recently disrupted or have lacked disruption")
     
-    with novelty:
-        st.subheader("Trends in Novelty")
+    with disruption_drilldown:
+        st.subheader("Drill Down in Disruption")
+        st.markdown("This would allow a user to select a topic and see the distribution of disruptiveness of papers within that topic")
 
-with emergence_tab:
-    st.subheader("Placeholder for exploring trends in emergence")
-    st.markdown("Note: this is not clearly defined what this would actually show")
+with novelty_tab:
+    st.subheader("Trends in Novelty")
+    st.markdown("This could show trends in novelty of research produced by certain domains/areas")
 
 with overlaps_tab:
-    heatmap, link_prediction = st.columns(2)
+    heatmap, overlap_drilldown = st.columns(2)
     with heatmap:
-        st.subheader("Heatmap of overlaps")
-    with link_prediction:
-        st.subheader("Link prediction of future overlaps")
+        st.subheader("Heatmap of Overlaps")
+        st.markdown("This would be used to show which areas have a large amount of research that spans multiple topics (i.e. a lot of research combining ML with Neuroscience)")
+    with overlap_drilldown:
+        st.subheader("Trends in Overlaps")
+        st.markdown("This would allow a user to select interesting overlaps and view the trends in growth over time")
     
 
 

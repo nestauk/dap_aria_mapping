@@ -25,6 +25,92 @@ def validation_app():
     algs = ["cooccur", "centroids", "imbalanced"]
     algs_alt = ["community", "centroids", "imbalanced"]
 
+    st.header("Baseline taxonomies")
+    dfs = get_taxonomy_data()
+
+    (taxonomy_class, level_1, level_2, level_3, level_4) = st.columns(5)
+
+    with taxonomy_class:
+        st.subheader("Taxonomy")
+        tax = st.selectbox(
+            "Select a taxonomy",
+            ["cooccur", "imbalanced", "centroids"],
+        )
+
+    dfs_tax = dfs[tax]
+    levels_dict = {"L1": "All", "L2": "All", "L3": "All", "L4": "All"}
+
+    with level_1:
+        st.subheader("Level 1")
+        l1 = st.selectbox(
+            "Select a level 1 topic",
+            ["All"] + sorted(list(dfs_tax["Level_1"].unique())),
+        )
+
+    if l1 == "All":
+        level_shown = 1
+        df_plot = dfs_tax
+    else:
+        levels_dict["L1"] = l1
+        level_shown = 2
+        df_plot = dfs_tax[dfs_tax["Level_1"] == l1]
+
+        with level_2:
+            st.subheader("Level 2")
+            l2 = st.selectbox(
+                "Select a level 2 topic",
+                ["All"] + sorted(list(df_plot["Level_2"].unique())),
+            )
+
+        if l2 == "All":
+            pass
+
+        else:
+            levels_dict["L2"] = l2
+            level_shown = 3
+            df_plot = df_plot[df_plot["Level_2"] == l2]
+
+            with level_3:
+                st.subheader("Level 3")
+                l3 = st.selectbox(
+                    "Select a level 3 topic",
+                    ["All"] + sorted(list(df_plot["Level_3"].unique())),
+                )
+
+            if l3 == "All":
+                pass
+            else:
+                levels_dict["L3"] = l3
+                level_shown = 4
+                df_plot = df_plot[df_plot["Level_3"] == l3]
+
+                with level_4:
+                    st.subheader("Level 4")
+                    l4 = st.selectbox(
+                        "Select a level 4 topic",
+                        ["All"] + sorted(list(df_plot["Level_4"].unique())),
+                    )
+
+                if l4 == "All":
+                    pass
+                else:
+                    levels_dict["L4"] = l4
+                    level_shown = 5
+                    df_plot = df_plot[df_plot["Level_4"] == l4]
+
+    st.altair_chart(
+        alt.Chart(df_plot)
+        .mark_bar()
+        .encode(
+            x=alt.X(f"Level_{level_shown}:N", axis=alt.Axis(title=""), sort="-y"),
+            y=alt.Y("count()", axis=alt.Axis(title="", grid=False)),
+            tooltip=[
+                alt.Tooltip(f"Level_{str(level_shown)}_Entity_Names", title="Entities")
+            ],
+        )
+        .properties(height=300, width=1200)
+    )
+
     st.header("Distribution Metrics")
 
     with st.expander(label="Number of Topics per Level of the Taxonomy"):

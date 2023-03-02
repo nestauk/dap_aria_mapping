@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import boto3
 from collections import defaultdict
-from typing import Dict, Sequence
+from typing import Dict, Sequence, Union
 from dap_aria_mapping.getters.simulations import (
     get_simulation_topic_sizes,
     get_simulation_topic_distances,

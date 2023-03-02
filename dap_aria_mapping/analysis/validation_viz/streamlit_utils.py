@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import boto3
 from collections import defaultdict
 from typing import Dict, Sequence, Union
@@ -7,6 +8,11 @@ from dap_aria_mapping.getters.simulations import (
     get_simulation_topic_sizes,
     get_simulation_topic_distances,
     get_simulation_pairwise_combinations,
+)
+from dap_aria_mapping.getters.taxonomies import (
+    get_cooccurrence_taxonomy,
+    get_semantic_taxonomy,
+    get_topic_names,
 )
 
 
@@ -257,3 +263,43 @@ def get_pairwise_data(
     df_subtopic = pd.concat(dfs)
 
     return df_topic, df_subtopic
+
+
+def get_levels_entity(row: pd.Series):
+    """Gets the levels for a given entity.
+
+    Args:
+        row (pd.Series): A row from the dataframe.
+    """
+    level_list = row["Level_5"].split("_")
+    level_list.extend(["0"] * (5 - len(level_list)))
+    return [int(x) for x in level_list]
+
+
+@st.cache_data(show_spinner="Fetch taxonomy data")
+def get_taxonomy_data() -> Dict[str, pd.DataFrame]:
+    """Gets baseline data for a given taxonomy.
+
+    Returns:
+        Dict[str, pd.DataFrame]: A dictionary with the taxonomy dataframes.
+    """
+    dfs = {}
+    for taxonomy in ["cooccur", "imbalanced", "centroids"]:
+        if taxonomy == "cooccur":
+            df = get_cooccurrence_taxonomy()
+        elif taxonomy == "imbalanced":
+            df = get_semantic_taxonomy(cluster_object="imbalanced")
+        elif taxonomy == "centroids":
+            df = get_semantic_taxonomy(cluster_object="centroids")
+
+        for level in range(1, 6):
+            level_names = get_topic_names(taxonomy, "entity", level)
+            df["Level_{}_Entity_Names".format(str(level))] = df[
+                "Level_{}".format(str(level))
+            ].map(level_names)
+
+        df[["Level_1", "Level_2", "Level_3", "Level_4", "Level_5"]] = df.apply(
+            lambda row: get_levels_entity(row), axis=1, result_type="expand"
+        )
+        dfs[taxonomy] = df
+    return dfs

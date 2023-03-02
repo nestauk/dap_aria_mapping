@@ -391,212 +391,189 @@ def validation_app():
                     )
             submit_button = st.form_submit_button(label="Submit")
 
-        with st.expander(label="Entropy of Distributions of Entities per Topic"):
-            df = get_queried_sizes(
-                taxonomies=taxonomy, ratios=ratio, levels=levels, simulation=simulation
-            )
+        tog1 = tog.st_toggle_switch(
+            "Display sizes",
+            key="display_sizes1",
+            default_value=False,
+            label_after=True,
+        )
 
-            with entity_select:
-                options = list(
-                    set(
-                        list(
-                            chain(
-                                *[
-                                    str(x).split(", ")
-                                    for x in df["TopicName"].str.lstrip("E: ").unique()
-                                ]
+        if tog1:
+            with st.expander(label="Entropy of Distributions of Entities per Topic"):
+                df = get_queried_sizes(
+                    taxonomies=taxonomy, ratios=ratio, levels=levels, simulation=simulation
+                )
+
+                with entity_select:
+                    options = list(
+                        set(
+                            list(
+                                chain(
+                                    *[
+                                        str(x).split(", ")
+                                        for x in df["TopicName"].str.lstrip("E: ").unique()
+                                    ]
+                                )
                             )
                         )
                     )
-                )
-                entity = st.multiselect(
-                    "Select relevant entities",
-                    options=["All entities"] + options,
-                    default=["All entities"],
-                )
-                if "All entities" in entity:
-                    entity = "All entities"
+                    entity = st.multiselect(
+                        "Select relevant entities",
+                        options=["All entities"] + options,
+                        default=["All entities"],
+                    )
+                    if "All entities" in entity:
+                        entity = "All entities"
 
-            if entity != "All entities":
-                df = df.loc[df.TopicName.str.contains("|".join(entity), case=False)]
+                if entity != "All entities":
+                    df = df.loc[df.TopicName.str.contains("|".join(entity), case=False)]
 
-            st.altair_chart(
-                alt.Chart(df, width=180)
-                .mark_circle(opacity=0.6)
-                .encode(
-                    x=alt.X(
-                        "jitter:Q",
-                        title=None,
-                        axis=alt.Axis(values=[0], ticks=True, grid=False, labels=False),
-                    ),
-                    y=alt.Y(
-                        "PropEntities", axis=alt.Axis(title=""), scale=alt.Scale(type="log")
-                    ),
-                    size=alt.Size(
-                        "PropEntities", scale=alt.Scale(range=[12, 1000]), legend=None
-                    ),
-                    color=alt.Color("parent_topic:N", legend=None),
-                    tooltip=["Topic", "TopicName", "Proportion"],
-                    column=alt.Column(
-                        "level:N",
-                        header=alt.Header(
-                            labelAngle=-90,
-                            titleOrient="top",
-                            labelOrient="bottom",
-                            labelAlign="right",
-                        ),
-                    ),
-                )
-                .transform_calculate(jitter="sqrt(-2*log(random()))*cos(2*PI*random())")
-                .configure_facet(spacing=0)
-                .configure_axis(gridOpacity=0.1)
-                .configure_view(stroke=None)
-                .properties(title="Topic sizes")
-            )
-
-            display_size_data = st.checkbox("Show Size Data")
-            if display_size_data:
-                st.write(df)
-
-        with st.expander(label="Topic Distance to Centroid"):
-            toggle = tog.st_toggle_switch(
-                "Display as time series",
-                key="display_time_series",
-                default_value=False,
-                label_after=True,
-            )
-
-            df = get_queried_distances(
-                taxonomies=taxonomy,
-                ratios=ratio,
-                levels=levels,
-                simulation=simulation,
-                entities=entity,
-            )
-
-            if not toggle:
                 st.altair_chart(
-                    alt.Chart(df)
-                    .mark_boxplot(extent="min-max")
+                    alt.Chart(df, width=180)
+                    .mark_circle(opacity=0.6)
                     .encode(
-                        x=alt.X("level:N", axis=alt.Axis(title="")),
-                        y=alt.Y("distance:Q", axis=alt.Axis(title="")),
-                        color=alt.Color("taxonomy:N", legend=None),
-                        tooltip=["level", "distance"],
-                    )
-                    .properties(
-                        title="Distance to topic centroids",
-                        height=300,
-                        width=int(len(levels)) * int(len(taxonomy)) * int(len(ratio)) * 120,
-                    )
-                    .configure_axis(gridOpacity=0.3),
-                )
-            else:
-                df_ts = get_timeseries_data(df, taxonomies=taxonomy, ratios=ratio)
-
-                chart_mean = (
-                    alt.Chart(df_ts)
-                    .mark_line(size=4)
-                    .encode(
-                        x=alt.X("level", title=None),
-                        y=alt.Y(
-                            "mean",
+                        x=alt.X(
+                            "jitter:Q",
                             title=None,
-                            scale=alt.Scale(
-                                domain=(int(df_ts.lci.min()), int(df_ts.uci.max()))
+                            axis=alt.Axis(values=[0], ticks=True, grid=False, labels=False),
+                        ),
+                        y=alt.Y(
+                            "PropEntities", axis=alt.Axis(title=""), scale=alt.Scale(type="log")
+                        ),
+                        size=alt.Size(
+                            "PropEntities", scale=alt.Scale(range=[12, 1000]), legend=None
+                        ),
+                        color=alt.Color("parent_topic:N", legend=None),
+                        tooltip=["Topic", "TopicName", "Proportion"],
+                        column=alt.Column(
+                            "level:N",
+                            header=alt.Header(
+                                labelAngle=-90,
+                                titleOrient="top",
+                                labelOrient="bottom",
+                                labelAlign="right",
                             ),
                         ),
-                        color=alt.Color("config", title=None),
                     )
-                    .properties(width=1280, height=480)
+                    .transform_calculate(jitter="sqrt(-2*log(random()))*cos(2*PI*random())")
+                    .configure_facet(spacing=0)
+                    .configure_axis(gridOpacity=0.1)
+                    .configure_view(stroke=None)
+                    .properties(title="Topic sizes")
                 )
 
-                chart_band = (
-                    alt.Chart(df_ts)
-                    .mark_area(opacity=0.1)
-                    .encode(
-                        x=alt.X("level", title=None),
-                        y="lci",
-                        y2="uci",
-                        color=alt.Color("config", title=None),
-                    )
-                    .properties(width=1280, height=480)
+                display_size_data = st.checkbox("Show Size Data")
+                if display_size_data:
+                    st.write(df)
+        tog2 = tog.st_toggle_switch(
+            "Display distances",
+            key="display_sizes2",
+            default_value=False,
+            label_after=True,
+        )
+
+        if tog2:
+            with st.expander(label="Topic Distance to Centroid"):
+                toggle = tog.st_toggle_switch(
+                    "Display as time series",
+                    key="display_time_series",
+                    default_value=False,
+                    label_after=True,
                 )
 
-                st.altair_chart(
-                    alt.layer(chart_mean, chart_band).properties(
-                        title="Distance to topic centroids",
-                    )
+                df = get_queried_distances(
+                    taxonomies=taxonomy,
+                    ratios=ratio,
+                    levels=levels,
+                    simulation=simulation,
+                    entities=entity,
                 )
 
-            display_distance_data = st.checkbox("Show Distance data")
-            if display_distance_data:
-                st.write(df)
-
-        with st.expander(label="Pairwise Topic Plots"):
-            topic_selection = st.selectbox(
-                label="Select a topic class", options=["topic", "subtopic"]
-            )
-
-            df_topic, df_subtopic = get_pairwise_data(
-                taxonomies=taxonomy,
-                ratios=ratio,
-                simulation=simulation,
-                topic_selection=topic_selection,
-            )
-
-            if topic_selection == "topic":
-                nested_charts = [
-                    [
-                        alt.Chart(
-                            df_topic.loc[
-                                (df_topic["topic"] == topic) & (df_topic["taxonomy"] == alg)
-                            ]
-                        )
-                        .mark_bar()
+                if not toggle:
+                    st.altair_chart(
+                        alt.Chart(df)
+                        .mark_boxplot(extent="min-max")
                         .encode(
                             x=alt.X("level:N", axis=alt.Axis(title="")),
+                            y=alt.Y("distance:Q", axis=alt.Axis(title="")),
+                            color=alt.Color("taxonomy:N", legend=None),
+                            tooltip=["level", "distance"],
+                        )
+                        .properties(
+                            title="Distance to topic centroids",
+                            height=300,
+                            width=int(len(levels)) * int(len(taxonomy)) * int(len(ratio)) * 120,
+                        )
+                        .configure_axis(gridOpacity=0.3),
+                    )
+                else:
+                    df_ts = get_timeseries_data(df, taxonomies=taxonomy, ratios=ratio)
+
+                    chart_mean = (
+                        alt.Chart(df_ts)
+                        .mark_line(size=4)
+                        .encode(
+                            x=alt.X("level", title=None),
                             y=alt.Y(
-                                "prop:Q",
-                                axis=alt.Axis(title="", grid=False, labelFontSize=8),
-                                scale=alt.Scale(domain=[0, 1]),
-                            ),
-                            row=alt.Row(
-                                "ratio:N",
-                                header=alt.Header(
-                                    title="Ratio", labelFontSize=10, titleFontSize=8
+                                "mean",
+                                title=None,
+                                scale=alt.Scale(
+                                    domain=(int(df_ts.lci.min()), int(df_ts.uci.max()))
                                 ),
                             ),
-                            column=alt.Column(
-                                "subtopic:N",
-                                header=alt.Header(title=topic, labelFontSize=10),
-                            ),
-                            tooltip=["pairs"],
+                            color=alt.Color("config", title=None),
                         )
-                        .properties(height=160, width=120)
-                        for topic in df_topic.topic.unique()
-                    ]
-                    for alg in taxonomy
-                ]
-
-                charts_concat = []
-                for i, alg in enumerate(taxonomy):
-                    charts_ = nested_charts[i]
-                    charts_concat_ = alt.hconcat(
-                        *charts_, title=f"Pairwise combinations - {alg}"
+                        .properties(width=1280, height=480)
                     )
-                    charts_concat.append(charts_concat_)
 
-                st.altair_chart(alt.vconcat(*charts_concat))
+                    chart_band = (
+                        alt.Chart(df_ts)
+                        .mark_area(opacity=0.1)
+                        .encode(
+                            x=alt.X("level", title=None),
+                            y="lci",
+                            y2="uci",
+                            color=alt.Color("config", title=None),
+                        )
+                        .properties(width=1280, height=480)
+                    )
 
-            else:
-                nested_charts = [
-                    [
+                    st.altair_chart(
+                        alt.layer(chart_mean, chart_band).properties(
+                            title="Distance to topic centroids",
+                        )
+                    )
+
+                display_distance_data = st.checkbox("Show Distance data")
+                if display_distance_data:
+                    st.write(df)
+
+        tog3 = tog.st_toggle_switch(
+            "Display pairwises",
+            key="display_sizes3",
+            default_value=False,
+            label_after=True,
+        )
+
+        if tog3:
+            with st.expander(label="Pairwise Topic Plots"):
+                topic_selection = st.selectbox(
+                    label="Select a topic class", options=["topic", "subtopic"]
+                )
+
+                df_topic, df_subtopic = get_pairwise_data(
+                    taxonomies=taxonomy,
+                    ratios=ratio,
+                    simulation=simulation,
+                    topic_selection=topic_selection,
+                )
+
+                if topic_selection == "topic":
+                    nested_charts = [
                         [
                             alt.Chart(
-                                df_subtopic.loc[
-                                    (df_subtopic["subtopic"] == subtopic)
-                                    & (df_subtopic["taxonomy"] == alg)
+                                df_topic.loc[
+                                    (df_topic["topic"] == topic) & (df_topic["taxonomy"] == alg)
                                 ]
                             )
                             .mark_bar()
@@ -607,7 +584,6 @@ def validation_app():
                                     axis=alt.Axis(title="", grid=False, labelFontSize=8),
                                     scale=alt.Scale(domain=[0, 1]),
                                 ),
-                                # color="ratio:N",
                                 row=alt.Row(
                                     "ratio:N",
                                     header=alt.Header(
@@ -615,31 +591,78 @@ def validation_app():
                                     ),
                                 ),
                                 column=alt.Column(
-                                    "concept:N",
-                                    header=alt.Header(title=subtopic, labelFontSize=10),
+                                    "subtopic:N",
+                                    header=alt.Header(title=topic, labelFontSize=10),
                                 ),
                                 tooltip=["pairs"],
                             )
                             .properties(height=160, width=120)
-                            for subtopic in df_subtopic.loc[
-                                df_subtopic.topic == topic
-                            ].subtopic.unique()
+                            for topic in df_topic.topic.unique()
                         ]
-                        for topic in df_subtopic.topic.unique()
+                        for alg in taxonomy
                     ]
-                    for alg in taxonomy
-                ]
 
-                charts_concat = []
-                for i, alg in enumerate(taxonomy):
-                    charts_ = nested_charts[i]
-                    charts_concat_ = alt.hconcat(
-                        *[alt.hconcat(*charts_topic) for charts_topic in charts_],
-                        title=f"Pairwise combinations - {alg}",
-                    )
-                    charts_concat.append(charts_concat_)
+                    charts_concat = []
+                    for i, alg in enumerate(taxonomy):
+                        charts_ = nested_charts[i]
+                        charts_concat_ = alt.hconcat(
+                            *charts_, title=f"Pairwise combinations - {alg}"
+                        )
+                        charts_concat.append(charts_concat_)
 
-                st.altair_chart(alt.vconcat(*charts_concat))
+                    st.altair_chart(alt.vconcat(*charts_concat))
+
+                else:
+                    nested_charts = [
+                        [
+                            [
+                                alt.Chart(
+                                    df_subtopic.loc[
+                                        (df_subtopic["subtopic"] == subtopic)
+                                        & (df_subtopic["taxonomy"] == alg)
+                                    ]
+                                )
+                                .mark_bar()
+                                .encode(
+                                    x=alt.X("level:N", axis=alt.Axis(title="")),
+                                    y=alt.Y(
+                                        "prop:Q",
+                                        axis=alt.Axis(title="", grid=False, labelFontSize=8),
+                                        scale=alt.Scale(domain=[0, 1]),
+                                    ),
+                                    # color="ratio:N",
+                                    row=alt.Row(
+                                        "ratio:N",
+                                        header=alt.Header(
+                                            title="Ratio", labelFontSize=10, titleFontSize=8
+                                        ),
+                                    ),
+                                    column=alt.Column(
+                                        "concept:N",
+                                        header=alt.Header(title=subtopic, labelFontSize=10),
+                                    ),
+                                    tooltip=["pairs"],
+                                )
+                                .properties(height=160, width=120)
+                                for subtopic in df_subtopic.loc[
+                                    df_subtopic.topic == topic
+                                ].subtopic.unique()
+                            ]
+                            for topic in df_subtopic.topic.unique()
+                        ]
+                        for alg in taxonomy
+                    ]
+
+                    charts_concat = []
+                    for i, alg in enumerate(taxonomy):
+                        charts_ = nested_charts[i]
+                        charts_concat_ = alt.hconcat(
+                            *[alt.hconcat(*charts_topic) for charts_topic in charts_],
+                            title=f"Pairwise combinations - {alg}",
+                        )
+                        charts_concat.append(charts_concat_)
+
+                    st.altair_chart(alt.vconcat(*charts_concat))
 
         # with st.expander("Number of Topics Present Per Journal"):
         #     count_hists = get_count_histograms()

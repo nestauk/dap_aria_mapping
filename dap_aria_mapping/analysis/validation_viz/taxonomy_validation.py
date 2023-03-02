@@ -18,10 +18,6 @@ formatting.setup_theme()
 alt.data_transformers.disable_max_rows()
 
 
-def rec_dd():
-    return defaultdict(rec_dd)
-
-
 def validation_app():
 
     st.set_page_config(layout="wide")

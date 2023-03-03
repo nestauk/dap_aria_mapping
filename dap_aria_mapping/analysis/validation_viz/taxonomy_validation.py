@@ -398,33 +398,33 @@ def validation_app():
             label_after=True,
         )
 
-        if tog1:
-            with st.expander(label="Entropy of Distributions of Entities per Topic"):
-                df = get_queried_sizes(
-                    taxonomies=taxonomy, ratios=ratio, levels=levels, simulation=simulation
-                )
+        df = get_queried_sizes(
+            taxonomies=taxonomy, ratios=ratio, levels=levels, simulation=simulation
+        )
 
-                with entity_select:
-                    options = list(
-                        set(
-                            list(
-                                chain(
-                                    *[
-                                        str(x).split(", ")
-                                        for x in df["TopicName"].str.lstrip("E: ").unique()
-                                    ]
-                                )
-                            )
+        with entity_select:
+            options = list(
+                set(
+                    list(
+                        chain(
+                            *[
+                                str(x).split(", ")
+                                for x in df["TopicName"].str.lstrip("E: ").unique()
+                            ]
                         )
                     )
-                    entity = st.multiselect(
-                        "Select relevant entities",
-                        options=["All entities"] + options,
-                        default=["All entities"],
-                    )
-                    if "All entities" in entity:
-                        entity = "All entities"
+                )
+            )
+            entity = st.multiselect(
+                "Select relevant entities",
+                options=["All entities"] + options,
+                default=["All entities"],
+            )
+            if "All entities" in entity:
+                entity = "All entities"
 
+        if tog1:
+            with st.expander(label="Entropy of Distributions of Entities per Topic"):
                 if entity != "All entities":
                     df = df.loc[df.TopicName.str.contains("|".join(entity), case=False)]
 

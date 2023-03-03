@@ -19,7 +19,7 @@ import typer
 OUTPUT_DIR = "outputs/novelty"
 
 
-def main(
+def calculate_openalex_novelty(
     taxonomy_level: int = 0,
     test: bool = False,
     n_test_sample: int = 1000,
@@ -96,4 +96,4 @@ def main(
 
 
 if __name__ == "__main__":
-    typer.run(main)
+    typer.run(calculate_openalex_novelty)

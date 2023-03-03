@@ -200,7 +200,10 @@ def get_counts_of_pairs_with_topic(
     NB: The input dataframe should contain topic pairs only for a single year
 
     Args:
-        document_topic_pairs (dict): Dictionary with topic pair as key and counts as value
+        document_topic_pairs (dict): Dataframe with columns for "work_id", "topic_1", "topic_2", "counts"
+
+    Returns:
+        Dict[str, int]: Dictionary with topic as key and pair counts as value
     """
     topic_counts_df = (
         pd.concat(

@@ -1,15 +1,37 @@
 """
 Utils for measuring 'novelty' of research publication and patent abstracts
+
+The novelty score has been proposed by Uzzi et al. (2013) and revised by Lee et al. (2015). 
+Here we have adapted the method to use topics instead of journal citations.
+
+The score is calculated as follows: 
+
+Step 1: Calculate the commonness of each pair of topics in each year
+
+commonness(i,j) = N(i,j,t) * N(t) / (N(i,t)*N(j,t))
+
+where:
+- N(i,j,t) is the number of co-occurrences of i and j in time t (t = usually in a given year)
+- N(i, t) is the number of pairs of topics that include topic i
+- N(j, t) is the number of pairs of topics that include topic j
+- N(t) is the number of pairs of topics in time t
+
+Step 2: Calculate the novelty score for each document
+
+The novelty score at a document level is then calculated by:
+- Taking the 10th percentile of its topic pair commonness scores
+- Calculating the negative natural log of this value
+
 """
 from dap_aria_mapping import logging
 import pandas as pd
 import itertools
 import numpy as np
-from typing import Tuple
+from typing import Tuple, Dict
 
 
 def preprocess_topics_dict(
-    topics_dict: dict,
+    topics_dict: Dict[str, list],
     metadata_df: pd.DataFrame,
     id_column: str = "work_id",
     year_column: str = "publication_year",
@@ -106,7 +128,7 @@ def document_novelty(
         # Save the topic pair commonness values for each year
         topic_pair_commonness_list.append(
             topic_pair_commonness.drop_duplicates(["topic_1", "topic_2", "year"]).drop(
-                ["N_i_t", "N_j_t", "topic_pair"], axis=1
+                ["work_id", "N_i_t", "N_j_t", "topic_pair"], axis=1
             )
         )
 
@@ -169,7 +191,7 @@ def get_topic_pair_counts(
 
 def get_counts_of_pairs_with_topic(
     document_topic_pairs: pd.DataFrame, id_column="work_id"
-) -> dict:
+) -> Dict[str, int]:
     """
     Calcuate all N_i_t / N_j_t values:
     Given a table with document ids and topic pairs mentioned in the document,
@@ -178,7 +200,7 @@ def get_counts_of_pairs_with_topic(
     NB: The input dataframe should contain topic pairs only for a single year
 
     Args:
-        document_topic_pairs (pd.DataFrame): Dataframe with columns "work_id", "topic_1", "topic_2", "year"
+        document_topic_pairs (dict): Dictionary with topic pair as key and counts as value
     """
     topic_counts_df = (
         pd.concat(
@@ -199,17 +221,20 @@ def get_counts_of_pairs_with_topic(
 def get_topic_pair_commonness(
     document_topic_pairs: pd.DataFrame,
     N_t: int,
-    topic_counts_dict: dict,
-    topic_pair_counts_dict: dict,
-):
+    topic_counts_dict: Dict[str, int],
+    topic_pair_counts_dict: Dict[str, int],
+) -> pd.DataFrame:
     """
-    Calculate the novelty score for each document
+    Calculate the commonness score for each topic pair in each document
 
     Args:
         document_topic_pairs (pd.DataFrame): Dataframe with columns "work_id", "topic_1", "topic_2", "year"
         N_t (int): Total number of documents
         topic_counts_dict (dict): Dictionary with topic counts
         topic_pair_counts_dict (dict): Dictionary with topic pair counts
+
+    Returns:
+        pd.DataFrame: Dataframe with a commonness score for each topic pair in each document
     """
     # Calculate the novelty score for each document
     return (
@@ -234,13 +259,13 @@ def aggregate_document_novelty(
     return (
         topic_pair_commonness.groupby([id_column, "year"], as_index=False)
         .agg(commonness=("commonness", (lambda x: aggregate_document_commonness(x))))
-        .assign(novelty=lambda df: novelty_score(df["commonness"]))
+        .assign(novelty=lambda df: convert_commonness_to_novelty(df["commonness"]))
     )
 
 
-def novelty_score(commonness_score: float) -> float:
+def convert_commonness_to_novelty(commonness_score: float) -> float:
     """
-    Calculate novelty as the negative natural log of commonness score
+    Calculate novelty score as the negative natural log of commonness score
     """
     return -np.log(commonness_score)
 

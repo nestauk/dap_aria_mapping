@@ -111,7 +111,7 @@ target/
 /outputs/models/*
 !/outputs/models/*.md
 outputs/figures/taxonomy_validation/*
-outputs/interim/*
+outputs/novelty/*
 
 # Mac OS-specific storage files
 .DS_Store

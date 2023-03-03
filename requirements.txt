@@ -17,4 +17,4 @@ matplotlib==3.6.2
 umap-learn
 hdbscan==0.8.29
 sentence_transformers==2.2.2
-typer
+typer==0.4.2

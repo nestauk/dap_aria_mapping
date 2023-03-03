@@ -1,5 +1,5 @@
 """ 
-Script/pipeline to calculate novelty scores for OpenAlex papers
+Script to calculate novelty scores for OpenAlex papers
 Uses typer to create a command line interface
 
 Usage examples:
@@ -10,27 +10,29 @@ python dap_aria_mapping/notebooks/novelty/pipeline_openalex_novelty.py
 One level, test dataset:
 python dap_aria_mapping/notebooks/novelty/pipeline_openalex_novelty.py --taxonomy-level 1 --test
 """
-from dap_aria_mapping import logging, PROJECT_DIR
+from dap_aria_mapping import logging, PROJECT_DIR, BUCKET_NAME
 import dap_aria_mapping.getters.openalex as oa
 import dap_aria_mapping.utils.novelty_utils as nu
+from nesta_ds_utils.loading_saving.S3 import upload_obj
 import typer
 
-OUTPUT_FOLDER = PROJECT_DIR / "outputs/interim"
+OUTPUT_DIR = "outputs/novelty"
 
 
 def main(
     taxonomy_level: int = 0,
     test: bool = False,
     n_test_sample: int = 1000,
+    save_to_local: bool = False,
 ):
     """
-    Calculate novelty scores for OpenAlex papers
+    Calculate novelty scores for OpenAlex papers and uploads them on s3
 
     Args:
-        taxonomy_level (int): Taxonomy level to use for novelty calculation. 
-            Must be between 1 and 5. If set to 0, uses all levels
+        taxonomy_level (int): Taxonomy level to use for novelty calculation. Must be between 1 and 5. If set to 0, uses all levels
         test (bool): Whether to run in test mode (using a small sample of papers)
         n_test_sample (int): Number of papers to use for testing
+        save_to_local (bool): Whether to also save the novelty scores to local disk
 
     Returns:
         None (saved novelty scores to file)
@@ -65,16 +67,32 @@ def main(
             topics_df, "work_id"
         )
         # Export novelty scores
-        OUTPUT_FOLDER.mkdir(parents=True, exist_ok=True)
-        export_path = OUTPUT_FOLDER / f"openalex_novelty_{level}{test_suffix}.csv"
-        work_novelty_df.to_csv(export_path, index=False)
-        logging.info(f"Exported novelty scores to {export_path}")
-        # Export topic pair commonness
-        export_path = (
-            OUTPUT_FOLDER / f"openalex_topic_pair_commonness_{level}{test_suffix}.csv"
+        filepath_document_novelty_scores = (
+            OUTPUT_DIR + f"/openalex_novelty_{level}{test_suffix}.parquet"
         )
-        topic_pair_commonness_df.to_csv(export_path, index=False)
-        logging.info(f"Exported topic pair commonness to {export_path}")
+        filepath_topic_pair_commonness = (
+            OUTPUT_DIR + f"/openalex_topic_pair_commonness_{level}{test_suffix}.parquet"
+        )
+        # Upload to s3
+        upload_obj(
+            work_novelty_df,
+            BUCKET_NAME,
+            f"{filepath_document_novelty_scores}",
+        )
+        upload_obj(
+            topic_pair_commonness_df,
+            BUCKET_NAME,
+            f"{filepath_topic_pair_commonness}",
+        )
+        if save_to_local:
+            # Save to local disk
+            (PROJECT_DIR / OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
+            export_path = PROJECT_DIR / filepath_document_novelty_scores
+            work_novelty_df.to_parquet(export_path, index=False)
+            logging.info(f"Exported novelty scores to {export_path}")
+            export_path = PROJECT_DIR / filepath_topic_pair_commonness
+            topic_pair_commonness_df.to_parquet(export_path, index=False)
+            logging.info(f"Exported topic pair commonness to {export_path}")
 
 
 if __name__ == "__main__":

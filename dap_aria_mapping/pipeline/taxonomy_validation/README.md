@@ -25,7 +25,7 @@ $$
 
 To produce these labels as dictionaries, execute the following command.
 
-`python dap_aria_mapping/pipeline/taxonomy_validation/make_topic_name_assignment.py --taxonomy cooccur --label_type entity --levels 1 2 --n_top 3 --n_articles 1000`
+`python dap_aria_mapping/pipeline/taxonomy_validation/make_topic_name_assignments.py --taxonomy cooccur centroids imbalanced --name_type entity --levels 1 2 3 4 5 --n_top 5 --n_articles 50000`
 
 ## Visualisation
 

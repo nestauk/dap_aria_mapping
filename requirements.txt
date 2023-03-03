@@ -18,3 +18,4 @@ umap-learn
 hdbscan==0.8.29
 sentence_transformers==2.2.2
 typer==0.4.2
+streamlit

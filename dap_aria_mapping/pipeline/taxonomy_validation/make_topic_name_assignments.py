@@ -180,10 +180,10 @@ if __name__ == "__main__":
                 else:
                     chatgpt_names = {}
 
-                consec_errors = 0
                 for clust, names in entity_names.items():
                     tries = 0
-                    while tries <= 3:
+                    response_ok = False
+                    while not response_ok:
                         time.sleep(np.random.randint(25, 50))
 
                         try:
@@ -198,31 +198,26 @@ if __name__ == "__main__":
                                 "general, such as 'Science' or 'Technology'."
                             )
                             if "Unusable response produced" in response:
+                                logger.info(f"ChatGPT failed to provide an answer: {response}.")
                                 raise Exception("Unusable response produced. Consider reducing number of requests.")
                             else:
-                                consec_errors = 0
                                 chatgpt_names[clust] = response
                             logger.info(f"ChatGPT response: {chatgpt_names[clust]}")
                             with open(OUTPUT_DIR / f"class_{taxlabel}_nametype_chatgpt_top_{args.n_top}_level_{level}.json", "w") as f:
                                 json.dump(chatgpt_names, f)
                             bot.refresh_session()
+                            response_ok = True
                             break
 
                         except:
                             tries += 1
                             logger.info("ChatGPT failed to respond. Trying again.")
                             bot.refresh_session()
+                            if tries > 3:
+                                logger.info("ChatGPT failed to respond. Idling for 2-3 minutes.")
+                                chatgpt_names[clust] = "ChatGPT failed to respond."
+                                time.sleep(np.random.randint(120, 180))
 
-                    if tries > 3:
-                        logger.info("ChatGPT failed to respond. Idling for 2-3 minutes.")
-                        chatgpt_names[clust] = "ChatGPT failed to respond."
-                        time.sleep(np.random.randint(120, 180))
-                        consec_errors += 1
-                        if consec_errors > 5:
-                            logger.info("Too many consecutive errors. Hibernating for 15-20 minutes.")
-                            time.sleep(np.random.randint(900, 1200))
-                            tries = 0
-                        pass
                 if args.save:
                     logger.info("Saving dictionary as pickle")
                     save_names(

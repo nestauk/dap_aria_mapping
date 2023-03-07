@@ -143,10 +143,24 @@ def get_topic_names(
         level (int): The level of the taxonomy to download.
         n_top (int, optional): The number of top entities used to label. Defaults to None (10).
             chatgpt name_type uses 35 entities per topic to hit the API endpoint.
+        long (bool, optional): Whether to download long names. Defaults to False.
 
     Returns:
         pd.DataFrame: A dictionary containing the topic names.
     """
+    if long:
+        if n_top is not None:
+            return download_obj(
+                BUCKET_NAME,
+                f"outputs/topic_names/long_names/class_{taxonomy_class}_nametype_{name_type}_top_{str(n_top)}_level_{str(level)}.json",
+                download_as="dict",
+            )
+        else:
+            return download_obj(
+                BUCKET_NAME,
+                f"outputs/topic_names/long_names/class_{taxonomy_class}_nametype_{name_type}_level_{str(level)}.json",
+                download_as="dict",
+            )
     if n_top is not None:
         return download_obj(
             BUCKET_NAME,

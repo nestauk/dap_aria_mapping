@@ -214,14 +214,15 @@ if __name__ == "__main__":
                             bot.refresh_session()
 
                     if tries > 3:
-                        logger.info("ChatGPT failed to respond. Skipping.")
+                        logger.info("ChatGPT failed to respond. Idling for 2-3 minutes.")
                         chatgpt_names[clust] = "ChatGPT failed to respond."
                         time.sleep(np.random.randint(120, 180))
                         consec_errors += 1
                         if consec_errors > 5:
-                            logger.info("Too many consecutive errors. Hibernating.")
+                            logger.info("Too many consecutive errors. Hibernating for 15-20 minutes.")
                             time.sleep(np.random.randint(900, 1200))
-                            break
+                            tries = 0
+                        pass
                 if args.save:
                     logger.info("Saving dictionary as pickle")
                     save_names(

@@ -7,6 +7,9 @@ from dap_aria_mapping.getters.validation import (
     get_tree_depths,
     get_pairwise_depth,
 )
+from dap_aria_mapping.getters.taxonomies import (
+    get_topic_names
+)
 import altair as alt
 from collections import defaultdict
 from itertools import chain
@@ -675,6 +678,43 @@ def validation_app():
             height=600,
             scrolling=True,
         )
+
+    st.header("ChatGPT topic naming")
+    with st.expander("Topic Naming"):
+        st.write(
+            "The following table shows the topic naming for the ChatGPT model. \n" \
+            "The query is the following: \n" \
+            f"What is the Wikipedia topic that best describes the following group of entities?" \
+            f"[names]" \
+            "\n\n" \
+            f"Please only provide the topic name that best describes the group of entities, and a " \
+            f"confidence score between 0 and 100 on how sure you are about the answer." \
+            "The structure of the answer should be: topic name (confidence score)." \
+            "For example: 'Machine learning (100)'. In addition, try to avoid topics that are too " \
+            "general, such as 'Science' or 'Technology'."
+        )
+
+        entity_names = get_topic_names(
+            taxonomy_class="cooccur",
+            name_type="entity",
+            level=3,
+            long=True,
+            n_top=30
+        )
+
+        import json
+        with open(PROJECT_DIR / "outputs" / "interim" / "topic_names" / "class_cooccur_nametype_chatgpt_top_30_level_3.json", "r") as f:
+            topic_names = json.load(f)
+
+        entity_names = {k: v for k, v in entity_names.items() if k in topic_names.keys()}
+
+        names_df = pd.DataFrame.from_dict(entity_names, orient="index").rename(columns={0: "entity_names"})
+        names_df["topic_names"] = names_df.index.map(topic_names)
+
+        st.write(names_df)
+
+
+
 
 
 validation_app()

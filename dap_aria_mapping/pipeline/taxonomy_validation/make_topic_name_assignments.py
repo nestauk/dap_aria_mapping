@@ -184,7 +184,7 @@ if __name__ == "__main__":
                     tries = 0
                     response_ok = False
                     while not response_ok:
-                        time.sleep(np.random.randint(25, 50))
+                        time.sleep(np.random.randint(45, 90))
 
                         try:
                             response = bot.ask(
@@ -212,11 +212,12 @@ if __name__ == "__main__":
                         except:
                             tries += 1
                             logger.info("ChatGPT failed to respond. Trying again.")
+                            time.sleep(np.random.randint(3, 6))
                             bot.refresh_session()
                             if tries > 3:
-                                logger.info("ChatGPT failed to respond. Idling for 2-3 minutes.")
+                                logger.info("ChatGPT failed to respond. Idling for 15-20 minutes.")
                                 chatgpt_names[clust] = "ChatGPT failed to respond."
-                                time.sleep(np.random.randint(120, 180))
+                                time.sleep(np.random.randint(900, 1200))
 
                 if args.save:
                     logger.info("Saving dictionary as pickle")

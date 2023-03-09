@@ -194,7 +194,7 @@ if __name__ == "__main__":
                     chatgpt_names = defaultdict(dict)
 
                 # for clust, names in entity_names.items():
-                for chunk in chunked(entity_names.items(), 10):
+                for chunk in chunked(entity_names.items(), 6):
                     tries = 0
                     response_ok = False
                     first = True
@@ -211,12 +211,15 @@ if __name__ == "__main__":
                                     " \n\n " \
                                     f"{chunk_str}" \
                                     " \n\n " \
-                                    "Please only provide the topic name that best describes the group of entities, and a confidence score between 0 and 100 on how sure you are about the answer. If confidence is not high, please provide a list of entities that, if discarded, would help identify a topic. The structure of the answer should be a list of tuples of four elements: (list identifier, topic name, confidence score, list of entities to discard (None if there are none)). For example:" \
+                                    # "Please only provide the topic name that best describes the group of entities, and a confidence score between 0 and 100 on how sure you are about the answer. If confidence is not high, please provide a list of entities that, if discarded, would help identify a topic. The structure of the answer should be a list of tuples of four elements: (list identifier, topic name, confidence score, list of entities to discard (None if there are none)). For example:" \
+                                    "Please only provide the topic name that best describes the group of entities, and a confidence score between 0 and 100 on how sure you are about the answer. If confidence is not high, please provide a list of entities that, if discarded, would help identify a topic. Also provide a topic name for the discarded entities, if any. The structure of the answer should be a list of tuples of five elements: (list identifier, topic name, confidence score, list of entities to discard (return an empty list if there are none), discarded topic name (None if there are no entities to discard)). For example: " \
                                     " \n\n" \
-                                    "[('List 1', 'Machine learning', 100, ['Russian Spy', 'Collagen']), ('List 2', 'Cosmology', 90, ['Matrioska', 'Madrid'])]" \
+                                    # "[('List 1', 'Machine learning', 100, ['Russian Spy', 'Collagen']), ('List 2', 'Cosmology', 90, ['Matrioska', 'Madrid'])]" \
+                                    "[('List 1', 'Machine learning', 100, ['Russian Spy', 'Russian doll'], 'Russian Elements'), ('List 2', 'Cosmology', 90, ['Berlin', 'Madrid'], 'European cities')]"
                                     " \n\n" \
-                                    "Please return only the list of tuples with the answers, without any other text." \
-                                    "In addition, if possible try to avoid topics that are too general - such as 'Science' or 'Technology' - unless the confidence score is low." \
+                                    "Please avoid general topic names (such as 'Science' or 'Technology') and return only the list of tuples with the answers, without any other text." \
+                                    # "In addition, if possible try to avoid topics that are too general - such as 'Science' or 'Technology' - unless a more concrete topic reduces the confidence score significantly." \
+                                    # "Do not explain the reasoning behind the reply, nor write anything else than the answer (ie. do not write notes on why you discard entities)."
                                 )
                                 response = bot.ask(query)
                             else:
@@ -227,9 +230,10 @@ if __name__ == "__main__":
                                 response = ast.literal_eval(response)
                             except Exception as e:
                                 logger.info(f"FAILURE - ChatGPT response is not a list: {response}.")
+                                time.sleep(np.random.randint(9, 12))
                                 bot.ask(
-                                    "The response is not a list. Please output a list of tuples as your answer, as in the following example: \n\n" \
-                                    "[('List 1', 'Machine learning', 100, ['Russian Spy', 'Collagen']), ('List 2', 'Cosmology', 90, ['Matrioska', 'Madrid'])]" \
+                                    "The response is not a list. Please output a list of five-item tuples as your answer, as in the following example: \n\n" \
+                                    "[('List 1', 'Machine learning', 100, ['Russian Spy', 'Russian doll'], 'Russian Elements'), ('List 2', 'Cosmology', 90, ['Berlin', 'Madrid'], 'European cities')]"
                                 )
                                 raise Exception("ChatGPT response is not a list.")
 
@@ -269,9 +273,9 @@ if __name__ == "__main__":
                             time.sleep(np.random.randint(3, 6))
                             bot.refresh_session()
                             if tries > 3:
-                                logger.info("ChatGPT failed to respond. Idling for 15-20 minutes.")
+                                logger.info("ChatGPT failed to respond. Idling for 10-12 minutes.")
                                 # chatgpt_names[clust] = "ChatGPT failed to respond."
-                                time.sleep(np.random.randint(900, 1200))
+                                time.sleep(np.random.randint(600, 720))
 
                 if args.save:
                     logger.info("Saving dictionary as pickle")

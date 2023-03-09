@@ -3,12 +3,14 @@ from PIL import Image
 import altair as alt
 from nesta_ds_utils.viz.altair import formatting
 from dap_aria_mapping import PROJECT_DIR
+from dap_aria_mapping.getters.app_tables.horizon_scanner import volume_per_year
+import polars as pl
+import pandas as pd
 formatting.setup_theme()
 
 PAGE_TITLE = "Horizon Scanner"
 
 IMAGE_DIR = f"{PROJECT_DIR}/dap_aria_mapping/analysis/app/images"
-
 
 #icon to be used as the favicon on the browser tab
 icon = Image.open(f"{IMAGE_DIR}/hs_icon.ico")
@@ -20,6 +22,40 @@ st.set_page_config(
     page_icon=icon
 )
 
+#must wrap getter in another function so streamlit doesn't load the file in each time
+@st.cache_data
+def load_volume_data():
+    volume_data = volume_per_year()
+    volume_data = volume_data.with_columns(
+        (pl.col('patent_count') + pl.col('publication_count')).alias('total_docs'),
+        pl.col('year').round(0)
+    )
+    unique_domains = list(list(volume_data.select(pl.col("domain").unique()))[0])
+    unique_domains.insert(0,"All")
+    return volume_data, unique_domains
+
+
+@st.cache_data
+def filter_by_domain(domain, _volume_data):
+    volume_data = _volume_data.filter(pl.col("domain")==domain)
+    unique_areas = list(list(volume_data.select(pl.col("area").unique()))[0])
+    return volume_data, unique_areas
+
+@st.cache_data
+def filter_by_area(area, _volume_data):
+    volume_data = _volume_data.filter(pl.col("area")==area)
+    unique_topics = list(list(volume_data.select(pl.col("topic").unique()))[0])
+    return volume_data, unique_topics
+
+#@st.cache_data
+def group_by_level(_volume_data, level, sum_col):
+    q = (_volume_data.lazy().with_columns(pl.col(level).cast(str)).groupby(["year", level]).agg([pl.sum(sum_col)]).filter(pl.any(pl.col("year").is_not_null())))
+    return q.collect()
+
+#@st.cache_data
+def convert_to_pandas(_df: pl.DataFrame) -> pd.DataFrame:
+    return _df.to_pandas()
+
 header1, header2 = st.columns([1,10])
 with header1:
     st.image(icon)
@@ -28,35 +64,59 @@ with header2:
 
 st.markdown(f'<h1 style="color:#0000FF;font-size:16px;">{"<em>Explore patterns and trends in research domains across the UK<em>"}</h1>', unsafe_allow_html=True)
 
-area_drop, discipline_drop, topic_drop = st.columns(3)
+#load in volume data 
+volume_data, unique_domains = load_volume_data()
+
+#unique_domains.insert(0, "All")
+
+domain_drop, area_drop = st.columns(2)
+
+with domain_drop:
+    domain = st.selectbox(label = "Select a Domain", options = unique_domains)
+    area = "All"
+    topic = "All"
+    level_considered = "domain"
+    if domain != "All":
+        volume_data, unique_areas = filter_by_domain(domain, volume_data)
+        level_considered = "area"
+
     
 with area_drop:
-    area = st.selectbox(label = "Select an Area", options = ["All", "Area 1", "Area 2"])
-    discipline = "All"
-    topic = "All"
-
-with discipline_drop:
-    if area != "All":
-        #In reality, the options for discipline would come from df.loc[df["Level 1"] == area]["Level 2"].unique()
-        discipline = st.selectbox(label = "Select a Discipline", options = ["All", "Discipline 1", "Discipline 2"])
-
-with topic_drop:
-    if discipline != "All":
-        #In reality, the options for discipline would come from df.loc[df["Level 2"] == discipline]["Level 3"].unique()
-        topic = st.selectbox(label = "Select a Topic", options = ["All", "Topic 1", "Topic 2"])
+    if domain != "All":
+        unique_areas.insert(0, "All")
+        area = st.selectbox(label = "Select an Area", options = unique_areas)
+        if area != "All":
+            volume_data, unique_topics = filter_by_area(area, volume_data)
+            level_considered = "topic"
 
 
-total_to_display = st.slider(label = "Show me most productive:" , min_value = 0, max_value = 50)
+#total_to_display = st.slider(label = "Show me most productive:" , min_value = 0, max_value = 50)
 
 overview_tab, disruption_tab, novelty_tab, overlaps_tab = st.tabs(["Overview", "Disruption", "Novelty","Overlaps"])
 
 with overview_tab:
     volume, alignment = st.columns(2)
     with volume:
-        st.subheader("Trends in Emergence")
-        st.markdown("This would show trends in growth over time for areas/domains/topics, allowing users to analyse patterns recognizing that certain areas produce more/less content than others")
+        st.subheader("Emergence")
+        show_only = st.selectbox(label = "Show Emergence In:", options = ["Publications", "Patents", "Both"])
+        if show_only == "Publications":
+            y_col = "publication_count"
+        elif show_only == "Patents":
+            y_col = "patent_count"
+        else:
+            y_col = "total_docs"
+
+        emergence_data = convert_to_pandas(group_by_level(volume_data, level_considered, y_col))
+
+        volume_chart = alt.Chart(emergence_data).mark_line().encode(
+            alt.X("year:N"),
+            alt.Y("{}:Q".format(y_col)),
+            color = "{}:N".format(level_considered)
+        ).interactive().properties(height=600)
+    st.altair_chart(volume_chart)
+
     with alignment:
-        st.subheader("Trends in Alignment")
+        st.subheader("Alignment")
         st.markdown("This could illustrate if research is becoming more/less aligned with industry in certain areas")
 
 with disruption_tab:

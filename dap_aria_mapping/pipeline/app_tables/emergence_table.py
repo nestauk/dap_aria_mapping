@@ -3,10 +3,8 @@ from dap_aria_mapping.getters.patents import get_patent_topics, get_patents
 from dap_aria_mapping.utils.app_data_utils import count_documents, expand_topic_col
 import polars as pl
 import pandas as pd
-from collections import defaultdict
 from nesta_ds_utils.loading_saving.S3 import upload_obj
 from dap_aria_mapping import BUCKET_NAME, logger
-from typing import Dict, List
 
 if __name__ == "__main__":
 

@@ -3,7 +3,9 @@ from dap_aria_mapping.getters.patents import get_patent_topics, get_patents
 from dap_aria_mapping.utils.app_data_utils import count_documents, expand_topic_col
 import polars as pl
 import pandas as pd
-from nesta_ds_utils.loading_saving.S3 import upload_obj
+import boto3
+import io
+#from nesta_ds_utils.loading_saving.S3 import upload_obj
 from dap_aria_mapping import BUCKET_NAME, logger
 
 if __name__ == "__main__":
@@ -60,7 +62,13 @@ if __name__ == "__main__":
     ])
 
     logger.info("Uploading file to S3")
-    upload_obj(final_df, BUCKET_NAME, "outputs/app_data/horizon_scanner/volume.parquet")
+    buffer = io.BytesIO()
+    final_df.write_parquet(buffer)
+    buffer = buffer.seek(0)
+    s3 = boto3.client("s3")
+    s3.upload_fileobj(buffer, BUCKET_NAME, "outputs/app_data/horizon_scanner/volume.parquet")
+
+    #upload_obj(final_df, BUCKET_NAME, "outputs/app_data/horizon_scanner/volume.parquet")
 
 
     

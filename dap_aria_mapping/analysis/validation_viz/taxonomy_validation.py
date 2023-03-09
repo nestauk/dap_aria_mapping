@@ -680,11 +680,11 @@ def validation_app():
         )
 
     st.header("ChatGPT topic naming")
-    with st.expander("Topic Naming"):
+    with st.expander("Old Topic Naming"):
         st.write(
             "The following table shows the topic naming for the ChatGPT model. \n" \
-            "The query is the following: \n" \
-            f"What is the Wikipedia topic that best describes the following group of entities?" \
+            "The query is the following: \n\n" \
+            f"What is the Wikipedia topic that best describes the following group of entities? \n\n" \
             f"[names]" \
             "\n\n" \
             f"Please only provide the topic name that best describes the group of entities, and a " \
@@ -706,15 +706,64 @@ def validation_app():
         with open(PROJECT_DIR / "outputs" / "interim" / "topic_names" / "class_cooccur_nametype_chatgpt_top_30_level_3.json", "r") as f:
             topic_names = json.load(f)
 
-        entity_names = {k: v for k, v in entity_names.items() if k in topic_names.keys()}
+        old_entity_names = {k: v for k, v in entity_names.items() if k in topic_names.keys()}
 
-        names_df = pd.DataFrame.from_dict(entity_names, orient="index").rename(columns={0: "entity_names"})
+        names_df = pd.DataFrame.from_dict(old_entity_names, orient="index").rename(columns={0: "entity_names"})
         names_df["topic_names"] = names_df.index.map(topic_names)
 
         st.write(names_df)
 
+    with st.expander("New Topic Naming"):
+        st.write(
+            "The following table shows the topic naming for the ChatGPT model. \n" \
+            "The query is the following: \n\n" \
+            f"What are the Wikipedia topics that best describe the following groups of entities (the number of times in parenthesis corresponds to how often these entities are found in the topic, and should be taken into account when making a decision)?" \
+            " \n\n " \
+            "List1: \"E: Acid (36194 times), Ion (22892 times), Oxygen (21824 times), Carbon (20138 times), X-ray crystallography (20066 times), Laser (18836 times), Spectroscopy (17298 times), Polymer (15761 times), PH (15166 times), Finite element method (14090 times), Correlation and dependence (13710 times), Nuclear magnetic resonance (13470 times), Electronvolt (12836 times), John Wiley & Sons (12460 times), Mass spectrometry (12429 times), Wavelength (11058 times), Ligand (10743 times), Microscopy (10490 times), Hydrogen (10151 times), Nitrogen (10125 times), Magnetic field (9798 times), Electrode (9303 times), Adsorption (9108 times), Scanning electron microscope (8961 times), Transmission electron microscopy (8540 times), Fluorescence (8429 times), Carboxylic acid (7584 times), Redox (7283 times), Renewable energy (7259 times), Molecular dynamics (7123 times), Viscosity (7067 times), Dielectric (6567 times), Graphene (6299 times), Photon (6275 times), Resonance (5953 times)." \
+            "List2: \"E: Africa (18448 times), Australia (14272 times), India (13127 times), Brazil (8410 times), Italy (7977 times), South Africa (7925 times), Japan (6745 times), Kenya (4748 times), Russia (4319 times), Tanzania (3992 times), Mexico (3766 times), Uganda (3749 times), Bangladesh (3625 times), Pakistan (3614 times), Turkey (3608 times), Ghana (3358 times), Indonesia (3182 times), Hong Kong (2989 times), Portugal (2978 times), Malaysia (2928 times), Thailand (2839 times), Iran (2799 times), Saudi Arabia (2654 times), Ethiopia (2643 times), Malawi (2630 times), California (2523 times), Caribbean (2491 times), Chile (2446 times), South Korea (2404 times), Singapore (2402 times), Nepal (2386 times), Taiwan (2335 times), Greece (2205 times), Vietnam (2082 times), Argentina (2072 times)\"" \
+            " \n\n " \
+            "Please only provide the topic name that best describes the group of entities, and a confidence score between 0 and 100 on how sure you are about the answer. If confidence is not high, please provide a list of entities that, if discarded, would help identify a topic. The structure of the answer should be a list of tuples of four elements: (list identifier, topic name, confidence score, list of entities to discard (None if there are none)). For example:" \
+            " \n\n" \
+            "[('List 1', 'Machine learning', 100, ['Russian Spy', 'Collagen']), ('List 2', 'Cosmology', 90, ['Matrioska', 'Madrid'])]" \
+            " \n\n" \
+            "Please return only the list of tuples with the answers, without any other text." \
+            "In addition, if possible try to avoid topics that are too general - such as 'Science' or 'Technology' - unless the confidence score is low." \
+        )
 
+        st.write(
+            "Note that if the response is returned in the wrong format, topics are recycled and the following message passed:" \
+            "The response is not a list. Please output a list of tuples as your answer, as in the following example: \n\n" \
+            "[('List 1', 'Machine learning', 100, ['Russian Spy', 'Collagen']), ('List 2', 'Cosmology', 90, ['Matrioska', 'Madrid'])]" \
+        )
 
+        (level_selector,) = st.columns(1)
 
+        with level_selector:
+            level_choice = st.selectbox(
+                "Select the level to show",
+                options=[1, 2, 3],
+                index=0,
+                key="level_selector"
+            )
+
+        new_entity_names = get_topic_names(
+            taxonomy_class="cooccur",
+            name_type="entity",
+            level=level_choice,
+            long=True,
+            n_top=35
+        )
+
+        if level_choice != 3:
+            with open(PROJECT_DIR / "outputs" / "interim" / "topic_names" / f"class_cooccur_nametype_chatgpt_top_35_level_{level_choice}.json", "r") as f:
+                new_topic_names = json.load(f)
+        else:
+            with open(PROJECT_DIR / "outputs" / "interim" / "topic_names" / f"class_cooccur_nametype_chatgpt_top_35_level_{level_choice}_testout.json", "r") as f:
+                new_topic_names = json.load(f)
+
+        new_entity_names = {k: v for k, v in new_entity_names.items() if k in new_topic_names.keys()}
+        new_names_df = pd.DataFrame.from_dict(new_entity_names, orient="index").rename(columns={0: "entity_names"})
+        new_names_df = new_names_df.merge(pd.DataFrame.from_dict(new_topic_names, orient="index"), left_index=True, right_index=True)
+        st.write(new_names_df)
 
 validation_app()

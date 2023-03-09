@@ -1,5 +1,6 @@
 from dap_aria_mapping.getters.openalex import get_openalex_topics, get_openalex_works
 from dap_aria_mapping.getters.patents import get_patent_topics, get_patents
+from dap_aria_mapping.utils.app_data_utils import count_documents, expand_topic_col
 import polars as pl
 import pandas as pd
 from collections import defaultdict
@@ -7,37 +8,8 @@ from nesta_ds_utils.loading_saving.S3 import upload_obj
 from dap_aria_mapping import BUCKET_NAME, logger
 from typing import Dict, List
 
-def count_documents(doc_df: pl.DataFrame) -> pl.DataFrame:
-    """takes a dataframe with documents (including their topic and year) 
-    and generates a count of documents per topic per year
-
-    Args:
-        doc_df (pl.DataFrame): documents with topics and years
-
-    Returns:
-        pl.DataFrame: count of documents per topic per year
-    """
-    q = (doc_df.lazy().groupby(["topic", "year"]).agg([pl.count()]))
-    return q.collect()
-
-
-def expand_topic_col(topic_df: pl.DataFrame) -> pl.DataFrame:
-    """takes a dataframe with a column called "topic" (level 3 of taxonomy), 
-        and splits the column to add area ("level 2") and domain ("level 1")
-
-    Args:
-        topic_df (pl.DataFrame): dataframe with column for a "topic"
-
-    Returns:
-        pl.DataFrame: the same dataframe with "area" and "domain" columns added
-    """
-    return topic_df.with_columns(
-        (pl.col("topic").str.split("_").arr.get(0)).alias("domain"),
-        (pl.col("topic").str.split("_").arr.get(0) + "_" + pl.col("topic").str.split("_").arr.get(1)).alias("area"))
-
-
 if __name__ == "__main__":
-    #swap this once we decide what taxonomy we're using
+
     logger.info("Loading patent data")
     patents_with_topics = get_patent_topics(tax = "cooccur", level = 3)
 

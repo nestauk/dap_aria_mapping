@@ -1,4 +1,5 @@
 nesta_ds_utils @ git+https://github.com/nestauk/nesta_ds_utils.git
+chatgpt-wrapper @ git+https://github.com/mmabrouk/chatgpt-wrapper.git
 spacy==3.4.0
 pandas==1.5.1
 metaflow==2.7.14

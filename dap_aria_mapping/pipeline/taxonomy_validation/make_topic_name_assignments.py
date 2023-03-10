@@ -8,13 +8,14 @@ from chatgpt_wrapper import ChatGPT, AsyncChatGPT
 from dap_aria_mapping.getters.taxonomies import (
     get_cooccurrence_taxonomy,
     get_semantic_taxonomy,
-    get_topic_names
+    get_topic_names,
 )
 from dap_aria_mapping.getters.openalex import get_openalex_works, get_openalex_entities
 from dap_aria_mapping.utils.entity_selection import get_sample, filter_entities
 from dap_aria_mapping.utils.topic_names import *
 
 OUTPUT_DIR = PROJECT_DIR / "outputs" / "interim" / "topic_names"
+
 
 def chunked(it, size):
     it = iter(it)
@@ -25,7 +26,9 @@ def chunked(it, size):
         yield p
 
 
-def save_names(taxonomy: str, name_type: str, level: int, n_top: int, names: Dict) -> None:
+def save_names(
+    taxonomy: str, name_type: str, level: int, n_top: int, names: Dict
+) -> None:
     """Save the topic names for a given taxonomy level.
 
     Args:
@@ -47,6 +50,7 @@ def save_names(taxonomy: str, name_type: str, level: int, n_top: int, names: Dic
         Bucket=BUCKET_NAME,
         Key=title,
     )
+
 
 if __name__ == "__main__":
 
@@ -91,7 +95,11 @@ if __name__ == "__main__":
 
     parser.add_argument("--save", help="Whether to save the plot.", action="store_true")
 
-    parser.add_argument("--show_count", help="Whether to show counts for entity names.", action="store_true")
+    parser.add_argument(
+        "--show_count",
+        help="Whether to show counts for entity names.",
+        action="store_true",
+    )
 
     args = parser.parse_args()
     bucket = boto3.resource("s3").Bucket(BUCKET_NAME)
@@ -116,7 +124,9 @@ if __name__ == "__main__":
         oa_entities = pipe(
             get_openalex_entities(),
             partial(get_sample, score_threshold=80, num_articles=args.n_articles),
-            partial(filter_entities, min_freq=10, max_freq=1_000_000, method="absolute"),
+            partial(
+                filter_entities, min_freq=10, max_freq=1_000_000, method="absolute"
+            ),
         )
 
         logger.info("Building dictionary - journal to entities")
@@ -171,9 +181,9 @@ if __name__ == "__main__":
 
             if "chatgpt" in args.name_type:
                 entity_names = get_topic_names(
-                    taxonomy_class=taxlabel, 
+                    taxonomy_class=taxlabel,
                     name_type="entity",
-                    level=level, 
+                    level=level,
                     long=True,
                     n_top=args.n_top,
                 )
@@ -196,16 +206,28 @@ if __name__ == "__main__":
                     )
 
                     num_topics_file, num_topics_total = (
-                        len(set(chatgpt_names.keys()).intersection(set(entity_names.keys()))), 
-                        len(entity_names.keys())
+                        len(
+                            set(chatgpt_names.keys()).intersection(
+                                set(entity_names.keys())
+                            )
+                        ),
+                        len(entity_names.keys()),
                     )
 
                     if num_topics_file == num_topics_total:
-                        logger.info("ChatGPT names already exist for all topics. Skipping.")
+                        logger.info(
+                            "ChatGPT names already exist for all topics. Skipping."
+                        )
                         continue
                     else:
-                        logger.info(f"ChatGPT names already exist for {num_topics_file} out of {num_topics_total} topics")
-                        entity_names = {k: v for k, v in entity_names.items() if k not in chatgpt_names.keys()}
+                        logger.info(
+                            f"ChatGPT names already exist for {num_topics_file} out of {num_topics_total} topics"
+                        )
+                        entity_names = {
+                            k: v
+                            for k, v in entity_names.items()
+                            if k not in chatgpt_names.keys()
+                        }
 
                 else:
                     logger.info("ChatGPT names do not exist")
@@ -216,51 +238,70 @@ if __name__ == "__main__":
                 while num_topics_file < num_topics_total:
                     logger.info(f"Starting batch of topics")
                     random_sample = random.sample(list(entity_names.keys()), 6)
-                    sample_entities = [(topic, entity_names[topic]) for topic in random_sample]
+                    sample_entities = [
+                        (topic, entity_names[topic]) for topic in random_sample
+                    ]
                     tries = 0
                     response_ok = False
                     while not response_ok:
                         logger.info("Asking ChatGPT")
                         time.sleep(np.random.uniform(1, 3))
                         try:
-                            chunk_str = "\n\n ".join(["List " + ": \"".join(x) + "\"" for x in sample_entities])
+                            chunk_str = "\n\n ".join(
+                                ["List " + ': "'.join(x) + '"' for x in sample_entities]
+                            )
 
                             if first:
                                 query = (
-                                    f"What are the Wikipedia topics that best describe the following groups of entities (the number of times in parenthesis corresponds to how often these entities are found in the topic, and should be taken into account when making a decision)?" \
-                                    " \n\n " \
-                                    f"{chunk_str}" \
-                                    " \n\n " \
-                                    "Please only provide the topic name that best describes the group of entities, and a confidence score between 0 and 100 on how sure you are about the answer. If confidence is not high, please provide a list of entities that, if discarded, would help identify a topic. The structure of the answer should be a list of tuples of four elements: (list identifier, topic name, confidence score, list of entities to discard (None if there are none)). For example:" \
-                                    " \n\n" \
-                                    "[('List 1', 'Machine learning', 100, ['Russian Spy', 'Collagen']), ('List 2', 'Cosmology', 90, ['Matrioska', 'Madrid'])]" \
-                                    " \n\n" \
-                                    "Please avoid very general topic names (such as 'Science' or 'Technology') and return only the list of tuples with the answers using the structure above (it will be parsed by Python's ast literal_eval method)." \
+                                    f"What are the Wikipedia topics that best describe the following groups of entities (the number of times in parenthesis corresponds to how often these entities are found in the topic, and should be taken into account when making a decision)?"
+                                    " \n\n "
+                                    f"{chunk_str}"
+                                    " \n\n "
+                                    "Please only provide the topic name that best describes the group of entities, and a confidence score between 0 and 100 on how sure you are about the answer. If confidence is not high, please provide a list of entities that, if discarded, would help identify a topic. The structure of the answer should be a list of tuples of four elements: (list identifier, topic name, confidence score, list of entities to discard (None if there are none)). For example:"
+                                    " \n\n"
+                                    "[('List 1', 'Machine learning', 100, ['Russian Spy', 'Collagen']), ('List 2', 'Cosmology', 90, ['Matrioska', 'Madrid'])]"
+                                    " \n\n"
+                                    "Please avoid very general topic names (such as 'Science' or 'Technology') and return only the list of tuples with the answers using the structure above (it will be parsed by Python's ast literal_eval method)."
                                 )
                                 response = bot.ask(query)
                             else:
                                 query = f"{chunk_str}"
                                 response = bot.ask(query)
 
-                            try:
+                            if all(
+                                [
+                                    response[0],
+                                    "Unusable response produced" not in response[2],
+                                ]
+                            ):
+                                response = response[1]
                                 response = ast.literal_eval(response)
                                 if isinstance(response, list):
-                                    logger.info(f"SUCCESS - ChatGPT response: {response}")
+                                    logger.info(
+                                        f"SUCCESS - ChatGPT response: {response}"
+                                    )
                                     for quadtuple in response:
                                         list_id = quadtuple[0].split(" ")[-1]
                                         topic = quadtuple[1]
                                         confidence = quadtuple[2]
                                         discard = quadtuple[3]
-                                        chatgpt_names[list_id] = {"name": topic, "confidence": confidence, "discard": discard}
-
-                            except Exception as e:
-                                logger.info(f"FAILURE - ChatGPT response is not a list: {response}.")
+                                        chatgpt_names[list_id] = {
+                                            "name": topic,
+                                            "confidence": confidence,
+                                            "discard": discard,
+                                        }
+                            else:
+                                logger.info(
+                                    f"FAILURE - ChatGPT response is not a list: {response}."
+                                )
                                 sleep_time = np.random.randint(45, 60)
-                                logger.info(f"Routine idling - Sleeping for {sleep_time} seconds")
+                                logger.info(
+                                    f"Routine idling - Sleeping for {sleep_time} seconds"
+                                )
                                 time.sleep(sleep_time)
                                 bot.ask(
-                                    "The response is not a list. Please output a list of four-item tuples as your answer, as in the following example: \n\n" \
-                                    "[('List 1', 'Machine learning', 100, ['Russian Spy', 'Collagen']), ('List 2', 'Cosmology', 90, ['Matrioska', 'Madrid'])]" \
+                                    "The response is not a list. Please output a list of four-item tuples as your answer, as in the following example: \n\n"
+                                    "[('List 1', 'Machine learning', 100, ['Russian Spy', 'Collagen']), ('List 2', 'Cosmology', 90, ['Matrioska', 'Madrid'])]"
                                 )
                                 raise Exception("ChatGPT response is not a list.")
 
@@ -270,14 +311,20 @@ if __name__ == "__main__":
                             if first:
                                 first = False
 
-                            # Update number of topics with names & pending groups 
+                            # Update number of topics with names & pending groups
                             num_topics_file = len(chatgpt_names.keys())
-                            entity_names = {k: v for k, v in entity_names.items() if k not in chatgpt_names.keys()}
+                            entity_names = {
+                                k: v
+                                for k, v in entity_names.items()
+                                if k not in chatgpt_names.keys()
+                            }
 
                             sleep_time = np.random.randint(90, 120)
-                            logger.info(f"Routine idling - Sleeping for {sleep_time} seconds")
+                            logger.info(
+                                f"Routine idling - Sleeping for {sleep_time} seconds"
+                            )
                             time.sleep(sleep_time)
-                            
+
                             # load back (in case other streams have updated the dictionary)
                             chatgpt_names_new = get_topic_names(
                                 taxonomy_class=taxlabel,
@@ -303,21 +350,23 @@ if __name__ == "__main__":
 
                         except Exception as e:
                             tries += 1
-                            logger.info(f"ChatGPT failed to respond. Reason: {e}. Trying again.")
+                            logger.info(
+                                f"ChatGPT failed to respond. Reason: {e}. Trying again."
+                            )
                             time.sleep(np.random.randint(6, 12))
                             bot.refresh_session()
                             if tries > 3:
-                                logger.info("ChatGPT failed to respond. Idling for 10-12 minutes.")
+                                logger.info(
+                                    "ChatGPT failed to respond. Idling for 10-12 minutes."
+                                )
                                 time.sleep(np.random.randint(600, 720))
-
-                    
 
                 # if os.path.exists(OUTPUT_DIR / f"class_{taxlabel}_nametype_chatgpt_top_{args.n_top}_level_{level}.json"):
                 #     logger.info("ChatGPT names already exist")
                 #     with open(OUTPUT_DIR / f"class_{taxlabel}_nametype_chatgpt_top_{args.n_top}_level_{level}.json", "r") as f:
                 #         chatgpt_names = json.load(f)
                 #     num_topics_file, num_topics_total = (
-                #         len(set(chatgpt_names.keys()).intersection(set(entity_names.keys()))), 
+                #         len(set(chatgpt_names.keys()).intersection(set(entity_names.keys()))),
                 #         len(entity_names.keys())
                 #     )
                 #     if num_topics_file == num_topics_total:

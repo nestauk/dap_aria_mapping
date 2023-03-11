@@ -378,6 +378,7 @@ if __name__ == "__main__":
                                 )
                             else:
                                 chatgpt_names_new = {}
+                                first_parse = False
 
                             # merge any missing keys
                             chatgpt_names = {**chatgpt_names, **chatgpt_names_new}

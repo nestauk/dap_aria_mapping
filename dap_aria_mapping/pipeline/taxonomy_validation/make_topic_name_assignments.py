@@ -251,11 +251,12 @@ if __name__ == "__main__":
                             for k, v in entity_names.items()
                             if k not in chatgpt_names.keys()
                         }
+                    first_parse = False
 
                 else:
                     logger.info("ChatGPT names do not exist")
                     chatgpt_names = defaultdict(dict)
-                    num_topics_file = 0
+                    num_topics_file, first_parse = 0, True
 
                 first = {
                     "chatbot1": True,
@@ -367,13 +368,16 @@ if __name__ == "__main__":
                             time.sleep(sleep_time)
 
                             # load back (in case other streams have updated the dictionary)
-                            chatgpt_names_new = get_topic_names(
-                                taxonomy_class=taxlabel,
-                                name_type="chatgpt",
-                                level=level,
-                                long=False,
-                                n_top=args.n_top,
-                            )
+                            if not first_parse:
+                                chatgpt_names_new = get_topic_names(
+                                    taxonomy_class=taxlabel,
+                                    name_type="chatgpt",
+                                    level=level,
+                                    long=False,
+                                    n_top=args.n_top,
+                                )
+                            else:
+                                chatgpt_names_new = {}
 
                             # merge any missing keys
                             chatgpt_names = {**chatgpt_names, **chatgpt_names_new}

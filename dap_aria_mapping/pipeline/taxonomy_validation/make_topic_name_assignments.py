@@ -256,7 +256,9 @@ if __name__ == "__main__":
                 else:
                     logger.info("ChatGPT names do not exist")
                     chatgpt_names = defaultdict(dict)
-                    num_topics_file, first_parse = 0, True
+                    num_topics_file, num_topics_total, first_parse = (
+                        0, len(entity_names.keys()), True
+                    )
 
                 first = {
                     "chatbot1": True,

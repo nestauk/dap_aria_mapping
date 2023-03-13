@@ -217,7 +217,6 @@ with overview_tab:
         y_col = "total_docs"
 
     emergence_data = convert_to_pandas(group_emergence_by_level(volume_data, level_considered, y_col))
-    print(emergence_data.head())
 
     volume_chart = alt.Chart(emergence_data).mark_line().encode(
         alt.X("year:N"),

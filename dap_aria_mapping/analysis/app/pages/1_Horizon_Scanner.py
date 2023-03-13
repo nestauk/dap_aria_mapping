@@ -7,6 +7,8 @@ from dap_aria_mapping.getters.app_tables.horizon_scanner import volume_per_year
 from dap_aria_mapping.getters.taxonomies import get_topic_names
 import polars as pl
 import pandas as pd
+from typing import List, Tuple
+
 formatting.setup_theme()
 
 PAGE_TITLE = "Horizon Scanner"
@@ -24,7 +26,15 @@ st.set_page_config(
 )
 
 @st.cache_data
-def load_overview_data():
+def load_overview_data() -> Tuple[pl.DataFrame, pl.DataFrame, List[str]]:
+    """loads in the volume per year chart and does initial formatting that is not impacted by filters
+    caches results so the data is not loaded each time a filter is run
+
+    Returns:
+        pl.DataFrame: total patents/publications per domain/area/topic per year, with names
+        pl.DataFrame: same as above, but patent/publication counts are melted to long form
+        List: unique domain names in dataset
+    """
     volume_data = volume_per_year()
 
     #add total document count as count of patents and publications combined
@@ -34,38 +44,83 @@ def load_overview_data():
     )
 
     #add chatgpt names for domain, area, topics
-    domain_names  = pl.DataFrame(pd.DataFrame.from_dict(get_topic_names("cooccur", "chatgpt", 1, n_top = 35), orient= "index").rename_axis("domain").reset_index().rename(columns = {"name": "domain_name"})[["domain", "domain_name"]])
-    area_names  = pl.DataFrame(pd.DataFrame.from_dict(get_topic_names("cooccur", "chatgpt", 2, n_top = 35), orient= "index").rename_axis("area").reset_index().rename(columns = {"name": "area_name"})[["area", "area_name"]])
-    topic_names  = pl.DataFrame(pd.DataFrame.from_dict(get_topic_names("cooccur", "chatgpt", 3, n_top = 35), orient= "index").rename_axis("topic").reset_index().rename(columns = {"name": "topic_name"})[["topic", "topic_name"]])
+    domain_names  = pl.DataFrame(
+        pd.DataFrame.from_dict(
+            get_topic_names("cooccur", "chatgpt", 1, n_top = 35), 
+            orient= "index").rename_axis("domain").reset_index().rename(
+                columns = {"name": "domain_name"})[["domain", "domain_name"]])
+    area_names  = pl.DataFrame(
+        pd.DataFrame.from_dict(
+            get_topic_names("cooccur", "chatgpt", 2, n_top = 35),
+            orient= "index").rename_axis("area").reset_index().rename(
+                columns = {"name": "area_name"})[["area", "area_name"]])
+    topic_names  = pl.DataFrame(
+        pd.DataFrame.from_dict(
+            get_topic_names("cooccur", "chatgpt", 3, n_top = 35),
+            orient= "index").rename_axis("topic").reset_index().rename(
+                columns = {"name": "topic_name"})[["topic", "topic_name"]])
 
     volume_data = volume_data.join(domain_names, on="domain", how="left")
     volume_data = volume_data.join(area_names, on="area", how="left")
     volume_data = volume_data.join(topic_names, on="topic", how="left")
 
+   #generate a list of the unique domain names to use as the filter
     unique_domains = list(list(volume_data.select(pl.col("domain_name").unique()))[0])
     unique_domains.insert(0,"All")
 
     #reformat the patent/publication counts to long form for the alignment chart
-    alignment_data = volume_data.melt(id_vars = ["year", "topic", "topic_name","area", "area_name","domain", "domain_name"], value_vars = ["publication_count", "patent_count"])
+    alignment_data = volume_data.melt(
+        id_vars = ["year", "topic", "topic_name","area", "area_name","domain", "domain_name"],
+        value_vars = ["publication_count", "patent_count"])
     alignment_data.columns = ["year", "topic", "topic_name", "area", "area_name", "domain", "domain_name","doc_type", "count"]
 
     return volume_data, alignment_data, unique_domains
 
 @st.cache_data
-def filter_by_domain(domain, _volume_data, _alignment_data):
+def filter_by_domain(domain: str, _volume_data: pl.DataFrame, _alignment_data: pl.DataFrame) -> Tuple[pl.DataFrame, pl.DataFrame, List[str]]:
+    """filters volume data, alignment data, and filter options based on a Domain selection
+
+    Args:
+        domain (str): domain selected by the filter
+        _volume_data (pl.DataFrame): volume data for emergence chart
+        _alignment_data (pl.DataFrame): alignment data for alignment chart
+
+    Returns:
+        Tuple[pl.DataFrame, pl.DataFrame, List[str]]: updated dataframes filtered by a domain, and a list of unique areas to populate area filter
+    """
     volume_data = _volume_data.filter(pl.col("domain_name")==domain)
     alignment_data = _alignment_data.filter(pl.col("domain_name")==domain)
     unique_areas = list(list(volume_data.select(pl.col("area_name").unique()))[0])
     return volume_data, alignment_data, unique_areas
 
 @st.cache_data
-def filter_by_area(area, _volume_data, _alignment_data):
+def filter_by_area(area:str, _volume_data: pl.DataFrame, _alignment_data: pl.DataFrame) -> Tuple[pl.DataFrame, pl.DataFrame, List[str]]:
+    """filters volume data, alignment data, and filter options based on an area selection
+
+    Args:
+        area (str): domain selected by the filter
+        _volume_data (pl.DataFrame): volume data for emergence chart
+        _alignment_data (pl.DataFrame): alignment data for alignment chart
+
+    Returns:
+        Tuple[pl.DataFrame, pl.DataFrame, List[str]]: updated dataframes filtered by an area, and a list of unique topics to populate topic filter
+    """
     volume_data = _volume_data.filter(pl.col("area_name")==area)
     alignment_data = _alignment_data.filter(pl.col("area_name")==area)
     unique_topics = list(list(volume_data.select(pl.col("topic_name").unique()))[0])
     return volume_data, alignment_data, unique_topics
 
-def group_emergence_by_level(_volume_data, level, y_col):
+def group_emergence_by_level(_volume_data: pl.DataFrame, level: str, y_col: str) -> pl.DataFrame:
+    """groups the data for the emergence chart by the level specified by the filters
+
+    Args:
+        _volume_data (pl.DataFrame): data for backend of emergence chart
+        level (str): level to view, specified by domain/area filters
+        y_col (str): patents, publications, or all documents (specified by filter)
+
+    Returns:
+        pl.DataFrame: grouped emergence data for chart
+    """
     q = (_volume_data.lazy().with_columns(
         pl.col(level).cast(str)
         ).groupby(
@@ -75,7 +130,17 @@ def group_emergence_by_level(_volume_data, level, y_col):
                 ).filter(pl.any(pl.col("year").is_not_null())))
     return q.collect()
 
-def group_alignment_by_level(_alignment_data, level):
+def group_alignment_by_level(_alignment_data: pl.DataFrame, level: str) -> pl.DataFrame:
+    """groups the data for the alignment chart by the level specified by the filters.
+    Also calculates the fraction of total documents per type to visualise in the chart.
+
+    Args:
+        _alignment_data (pl.DataFrame): data for backend of alignment chart
+        level (str): level to view, specified by domain/area filters
+
+    Returns:
+        pl.DataFrame: grouped alignment data for chart
+    """
     total_pubs = _alignment_data.filter(pl.col("doc_type")=="publication_count").select(pl.sum("count"))
     total_patents = _alignment_data.filter(pl.col("doc_type")=="patent_count").select(pl.sum("count"))
     q = (_alignment_data.lazy().with_columns(
@@ -93,6 +158,16 @@ def group_alignment_by_level(_alignment_data, level):
     return q.collect()
 
 def convert_to_pandas(_df: pl.DataFrame) -> pd.DataFrame:
+    """converts polars dataframe to pandas dataframe
+    note: this is needed as altair doesn't allow polars, but the conversion is quick so i still think it's 
+    worth while to use polars for the filtering
+
+    Args:
+        _df (pl.DataFrame): polars dataframe
+
+    Returns:
+        pd.DataFrame: pandas dataframe
+    """
     return _df.to_pandas()
 
 header1, header2 = st.columns([1,10])
@@ -106,29 +181,26 @@ st.markdown(f'<h1 style="color:#0000FF;font-size:16px;">{"<em>Explore patterns a
 #load in volume data 
 volume_data, alignment_data, unique_domains = load_overview_data()
 
-#domain_drop, area_drop = st.columns(2)
-
 with st.sidebar:
-#with domain_drop:
+    # filter for domains comes from unique domain names
     domain = st.selectbox(label = "Select a Domain", options = unique_domains)
     area = "All"
     topic = "All"
     level_considered = "domain"
+    # if a domain is selected in the filter, then filter the data
     if domain != "All":
         volume_data, alignment_data, unique_areas = filter_by_domain(domain, volume_data, alignment_data)
-        level_considered = "area"
-
-    
-#with area_drop:
-    if domain != "All":
         unique_areas.insert(0, "All")
+        #if a domain is selected, the plots that are being visualised are by area (i.e. level 2)
+        level_considered = "area"
+       
+        #if a domain is selected, allow user to filter by area
         area = st.selectbox(label = "Select an Area", options = unique_areas)
         if area != "All":
+            #if an area is selected, filter data to the area and present at topic level
             volume_data, alignment_data, unique_topics  = filter_by_area(area, volume_data, alignment_data)
             level_considered = "topic"
 
-
-#total_to_display = st.slider(label = "Show me most productive:" , min_value = 0, max_value = 50)
 
 overview_tab, disruption_tab, novelty_tab, overlaps_tab = st.tabs(["Overview", "Disruption", "Novelty","Overlaps"])
 
@@ -160,7 +232,6 @@ with overview_tab:
     alignment_chart = alt.Chart(filtered_alignment_data).transform_filter(
         alt.datum.doc_fraction > 0  
         ).mark_point().encode(
-        #alt.X("{}:N".format(level_considered), title=None, axis=None),
         alt.Y("doc_fraction:Q", 
             title = "Fraction of Documents of the Given Type", 
             scale=alt.Scale(type="log"), 

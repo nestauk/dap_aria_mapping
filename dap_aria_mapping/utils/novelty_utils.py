@@ -281,3 +281,72 @@ def aggregate_document_commonness(
     (default: 10th percentile as in the original paper)
     """
     return np.percentile(commonness_scores, percentile)
+
+
+def document_to_topic_novelty(
+    document_novelty: pd.DataFrame,
+    id_column: str = "work_id",
+    aggregation: str = "median",
+) -> pd.DataFrame:
+    """
+    Explodes the topics column and aggregates the novelty scores
+
+    Args:
+        document_novelty (pd.DataFrame): A dataframe with novelty scores and list of topics for each document
+        aggregation (str, optional): The aggregation to use. Defaults to "median".
+
+    Returns:
+        pd.DataFrame: A dataframe with "topic", "year", "doc_counts" and "topic_doc_novelty" novelty score
+    """
+    return (
+        document_novelty.explode("topics")
+        .groupby(["topics", "year"], as_index=False)
+        .agg(
+            topic_doc_novelty=("novelty", aggregation), doc_counts=(id_column, "count")
+        )
+        .rename(columns={"topics": "topic"})
+    )
+
+
+def pair_to_topic_novelty(
+    topic_pair_commonness: pd.DataFrame,
+    aggregation: str = lambda x: aggregate_document_commonness(x),
+    min_counts: int = 0,
+) -> pd.DataFrame:
+    """
+    Calculate the novelty score of a topic by aggregating the commonness scores of all topic pairs in which it appears
+
+    Args:
+        topic_pair_commonness (pd.DataFrame): Dataframe with columns "topic_1", "topic_2", "year", "commonness", "N_ij_t"
+        aggregation (_type_, optional): Aggregation method. Defaults to taking the 10th percentile of commoness scores
+        min_counts (int, optional): Minimum number of times a topic pair must appear to be included in the calculation. Defaults to 0.
+
+    Returns:
+        pd.DataFrame: A dataframe with "topic", "year", "topic_pair_novelty" and "pair_counts"
+    """
+    # Convert topic pair commonness table into a long format,
+    # by assigning each topic of a topic pair its own row
+    df = pd.concat(
+        [
+            topic_pair_commonness[["topic_1", "year", "commonness", "N_ij_t"]]
+            .query("N_ij_t > @min_counts")
+            .rename(columns={"topic_1": "topic"}),
+            topic_pair_commonness[["topic_2", "year", "commonness", "N_ij_t"]]
+            .query("N_ij_t > @min_counts")
+            .rename(columns={"topic_2": "topic"}),
+        ],
+        ignore_index=True,
+    )
+    # Aggregate the commonness scores across topics, and convert to a novelty score
+    return (
+        df.groupby(["topic", "year"], as_index=False)
+        .agg(
+            topic_pair_commonness=("commonness", aggregation),
+            pair_counts=("N_ij_t", "sum"),
+        )
+        .assign(
+            topic_pair_novelty=lambda df: df.topic_pair_commonness.apply(
+                convert_commonness_to_novelty
+            )
+        )
+    )

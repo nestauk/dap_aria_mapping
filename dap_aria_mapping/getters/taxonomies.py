@@ -139,7 +139,11 @@ def get_semantic_taxonomy(
 
 
 def get_topic_names(
-    taxonomy_class: str, name_type: str, level: int, large: bool = False
+    taxonomy_class: str,
+    name_type: str,
+    level: int,
+    long: bool = False,
+    n_top: int = None,
 ) -> Dict[str, str]:
     """Downloads topic names from S3 and returns them as a dictionary.
 
@@ -147,14 +151,16 @@ def get_topic_names(
         taxonomy_class (str): The type of taxonomy to download.
         name_type (str): The type of name to download.
         level (int): The level of the taxonomy to download.
+        n_top (int, optional): The number of top entities used to label. Defaults to None (10).
+            chatgpt name_type uses 35 entities per topic to hit the API endpoint.
 
     Returns:
         pd.DataFrame: A dictionary containing the topic names.
     """
-    if large:
+    if n_top is not None:
         return download_obj(
             BUCKET_NAME,
-            f"outputs/topic_names/large_topic_names/class_{taxonomy_class}_nametype_{name_type}_level_{str(level)}.json",
+            f"outputs/topic_names/class_{taxonomy_class}_nametype_{name_type}_top_{str(n_top)}_level_{str(level)}.json",
             download_as="dict",
         )
     else:

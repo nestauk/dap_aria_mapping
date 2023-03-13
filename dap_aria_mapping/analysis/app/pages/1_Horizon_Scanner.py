@@ -4,6 +4,7 @@ import altair as alt
 from nesta_ds_utils.viz.altair import formatting
 from dap_aria_mapping import PROJECT_DIR
 from dap_aria_mapping.getters.app_tables.horizon_scanner import volume_per_year
+from dap_aria_mapping.getters.taxonomies import get_topic_names
 import polars as pl
 import pandas as pd
 formatting.setup_theme()
@@ -25,49 +26,61 @@ st.set_page_config(
 @st.cache_data
 def load_overview_data():
     volume_data = volume_per_year()
+
+    #add total document count as count of patents and publications combined
     volume_data = volume_data.with_columns(
         (pl.col('patent_count') + pl.col('publication_count')).alias('total_docs'),
         pl.col('year').round(0)
     )
-    unique_domains = list(list(volume_data.select(pl.col("domain").unique()))[0])
+
+    #add chatgpt names for domain, area, topics
+    domain_names  = pl.DataFrame(pd.DataFrame.from_dict(get_topic_names("cooccur", "chatgpt", 1, n_top = 35), orient= "index").rename_axis("domain").reset_index().rename(columns = {"name": "domain_name"})[["domain", "domain_name"]])
+    area_names  = pl.DataFrame(pd.DataFrame.from_dict(get_topic_names("cooccur", "chatgpt", 2, n_top = 35), orient= "index").rename_axis("area").reset_index().rename(columns = {"name": "area_name"})[["area", "area_name"]])
+    topic_names  = pl.DataFrame(pd.DataFrame.from_dict(get_topic_names("cooccur", "chatgpt", 3, n_top = 35), orient= "index").rename_axis("topic").reset_index().rename(columns = {"name": "topic_name"})[["topic", "topic_name"]])
+
+    volume_data = volume_data.join(domain_names, on="domain", how="left")
+    volume_data = volume_data.join(area_names, on="area", how="left")
+    volume_data = volume_data.join(topic_names, on="topic", how="left")
+
+    unique_domains = list(list(volume_data.select(pl.col("domain_name").unique()))[0])
     unique_domains.insert(0,"All")
 
-    alignment_data = volume_data.melt(id_vars = ["year", "topic", "area", "domain"], value_vars = ["publication_count", "patent_count"])
-    alignment_data.columns = ["year", "topic", "area", "domain", "doc_type", "count"]
+    #reformat the patent/publication counts to long form for the alignment chart
+    alignment_data = volume_data.melt(id_vars = ["year", "topic", "topic_name","area", "area_name","domain", "domain_name"], value_vars = ["publication_count", "patent_count"])
+    alignment_data.columns = ["year", "topic", "topic_name", "area", "area_name", "domain", "domain_name","doc_type", "count"]
 
     return volume_data, alignment_data, unique_domains
 
 @st.cache_data
 def filter_by_domain(domain, _volume_data, _alignment_data):
-    volume_data = _volume_data.filter(pl.col("domain")==domain)
-    alignment_data = _alignment_data.filter(pl.col("domain")==domain)
-    unique_areas = list(list(volume_data.select(pl.col("area").unique()))[0])
+    volume_data = _volume_data.filter(pl.col("domain_name")==domain)
+    alignment_data = _alignment_data.filter(pl.col("domain_name")==domain)
+    unique_areas = list(list(volume_data.select(pl.col("area_name").unique()))[0])
     return volume_data, alignment_data, unique_areas
 
 @st.cache_data
 def filter_by_area(area, _volume_data, _alignment_data):
-    volume_data = _volume_data.filter(pl.col("area")==area)
-    alignment_data = _alignment_data.filter(pl.col("area")==area)
-    unique_topics = list(list(volume_data.select(pl.col("topic").unique()))[0])
+    volume_data = _volume_data.filter(pl.col("area_name")==area)
+    alignment_data = _alignment_data.filter(pl.col("area_name")==area)
+    unique_topics = list(list(volume_data.select(pl.col("topic_name").unique()))[0])
     return volume_data, alignment_data, unique_topics
 
 def group_emergence_by_level(_volume_data, level, y_col):
     q = (_volume_data.lazy().with_columns(
         pl.col(level).cast(str)
         ).groupby(
-            [level, "year"]
+            [level, "{}_name".format(level),"year"]
             ).agg(
                 [pl.sum(y_col)]
                 ).filter(pl.any(pl.col("year").is_not_null())))
     return q.collect()
 
-#@st.cache_data
 def group_alignment_by_level(_alignment_data, level):
     total_pubs = _alignment_data.filter(pl.col("doc_type")=="publication_count").select(pl.sum("count"))
     total_patents = _alignment_data.filter(pl.col("doc_type")=="patent_count").select(pl.sum("count"))
     q = (_alignment_data.lazy().with_columns(
         pl.col(level).cast(str)
-        ).groupby(["doc_type", level]
+        ).groupby(["doc_type", level, "{}_name".format(level)]
         ).agg(
             [pl.sum("count").alias("total")]
         ).with_columns(
@@ -79,10 +92,6 @@ def group_alignment_by_level(_alignment_data, level):
         ))
     return q.collect()
 
-
-
-
-#@st.cache_data
 def convert_to_pandas(_df: pl.DataFrame) -> pd.DataFrame:
     return _df.to_pandas()
 
@@ -136,11 +145,12 @@ with overview_tab:
         y_col = "total_docs"
 
     emergence_data = convert_to_pandas(group_emergence_by_level(volume_data, level_considered, y_col))
+    print(emergence_data.head())
 
     volume_chart = alt.Chart(emergence_data).mark_line().encode(
         alt.X("year:N"),
-        alt.Y("{}:Q".format(y_col)),
-        color = "{}:N".format(level_considered)
+        alt.Y("{}:Q".format(y_col), title = "Total Documents Published"),
+        color = "{}_name:N".format(level_considered)
     ).interactive().properties(width=1000, height = 500)
     st.altair_chart(volume_chart)
 
@@ -155,9 +165,9 @@ with overview_tab:
             title = "Fraction of Documents of the Given Type", 
             scale=alt.Scale(type="log"), 
             axis = alt.Axis(tickSize=0)),
-        column = alt.Column("{}:N".format(level_considered), 
+        column = alt.Column("{}_name:N".format(level_considered), 
             title=None, 
-            header = alt.Header(labelFontSize=10, labelOrient = 'bottom')),
+            header = alt.Header(labelFontSize=10, labelOrient = 'bottom', labelAngle = -45, labelAnchor = "end")),
         color = alt.Color("doc_type:N", legend=alt.Legend(
             direction='horizontal',
             legendX=10,

@@ -21,3 +21,13 @@ Th streamlit app collates a series of performance and validation metrics & tests
 To run the streamlit app, install the library and then run the following command line:
 
 `streamlit run dap_aria_mapping/analysis/validation_viz/taxonomy_validation.py`
+
+# Exploration of chatGPT names
+
+The `pipeline/taxonomy_validation/make_topic_name_assignments.py` routine includes chatgpt bots that request names for topics given a list of entities and their counts. Additionally, the query includes requests for chatgpt to discard those entities it considers noisy given its topic name answer.
+
+The outputs from the labelling are lists of four-item tuples, corresponding to topic ID, topic label, confidence score, and discarded entities, ie.
+
+`[('List 1', 'Machine learning', 100, ['Russian Spy', 'Collagen']), ('List 2', 'Cosmology', 90, ['Matrioshka', 'Madrid'])]`
+
+All these results are presented in the dataframes as part of the streamlit app.

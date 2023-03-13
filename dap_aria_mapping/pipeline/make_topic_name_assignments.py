@@ -1,3 +1,23 @@
+"""This script makes topic name assignments for a series of taxonomy levels.
+    It can be run from the command line with the following arguments:
+        - taxonomy: The type of taxonomy to use. Can be a single taxonomy or a sequence
+            of taxonomies, and accepts 'cooccur', 'centroids' or 'imbalanced' as tags.
+        - name_type: The type of names to use. Can be 'entity', 'journal', or both.
+        - level: The level of the taxonomy to use. Can be a single level or a sequence
+        - n_top: The number of top elements to show. In the case of 'chatgpt', this is the
+            number of entities to use to label the topic.
+        - n_articles: The number of articles to use to count entities in a topic.
+            -1 defaults to all.
+        - save: Whether to save the topic names to S3.
+        - show_counts: Whether to show the counts of the entities in each topic. Used
+            in name_type 'chatgpt' as part of the query.
+
+Raises:
+    Exception: If the taxonomy is not one of 'cooccur', 'semantic' or 'semantic_kmeans'.
+
+Returns:
+    json: A json file containing the topic names, saved to S3.
+"""
 import pandas as pd
 import argparse, json, boto3, time, os, ast
 from toolz import pipe
@@ -206,7 +226,6 @@ if __name__ == "__main__":
                     taxonomy_class=taxlabel,
                     name_type="entity",
                     level=level,
-                    long=True,
                     n_top=args.n_top,
                 )
 
@@ -223,7 +242,6 @@ if __name__ == "__main__":
                         taxonomy_class=taxlabel,
                         name_type="chatgpt",
                         level=level,
-                        long=False,
                         n_top=args.n_top,
                     )
 
@@ -305,7 +323,7 @@ if __name__ == "__main__":
                                     " \n\n"
                                     "[('List 1', 'Machine learning', 100, ['Russian Spy', 'Collagen']), ('List 2', 'Cosmology', 90, ['Matrioska', 'Madrid'])]"
                                     " \n\n"
-                                    "Please avoid very general topic names (such as 'Science' or 'Technology') and return only the list of tuples with the answers using the structure above (it will be parsed by Python's ast literal_eval method)."
+                                    "Please avoid very general topic names (such as 'Science' or 'Technology') and return only the list of tuples with the answers using the structure above (it will be parsed by Python's ast literal_e method)."
                                 )
                                 for data in chatbot.ask(query):
                                     response = data["message"]
@@ -378,7 +396,6 @@ if __name__ == "__main__":
                                     taxonomy_class=taxlabel,
                                     name_type="chatgpt",
                                     level=level,
-                                    long=False,
                                     n_top=args.n_top,
                                 )
                             else:

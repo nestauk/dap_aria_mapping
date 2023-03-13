@@ -786,7 +786,7 @@ def validation_app():
         )
 
         new_topic_names = get_topic_names(
-            taxonomy_class=taxlabel,
+            taxonomy_class="cooccur",
             name_type="chatgpt",
             level=level_choice,
             long=False,

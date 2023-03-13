@@ -5,10 +5,10 @@ Uses typer to create a command line interface
 Usage examples:
 
 All levels, full dataset:
-python dap_aria_mapping/notebooks/novelty/pipeline_openalex_novelty.py
+python dap_aria_mapping/pipeline/novelty/calculate_openalex_novelty.py
 
 One level, test dataset:
-python dap_aria_mapping/notebooks/novelty/pipeline_openalex_novelty.py --taxonomy-level 1 --test
+python dap_aria_mapping/pipeline/novelty/calculate_openalex_novelty.py --taxonomy-level 1 --test
 """
 from dap_aria_mapping import logging, PROJECT_DIR, BUCKET_NAME
 import dap_aria_mapping.getters.openalex as oa

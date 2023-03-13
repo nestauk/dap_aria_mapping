@@ -4,7 +4,7 @@ from toolz import pipe
 from dap_aria_mapping import logger, PROJECT_DIR, BUCKET_NAME
 from functools import partial
 from itertools import islice
-from chatgpt_wrapper import ChatGPT, AsyncChatGPT
+from revChatGPT.V1 import Chatbot
 from dap_aria_mapping.getters.taxonomies import (
     get_cooccurrence_taxonomy,
     get_semantic_taxonomy,
@@ -133,10 +133,8 @@ if __name__ == "__main__":
         journal_entities = get_journal_entities(oa_works, oa_entities)
 
     if "chatgpt" in args.name_type:
-        from revChatGPT.V1 import Chatbot
 
         OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-        # bot = ChatGPT(False)
         chatbots = {
             "chatbot1": Chatbot(
                 config={

@@ -1,10 +1,12 @@
 import streamlit as st
 from streamlit.components.v1 import html
-from st_clickable_images import clickable_images
+from st_click_detector import click_detector
 from PIL import Image
 import altair as alt
 from nesta_ds_utils.viz.altair import formatting
 from dap_aria_mapping import PROJECT_DIR
+import base64
+from pathlib import Path
 
 formatting.setup_theme()
 
@@ -44,6 +46,19 @@ def nav_page_from_image(page: str, timeout: int = 5) -> None:
     )
     html(nav_script)
 
+def img_to_bytes(img_path: str) -> str:
+    """Converts an image to a base64 encoded string.
+
+    Args:
+        img_path (str): The path to the image.
+
+    Returns:
+        str: The base64 encoded string.
+    """
+    img_bytes = Path(img_path).read_bytes()
+    encoded_img = base64.b64encode(img_bytes).decode()
+    return encoded_img
+
 
 PAGE_TITLE = "Innovation Explorer"
 
@@ -61,19 +76,24 @@ st.title("Welcome to the Innovation Explorer!")
 home_tab, data_tab, methods_tab = st.tabs(["Home", "About the Datasets", "Methodology"])
 
 with home_tab:
-    clicked = clickable_images(
-        [
-            f"https://raw.githubusercontent.com/nestauk/dap_aria_mapping/6a2aef5dfe8d9fe12091b42f8b9d9b422dbe7c8d/dap_aria_mapping/analysis/app/images/hs_homepage.png",
-            f"https://raw.githubusercontent.com/nestauk/dap_aria_mapping/6a2aef5dfe8d9fe12091b42f8b9d9b422dbe7c8d/dap_aria_mapping/analysis/app/images/cm_homepage.png",
-        ],
-        titles=[f"Image #{str(i)}" for i in range(3)],
-        div_style={"display": "flex", "justify-content": "center", "flex-wrap": "wrap"},
-        img_style={"margin": "5px", "height": "400px"},
+
+    hs_img, cm_img = (
+        img_to_bytes(f"{IMAGE_DIR}/hs_homepage.png"), 
+        img_to_bytes(f"{IMAGE_DIR}/cm_homepage.png")
     )
 
-    if clicked == 0:
+    content = """
+        <div style="display: flex; justify-content: center; margin: 0 auto; padding: 10px 0;">
+        <a href='#' id='Image 1'><img width='90%' src='data:image/jpeg;base64,{0}'></a>
+        <a href='#' id='Image 2'><img width='90%' src='data:image/jpeg;base64,{1}'></a>
+        </div>
+    """.format(hs_img, cm_img)
+
+    clicked = click_detector(content)
+
+    if clicked == "Image 1":
         nav_page_from_image("Horizon_Scanner")
-    elif clicked == 1:
+    elif clicked == "Image 2":
         nav_page_from_image("Change_Makers")
 
 

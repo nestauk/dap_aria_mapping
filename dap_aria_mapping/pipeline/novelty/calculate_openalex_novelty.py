@@ -23,22 +23,25 @@ def calculate_openalex_novelty(
     taxonomy_level: int = 0,
     test: bool = False,
     n_test_sample: int = 1000,
+    upload_to_s3: bool = True,
     save_to_local: bool = False,
 ):
     """
     Calculate novelty scores for OpenAlex papers and uploads them on s3
 
     Args:
-        taxonomy_level (int): Taxonomy level to use for novelty calculation. Must be between 1 and 5. If set to 0, uses all levels
-        test (bool): Whether to run in test mode (using a small sample of papers)
-        n_test_sample (int): Number of papers to use for testing
-        save_to_local (bool): Whether to also save the novelty scores to local disk
+        taxonomy_level (int, optional): Taxonomy level to use for novelty calculation. Must be between 1 and 5.
+            Defaults to 0, which means it will calculate novelty for all taxonomy levels
+        test (bool, optional): Whether to run in test mode (using a small sample of papers). Defaults to False.
+        n_test_sample (int, optional): Number of papers to use for testing. Defaults to 1000.
+        upload_to_s3 (bool, optional): Whether to upload the novelty scores to s3. Defaults to True.
+        save_to_local (bool, optional): Whether to also save the novelty scores to local disk. Defaults to False.
 
     Returns:
         None (saved novelty scores to file)
     """
     # Fetch OpenAlex metadata
-    works_df = oa.get_openalex_works()
+    works_df = oa.get_openalex_works().drop_duplicates("work_id")
     logging.info(f"Downloaded {len(works_df)} works")
     # Decide on the taxonomy levels to use
     if taxonomy_level == 0:
@@ -73,17 +76,18 @@ def calculate_openalex_novelty(
         filepath_topic_pair_commonness = (
             OUTPUT_DIR + f"/openalex_topic_pair_commonness_{level}{test_suffix}.parquet"
         )
-        # Upload to s3
-        upload_obj(
-            work_novelty_df,
-            BUCKET_NAME,
-            f"{filepath_document_novelty_scores}",
-        )
-        upload_obj(
-            topic_pair_commonness_df,
-            BUCKET_NAME,
-            f"{filepath_topic_pair_commonness}",
-        )
+        if upload_to_s3:
+            # Upload to s3
+            upload_obj(
+                work_novelty_df,
+                BUCKET_NAME,
+                f"{filepath_document_novelty_scores}",
+            )
+            upload_obj(
+                topic_pair_commonness_df,
+                BUCKET_NAME,
+                f"{filepath_topic_pair_commonness}",
+            )
         if save_to_local:
             # Save to local disk
             (PROJECT_DIR / OUTPUT_DIR).mkdir(parents=True, exist_ok=True)

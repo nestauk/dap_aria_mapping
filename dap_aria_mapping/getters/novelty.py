@@ -14,8 +14,8 @@ def get_openalex_novelty_scores(
     Downloads novelty scores for OpenAlex papers
 
     Args:
-        level (int): Taxonomy level that was used for novelty calculation
-        from_local (bool): Whether to load the data from local disk
+        level (int, optional): Taxonomy level that was used for novelty calculation. Defaults to 5.
+        from_local (bool, optional): Whether to load the data from local disk. Defaults to False.
 
     Returns:
         pd.DataFrame: Novelty scores for OpenAlex papers. Columns are:
@@ -45,8 +45,8 @@ def get_openalex_topic_pair_commonness(
     Downloads topic pair commonness scores for OpenAlex papers
 
     Args:
-        level (int): Taxonomy level that was used for commonness calculations
-        from_local (bool): Whether to load the data from local disk
+        level (int, optional): Taxonomy level that was used for commonness calculations. Defaults to 5.
+        from_local (bool, optional): Whether to load the data from local disk. Defaults to False.
 
     Returns:
         pd.DataFrame: Topic pair commonness scores for OpenAlex papers. Columns are:
@@ -82,8 +82,8 @@ def get_topic_novelty_openalex(
     levels of the taxonomy.
 
     Args:
-        level (int): Taxonomy level that was used for commonness calculations
-        from_local (bool): Whether to load the data from local disk
+        level (int, optional): Taxonomy level that was used for commonness calculations. Defaults to 5.
+        from_local (bool, optional): Whether to load the data from local disk. Defaults to False.
 
     Returns:
         pd.DataFrame: Table with topic-level novelty scores. Columns are:

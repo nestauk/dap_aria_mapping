@@ -1,3 +1,6 @@
+"""Script to calculate the total number of patents and publications per topic (level 3), area (level 2), and domain (level 1) 
+    of the taxonomy per year. The resulting file supports the backend of the Emergence and the Alignment charts in the final app.
+"""
 from dap_aria_mapping.getters.openalex import get_openalex_topics, get_openalex_works
 from dap_aria_mapping.getters.patents import get_patent_topics, get_patents
 from dap_aria_mapping.utils.app_data_utils import count_documents, expand_topic_col
@@ -5,7 +8,7 @@ import polars as pl
 import pandas as pd
 import boto3
 import io
-#from nesta_ds_utils.loading_saving.S3 import upload_obj
+from dap_aria_mapping.getters.taxonomies import get_topic_names
 from dap_aria_mapping import BUCKET_NAME, logger
 
 if __name__ == "__main__":
@@ -61,6 +64,34 @@ if __name__ == "__main__":
             pl.lit(0))
     ])
 
+    logger.info("Adding total document count and topic names columns")
+    #add total document count as count of patents and publications combined
+    final_df = final_df.with_columns(
+        (pl.col('patent_count') + pl.col('publication_count')).alias('total_docs'),
+        pl.col('year').round(0)
+    )
+
+    #add chatgpt names for domain, area, topics
+    domain_names  = pl.DataFrame(
+        pd.DataFrame.from_dict(
+            get_topic_names("cooccur", "chatgpt", 1, n_top = 35), 
+            orient= "index").rename_axis("domain").reset_index().rename(
+                columns = {"name": "domain_name"})[["domain", "domain_name"]])
+    area_names  = pl.DataFrame(
+        pd.DataFrame.from_dict(
+            get_topic_names("cooccur", "chatgpt", 2, n_top = 35),
+            orient= "index").rename_axis("area").reset_index().rename(
+                columns = {"name": "area_name"})[["area", "area_name"]])
+    topic_names  = pl.DataFrame(
+        pd.DataFrame.from_dict(
+            get_topic_names("cooccur", "chatgpt", 3, n_top = 35),
+            orient= "index").rename_axis("topic").reset_index().rename(
+                columns = {"name": "topic_name"})[["topic", "topic_name"]])
+
+    final_df = final_df.join(domain_names, on="domain", how="left")
+    final_df = final_df.join(area_names, on="area", how="left")
+    final_df = final_df.join(topic_names, on="topic", how="left")
+
     logger.info("Uploading file to S3")
     buffer = io.BytesIO()
     final_df.write_parquet(buffer)
@@ -68,7 +99,6 @@ if __name__ == "__main__":
     s3 = boto3.client("s3")
     s3.upload_fileobj(buffer, BUCKET_NAME, "outputs/app_data/horizon_scanner/volume.parquet")
 
-    #upload_obj(final_df, BUCKET_NAME, "outputs/app_data/horizon_scanner/volume.parquet")
 
 
     

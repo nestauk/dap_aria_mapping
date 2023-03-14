@@ -319,7 +319,7 @@ if __name__ == "__main__":
                                     " \n\n "
                                     f"{chunk_str}"
                                     " \n\n "
-                                    "Please only provide the topic name that best describes the group of entities, and a confidence score between 0 and 100 on how sure you are about the answer. If confidence is not high, please provide a list of entities that, if discarded, would help identify a topic. The structure of the answer should be a list of tuples of four elements: (list identifier, topic name, confidence score, list of entities to discard (None if there are none)). For example:"
+                                    "Please only provide the topic name that best describes the group of entities, and a confidence score between 0 and 100 on how sure you are about the answer. If confidence is not high, please provide a list of entities that, if discarded, would help identify a topic. The structure of the answer should be a list of tuples of four elements: [(list identifier, topic name, confidence score, list of entities to discard (None if there are none)), ... ]. For example:"
                                     " \n\n"
                                     "[('List 1', 'Machine learning', 100, ['Russian Spy', 'Collagen']), ('List 2', 'Cosmology', 90, ['Matrioska', 'Madrid'])]"
                                     " \n\n"
@@ -329,8 +329,8 @@ if __name__ == "__main__":
                                     response = data["message"]
                             else:
                                 query = (
-                                    f" Can you do the same to the following list of additional groups: \n\n {chunk_str} \n\n"
-                                    "Please only provide the topic name that best describes the group of entities, and a confidence score between 0 and 100 on how sure you are about the answer. If confidence is not high, please provide a list of entities that, if discarded, would help identify a topic. The structure of the answer should be a list of tuples of four elements: (list identifier, topic name, confidence score, list of entities to discard (None if there are none)). For example:"
+                                    f"Can you do the same to the following list of additional groups: \n\n {chunk_str} \n\n"
+                                    "Please only provide the topic name that best describes the group of entities, and a confidence score between 0 and 100 on how sure you are about the answer. If confidence is not high, please provide a list of entities that, if discarded, would help identify a topic. The structure of the answer should be a list of tuples of four elements: [(list identifier, topic name, confidence score, list of entities to discard (None if there are none)), ... ]. For example:"
                                     "\n\n"
                                     "[('List 1', 'Machine learning', 100, ['Russian Spy', 'Collagen']), ('List 2', 'Cosmology', 90, ['Matrioska', 'Madrid'])]"
                                 )
@@ -349,6 +349,12 @@ if __name__ == "__main__":
                                     f"Routine idling - Sleeping for {sleep_time} seconds"
                                 )
                                 time.sleep(sleep_time)
+                                query = (
+                                    f"Your response is not a list with the requested structure. Remember that I only want the topic name that best describes the group of entities, and a confidence score between 0 and 100 on how sure you are about the answer. If confidence is not high, also provide a list of entities that, if discarded, would help identify a topic. The structure of the answer should be a list of tuples of four elements: [(list identifier, topic name, confidence score, list of entities to discard (None if there are none)), ... ]. For example:"
+                                    "\n\n"
+                                    "[('List 1', 'Machine learning', 100, ['Russian Spy', 'Collagen']), ('List 2', 'Cosmology', 90, ['Matrioska', 'Madrid'])]"
+                                    " \n\n Please try again. \n\n"
+                                )
                                 for data in chatbot.ask(query):
                                     response = data["message"]
 
@@ -424,9 +430,10 @@ if __name__ == "__main__":
                             time.sleep(np.random.randint(6, 12))
                             if tries > 3:
                                 logger.info(
-                                    "ChatGPT failed to respond. Idling for 10-12 minutes."
+                                    "ChatGPT failed to respond. Idling for 30-60 seconds."
                                 )
-                                time.sleep(np.random.randint(600, 720))
+                                time.sleep(np.random.randint(30, 60))
+                                break
 
             logger.info("Finished level {}".format(str(level)))
         logger.info("Finished taxonomy {}".format(taxlabel))

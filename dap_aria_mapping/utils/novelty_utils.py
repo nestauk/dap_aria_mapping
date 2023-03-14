@@ -42,8 +42,8 @@ def preprocess_topics_dict(
     Args:
         topics_dict (dict): A dictionary with document IDs as keys and a list of topics as values
         metadata_df (pd.DataFrame): Metadata dataframe with columns id_column and publication_year
-        id_column (str): Name of the column in metadata_df that contains the document IDs
-        year_column (str): Name of the column in metadata_df that contains the publication year
+        id_column (str, optional): Name of the column in metadata_df that contains the document IDs. Defaults to "work_id".
+        year_column (str, optional): Name of the column in metadata_df that contains the publication year. Defaults to "publication_year".
 
     Returns:
         pd.DataFrame: A dataframe with columns "work_id", "year" and "topics"
@@ -79,7 +79,7 @@ def document_novelty(
 
     Args:
         topics_df (pd.DataFrame): A dataframe with columns for document id, "year" and "topics"
-        id_column (str, optional): Name of the column that contains document ids. Defaults to 'work_id'.
+        id_column (str, optional): Name of the column that contains document ids. Defaults to "work_id".
 
     Returns:
         pd.DataFrame: A dataframe with document novelty, with columns "work_id", "year", "novelty", "n_topics" and "topics"
@@ -148,7 +148,7 @@ def get_document_topic_pairs(
 
     Args:
         document_table (pd.DataFrame): Dataframe with columns id_column, "years" and "topics"
-        id_column (str, optional): Name of the column that contains document ids. Defaults to 'document_id'.
+        id_column (str, optional): Name of the column that contains document ids. Defaults to "document_id".
 
     Returns:
         pd.DataFrame: A dataframe with columns "work_id", "topic_1", "topic_2", "year"
@@ -202,6 +202,7 @@ def get_counts_of_pairs_with_topic(
 
     Args:
         document_topic_pairs (dict): Dataframe with columns for "work_id", "topic_1", "topic_2", "counts"
+        id_column (str, optional): Name of the column that contains document ids. Defaults to "work_id".
 
     Returns:
         Dict[str, int]: Dictionary with topic as key and pair counts as value
@@ -294,6 +295,7 @@ def document_to_topic_novelty(
 
     Args:
         document_novelty (pd.DataFrame): A dataframe with novelty scores and list of topics for each document
+        id_column (str, optional): The column name for the document id. Defaults to "work_id". Defaults to "work_id".
         aggregation (str, optional): The aggregation to use. Defaults to "median".
 
     Returns:
@@ -311,7 +313,7 @@ def document_to_topic_novelty(
 
 def pair_to_topic_novelty(
     topic_pair_commonness: pd.DataFrame,
-    aggregation: str = lambda x: aggregate_document_commonness(x),
+    aggregation: str = "10th_percentile",
     min_counts: int = 0,
 ) -> pd.DataFrame:
     """
@@ -319,7 +321,8 @@ def pair_to_topic_novelty(
 
     Args:
         topic_pair_commonness (pd.DataFrame): Dataframe with columns "topic_1", "topic_2", "year", "commonness", "N_ij_t"
-        aggregation (_type_, optional): Aggregation method. Defaults to taking the 10th percentile of commoness scores
+        aggregation (str, optional): Method that will be used by the pd.DataFrame.groupby().agg() to aggregate commonness scores.
+            Defaults to '10th percentile'.
         min_counts (int, optional): Minimum number of times a topic pair must appear to be included in the calculation. Defaults to 0.
 
     Returns:
@@ -339,6 +342,10 @@ def pair_to_topic_novelty(
         ignore_index=True,
     )
     # Aggregate the commonness scores across topics, and convert to a novelty score
+    if aggregation == "10th_percentile":
+        aggregation = lambda x: aggregate_document_commonness(x, percentile=10)
+    else:
+        aggregation = aggregation
     return (
         df.groupby(["topic", "year"], as_index=False)
         .agg(

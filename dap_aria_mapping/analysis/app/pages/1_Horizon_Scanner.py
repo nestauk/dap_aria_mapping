@@ -246,7 +246,7 @@ with overview_tab:
     filtered_alignment_data = convert_to_pandas(group_alignment_by_level(alignment_data, level_considered))
     alignment_chart = alt.Chart(filtered_alignment_data).transform_filter(
         alt.datum.doc_fraction > 0  
-        ).mark_point().encode(
+        ).mark_point(size = 60).encode(
         alt.X("doc_fraction:Q", 
             title = "Percent of Documents of the Given Type", 
             scale=alt.Scale(type="log"), 
@@ -264,8 +264,8 @@ with overview_tab:
             legendY=-80,
             orient = 'none',
             titleAnchor='middle',
-            title = None)
-        )).interactive().properties(width = 1100)
+            title = None))
+        ).interactive().properties(width = 1100)
     
 
     st.altair_chart(alignment_chart)

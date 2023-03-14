@@ -27,6 +27,7 @@ def calculate_topic_novelty(
     taxonomy_level: int = 0,
     from_local: bool = False,
     save_to_local: bool = False,
+    upload_to_s3: bool = True,
     min_pair_counts: int = 50,
     min_doc_counts: int = 50,
 ):
@@ -34,11 +35,14 @@ def calculate_topic_novelty(
     Calculate novelty scores for topics using OpenAlex data and uploads them on s3
 
     Args:
-        taxonomy_level (int, optional): Taxonomy level to use for novelty calculation. Must be between 1 and 5. If set to 0, uses all levels
+        taxonomy_level (int, optional): Taxonomy level to use for novelty calculation.
+            Must be between 1 and 5. If set to 0, uses all levels
         from_local (bool, optional): Whether to use data from local disk
         save_to_local (bool, optional): Whether to also save the novelty scores to local disk
-        min_pair_counts (int, optional): Minimum number of times a topic pair must appear in the corpus to be considered for novelty calculation (for the score based on topic pairs)
-        min_doc_counts (int, optional): Minimum number of times a topic must appear in the corpus to be considered for including into the analysis outputs
+        min_pair_counts (int, optional): Minimum number of times a topic pair must appear in the corpus
+            to be considered for novelty calculation (for the score based on topic pairs)
+        min_doc_counts (int, optional): Minimum number of times a topic must appear in the corpus
+            to be considered for including into the analysis outputs
     """
     if taxonomy_level == 0:
         levels = list(range(1, 6))
@@ -76,12 +80,13 @@ def calculate_topic_novelty(
         filepath_topic_novelty_scores = (
             OUTPUT_DIR + f"/topic_novelty_openalex_{level}.parquet"
         )
-        # Upload to s3
-        upload_obj(
-            topic_novelty_df,
-            BUCKET_NAME,
-            f"{filepath_topic_novelty_scores}",
-        )
+        if upload_to_s3:
+            # Upload to s3
+            upload_obj(
+                topic_novelty_df,
+                BUCKET_NAME,
+                f"{filepath_topic_novelty_scores}",
+            )
         if save_to_local:
             # Save to local disk
             (PROJECT_DIR / OUTPUT_DIR).mkdir(parents=True, exist_ok=True)

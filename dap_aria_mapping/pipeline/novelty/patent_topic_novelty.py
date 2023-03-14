@@ -27,6 +27,7 @@ def calculate_topic_novelty(
     taxonomy_level: int = 0,
     from_local: bool = False,
     save_to_local: bool = False,
+    upload_to_s3: bool = True,
     min_pair_counts: int = 50,
     min_doc_counts: int = 50,
 ):
@@ -76,12 +77,13 @@ def calculate_topic_novelty(
         filepath_topic_novelty_scores = (
             OUTPUT_DIR + f"/topic_novelty_patents_{level}.parquet"
         )
-        # Upload to s3
-        upload_obj(
-            topic_novelty_df,
-            BUCKET_NAME,
-            f"{filepath_topic_novelty_scores}",
-        )
+        if upload_to_s3:
+            # Upload to s3
+            upload_obj(
+                topic_novelty_df,
+                BUCKET_NAME,
+                f"{filepath_topic_novelty_scores}",
+            )
         if save_to_local:
             # Save to local disk
             (PROJECT_DIR / OUTPUT_DIR).mkdir(parents=True, exist_ok=True)

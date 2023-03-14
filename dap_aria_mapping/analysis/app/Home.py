@@ -8,7 +8,6 @@ from dap_aria_mapping.utils.app_utils import img_to_bytes, nav_page_from_image
 
 formatting.setup_theme()
 
-
 PAGE_TITLE = "Innovation Explorer"
 
 IMAGE_DIR = f"{PROJECT_DIR}/dap_aria_mapping/analysis/app/images"
@@ -27,23 +26,25 @@ home_tab, data_tab, methods_tab = st.tabs(["Home", "About the Datasets", "Method
 with home_tab:
 
     hs_img, cm_img = (
-        img_to_bytes(f"{IMAGE_DIR}/hs_homepage.png"), 
-        img_to_bytes(f"{IMAGE_DIR}/cm_homepage.png")
+        img_to_bytes(f"{IMAGE_DIR}/hs_homepage.png"),
+        img_to_bytes(f"{IMAGE_DIR}/cm_homepage.png"),
     )
 
     content = """
         <div style="display: flex; justify-content: center; margin: 0 auto; padding: 10px 0;">
-        <a href='#' id='Image 1'><img width='90%' src='data:image/jpeg;base64,{0}'></a>
-        <a href='#' id='Image 2'><img width='90%' src='data:image/jpeg;base64,{1}'></a>
+        <a href='#' id='img-1'><img width='90%' class='img-acu-1' src='data:image/png;base64,{hs_img}'></a>
+        <a href='#' id='img-2'><img width='90%' class='img-acu-2' src='data:image/png;base64,{cm_img}'></a>
         </div>
-    """.format(hs_img, cm_img)
+    """.format(
+        hs_img=hs_img, cm_img=cm_img
+    )
 
     clicked = click_detector(content)
 
-    if clicked == "Image 1":
-        nav_page_from_image("Horizon_Scanner")
-    elif clicked == "Image 2":
-        nav_page_from_image("Change_Makers")
+    if clicked == "img-1":
+        nav_page_from_image(page="Horizon_Scanner", timeout=5)
+    elif clicked == "img-2":
+        nav_page_from_image(page="Change_Makers", timeout=5)
 
 
 with data_tab:

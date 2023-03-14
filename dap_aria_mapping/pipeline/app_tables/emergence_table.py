@@ -57,18 +57,17 @@ if __name__ == "__main__":
     
     logger.info("Creating merged table")
     final_df = final_pubs_df.join(final_patents_df, how='outer', on = ["domain", "area", "topic", "year"]).with_columns([
-        pl.col("publication_count").cast(pl.Float64, strict = False).fill_null(
+        pl.col("publication_count").cast(pl.Float64, strict = False).fill_nan(
             pl.lit(0),
         ),
-        pl.col("patent_count").cast(pl.Float64, strict = False).fill_null(
+        pl.col("patent_count").cast(pl.Float64, strict = False).fill_nan(
             pl.lit(0))
     ])
 
     logger.info("Adding total document count and topic names columns")
     #add total document count as count of patents and publications combined
     final_df = final_df.with_columns(
-        (pl.col('patent_count') + pl.col('publication_count')).alias('total_docs'),
-        pl.col('year').round(0)
+        (pl.col('patent_count') + pl.col('publication_count')).alias('total_docs')
     )
 
     #add chatgpt names for domain, area, topics
@@ -95,7 +94,7 @@ if __name__ == "__main__":
     logger.info("Uploading file to S3")
     buffer = io.BytesIO()
     final_df.write_parquet(buffer)
-    buffer = buffer.seek(0)
+    buffer.seek(0)
     s3 = boto3.client("s3")
     s3.upload_fileobj(buffer, BUCKET_NAME, "outputs/app_data/horizon_scanner/volume.parquet")
 

@@ -1,3 +1,6 @@
+"""Utility functions to support pipelines to build tables for the app
+
+"""
 import polars as pl
 
 def count_documents(doc_df: pl.DataFrame) -> pl.DataFrame:
@@ -27,3 +30,4 @@ def expand_topic_col(topic_df: pl.DataFrame) -> pl.DataFrame:
     return topic_df.with_columns(
         (pl.col("topic").str.split("_").arr.get(0)).alias("domain"),
         (pl.col("topic").str.split("_").arr.get(0) + "_" + pl.col("topic").str.split("_").arr.get(1)).alias("area"))
+

@@ -4,6 +4,7 @@ import altair as alt
 from nesta_ds_utils.viz.altair import formatting
 from dap_aria_mapping import PROJECT_DIR
 from dap_aria_mapping.getters.app_tables.horizon_scanner import volume_per_year
+from dap_aria_mapping.utils.app_utils import convert_to_pandas
 import polars as pl
 import pandas as pd
 from typing import List, Tuple
@@ -137,19 +138,6 @@ def group_alignment_by_level(_alignment_data: pl.DataFrame, level: str) -> pl.Da
             (pl.col("doc_fraction")*100).alias("doc_percentage"))
         )
     return q.collect()
-
-def convert_to_pandas(_df: pl.DataFrame) -> pd.DataFrame:
-    """converts polars dataframe to pandas dataframe
-    note: this is needed as altair doesn't allow polars, but the conversion is quick so i still think it's 
-    worth while to use polars for the filtering
-
-    Args:
-        _df (pl.DataFrame): polars dataframe
-
-    Returns:
-        pd.DataFrame: pandas dataframe
-    """
-    return _df.to_pandas()
 
 header1, header2 = st.columns([1,10])
 with header1:

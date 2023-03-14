@@ -57,10 +57,10 @@ if __name__ == "__main__":
     
     logger.info("Creating merged table")
     final_df = final_pubs_df.join(final_patents_df, how='outer', on = ["domain", "area", "topic", "year"]).with_columns([
-        pl.col("publication_count").fill_null(
+        pl.col("publication_count").cast(pl.Float64, strict = False).fill_null(
             pl.lit(0),
         ),
-        pl.col("patent_count").fill_null(
+        pl.col("patent_count").cast(pl.Float64, strict = False).fill_null(
             pl.lit(0))
     ])
 

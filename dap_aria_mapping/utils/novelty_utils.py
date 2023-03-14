@@ -42,8 +42,8 @@ def preprocess_topics_dict(
     Args:
         topics_dict (dict): A dictionary with document IDs as keys and a list of topics as values
         metadata_df (pd.DataFrame): Metadata dataframe with columns id_column and publication_year
-        id_column (str): Name of the column in metadata_df that contains the document IDs
-        year_column (str): Name of the column in metadata_df that contains the publication year
+        id_column (str, optional): Name of the column in metadata_df that contains the document IDs. Defaults to "work_id".
+        year_column (str, optional): Name of the column in metadata_df that contains the publication year. Defaults to "publication_year".
 
     Returns:
         pd.DataFrame: A dataframe with columns "work_id", "year" and "topics"
@@ -79,7 +79,7 @@ def document_novelty(
 
     Args:
         topics_df (pd.DataFrame): A dataframe with columns for document id, "year" and "topics"
-        id_column (str, optional): Name of the column that contains document ids. Defaults to 'work_id'.
+        id_column (str, optional): Name of the column that contains document ids. Defaults to "work_id".
 
     Returns:
         pd.DataFrame: A dataframe with document novelty, with columns "work_id", "year", "novelty", "n_topics" and "topics"
@@ -89,7 +89,7 @@ def document_novelty(
     # and one pair of topics in that document
     doc_topic_pairs = get_document_topic_pairs(topics_df, id_column=id_column)
     # Number of times each pair of topics appears each years across the data sample
-    topic_pair_counts = get_topic_pair_counts(doc_topic_pairs)
+    topic_pair_counts = get_topic_pair_counts(doc_topic_pairs, id_column=id_column)
     # Unique years in the data sample
     years = sorted(topic_pair_counts["year"].unique())
 
@@ -101,7 +101,7 @@ def document_novelty(
         topic_pair_counts_in_year = topic_pair_counts.query("year == @year")
         # Get all N_i_t / N_j_t values (counts of the pairs that a topic appears in, for a given year)
         topic_counts_dict = get_counts_of_pairs_with_topic(
-            topic_pair_counts_in_year, "work_id"
+            topic_pair_counts_in_year, id_column
         )
         # Get N_t (all topic pair counts)
         N_t = topic_pair_counts_in_year["counts"].sum()
@@ -122,20 +122,20 @@ def document_novelty(
         )
 
         # Aggregate commonness values at the level of documents and convert to novelty
-        work_novelty_df = aggregate_document_novelty(topic_pair_commonness, "work_id")
+        work_novelty_df = aggregate_document_novelty(topic_pair_commonness, id_column)
         work_novelty.append(work_novelty_df)
 
         # Save the topic pair commonness values for each year
         topic_pair_commonness_list.append(
             topic_pair_commonness.drop_duplicates(["topic_1", "topic_2", "year"]).drop(
-                ["work_id", "N_i_t", "N_j_t", "topic_pair"], axis=1
+                [id_column, "N_i_t", "N_j_t", "topic_pair"], axis=1
             )
         )
 
     return (
         pd.concat(work_novelty, ignore_index=True)
         # Add topics labels and number of topics to the document-level novelty dataframe
-        .merge(topics_df[[id_column, "n_topics", "topics"]], on="work_id", how="left")
+        .merge(topics_df[[id_column, "n_topics", "topics"]], on=id_column, how="left")
     ), (pd.concat(topic_pair_commonness_list, ignore_index=True))
 
 
@@ -148,7 +148,7 @@ def get_document_topic_pairs(
 
     Args:
         document_table (pd.DataFrame): Dataframe with columns id_column, "years" and "topics"
-        id_column (str, optional): Name of the column that contains document ids. Defaults to 'document_id'.
+        id_column (str, optional): Name of the column that contains document ids. Defaults to "document_id".
 
     Returns:
         pd.DataFrame: A dataframe with columns "work_id", "topic_1", "topic_2", "year"
@@ -173,6 +173,7 @@ def get_document_topic_pairs(
 
 def get_topic_pair_counts(
     document_topic_pairs: pd.DataFrame,
+    id_column = "work_id",
 ) -> pd.DataFrame:
     """
     Given a table with document ids, year and topic pairs mentioned in the document,
@@ -186,7 +187,7 @@ def get_topic_pair_counts(
     """
     return document_topic_pairs.groupby(
         ["topic_1", "topic_2", "topic_pair", "year"], as_index=False
-    ).agg(counts=("work_id", "count"))
+    ).agg(counts=(id_column, "count"))
 
 
 def get_counts_of_pairs_with_topic(
@@ -201,6 +202,7 @@ def get_counts_of_pairs_with_topic(
 
     Args:
         document_topic_pairs (dict): Dataframe with columns for "work_id", "topic_1", "topic_2", "counts"
+        id_column (str, optional): Name of the column that contains document ids. Defaults to "work_id".
 
     Returns:
         Dict[str, int]: Dictionary with topic as key and pair counts as value
@@ -281,3 +283,78 @@ def aggregate_document_commonness(
     (default: 10th percentile as in the original paper)
     """
     return np.percentile(commonness_scores, percentile)
+
+
+def document_to_topic_novelty(
+    document_novelty: pd.DataFrame,
+    id_column: str = "work_id",
+    aggregation: str = "median",
+) -> pd.DataFrame:
+    """
+    Explodes the topics column and aggregates the novelty scores
+
+    Args:
+        document_novelty (pd.DataFrame): A dataframe with novelty scores and list of topics for each document
+        id_column (str, optional): The column name for the document id. Defaults to "work_id". Defaults to "work_id".
+        aggregation (str, optional): The aggregation to use. Defaults to "median".
+
+    Returns:
+        pd.DataFrame: A dataframe with "topic", "year", "doc_counts" and "topic_doc_novelty" novelty score
+    """
+    return (
+        document_novelty.explode("topics")
+        .groupby(["topics", "year"], as_index=False)
+        .agg(
+            topic_doc_novelty=("novelty", aggregation), doc_counts=(id_column, "count")
+        )
+        .rename(columns={"topics": "topic"})
+    )
+
+
+def pair_to_topic_novelty(
+    topic_pair_commonness: pd.DataFrame,
+    aggregation: str = "10th_percentile",
+    min_counts: int = 0,
+) -> pd.DataFrame:
+    """
+    Calculate the novelty score of a topic by aggregating the commonness scores of all topic pairs in which it appears
+
+    Args:
+        topic_pair_commonness (pd.DataFrame): Dataframe with columns "topic_1", "topic_2", "year", "commonness", "N_ij_t"
+        aggregation (str, optional): Method that will be used by the pd.DataFrame.groupby().agg() to aggregate commonness scores.
+            Defaults to '10th percentile'.
+        min_counts (int, optional): Minimum number of times a topic pair must appear to be included in the calculation. Defaults to 0.
+
+    Returns:
+        pd.DataFrame: A dataframe with "topic", "year", "topic_pair_novelty" and "pair_counts"
+    """
+    # Convert topic pair commonness table into a long format,
+    # by assigning each topic of a topic pair its own row
+    df = pd.concat(
+        [
+            topic_pair_commonness[["topic_1", "year", "commonness", "N_ij_t"]]
+            .query("N_ij_t > @min_counts")
+            .rename(columns={"topic_1": "topic"}),
+            topic_pair_commonness[["topic_2", "year", "commonness", "N_ij_t"]]
+            .query("N_ij_t > @min_counts")
+            .rename(columns={"topic_2": "topic"}),
+        ],
+        ignore_index=True,
+    )
+    # Aggregate the commonness scores across topics, and convert to a novelty score
+    if aggregation == "10th_percentile":
+        aggregation = lambda x: aggregate_document_commonness(x, percentile=10)
+    else:
+        aggregation = aggregation
+    return (
+        df.groupby(["topic", "year"], as_index=False)
+        .agg(
+            topic_pair_commonness=("commonness", aggregation),
+            pair_counts=("N_ij_t", "sum"),
+        )
+        .assign(
+            topic_pair_novelty=lambda df: df.topic_pair_commonness.apply(
+                convert_commonness_to_novelty
+            )
+        )
+    )

@@ -154,7 +154,16 @@ def group_alignment_by_level(_alignment_data: pl.DataFrame, level: str) -> pl.Da
             .when(pl.col("doc_type") == "patent_count")
             .then(pl.col("total")/total_patents)
             .alias("doc_fraction")
-        ))
+        ).with_columns(
+            pl.when(pl.col("doc_type") == "publication_count")
+            .then("Publications")
+            .when(pl.col("doc_type") == "patent_count")
+            .then("Patents")
+            .alias("doc_name_clean")
+        )
+        .with_columns(
+            (pl.col("doc_fraction")*100).alias("doc_percentage"))
+        )
     return q.collect()
 
 def convert_to_pandas(_df: pl.DataFrame) -> pd.DataFrame:
@@ -218,11 +227,18 @@ with overview_tab:
 
     emergence_data = convert_to_pandas(group_emergence_by_level(volume_data, level_considered, y_col))
 
-    volume_chart = alt.Chart(emergence_data).mark_line().encode(
+    volume_chart = alt.Chart(emergence_data).mark_line(point=True).encode(
         alt.X("year:N"),
-        alt.Y("{}:Q".format(y_col), title = "Total Documents Published"),
-        color = "{}_name:N".format(level_considered)
-    ).interactive().properties(width=1000, height = 500)
+        alt.Y("{}:Q".format(y_col), title = "Total Documents"),
+        color = alt.Color("{}_name:N".format(level_considered), 
+        legend = alt.Legend(labelFontSize = 10, title = None, labelLimit = 0, symbolSize = 20)
+        ),
+        tooltip=[
+            alt.Tooltip("year:N", title = "Year"),
+            alt.Tooltip("{}:Q".format(y_col),title = "Total Documents"),
+            alt.Tooltip("{}_name:N".format(level_considered), title = "{}".format(level_considered))]
+
+    ).interactive().properties(width=1100, height = 500)
     st.altair_chart(volume_chart)
 
     st.subheader("Alignment in Research and Industry")
@@ -231,21 +247,27 @@ with overview_tab:
     alignment_chart = alt.Chart(filtered_alignment_data).transform_filter(
         alt.datum.doc_fraction > 0  
         ).mark_point().encode(
-        alt.Y("doc_fraction:Q", 
-            title = "Fraction of Documents of the Given Type", 
+        alt.X("doc_fraction:Q", 
+            title = "Percent of Documents of the Given Type", 
             scale=alt.Scale(type="log"), 
-            axis = alt.Axis(tickSize=0)),
-        column = alt.Column("{}_name:N".format(level_considered), 
-            title=None, 
-            header = alt.Header(labelFontSize=10, labelOrient = 'bottom', labelAngle = -45, labelAnchor = "end")),
-        color = alt.Color("doc_type:N", legend=alt.Legend(
+            axis = alt.Axis(tickSize=0, format = "%", grid = False)),
+        alt.Y("{}_name:N".format(level_considered),
+            axis = alt.Axis(labelLimit = 0, title = None) 
+            ),
+        tooltip=[
+            alt.Tooltip("doc_name_clean:N", title = "Document Type"),
+            alt.Tooltip("doc_percentage:Q", format = ".2f", title = "Percent of Docs (%)"),
+            alt.Tooltip("{}_name:N".format(level_considered), title = "{}".format(level_considered))],
+        color = alt.Color("doc_name_clean:N", legend=alt.Legend(
             direction='horizontal',
             legendX=10,
             legendY=-80,
             orient = 'none',
             titleAnchor='middle',
             title = None)
-        )).interactive().properties(width = 20)
+        )).interactive().properties(width = 1100)
+    
+
     st.altair_chart(alignment_chart)
 
 with disruption_tab:

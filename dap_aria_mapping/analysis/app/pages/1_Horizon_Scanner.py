@@ -252,7 +252,7 @@ with overview_tab:
             scale=alt.Scale(type="log"), 
             axis = alt.Axis(tickSize=0, format = "%", grid = False)),
         alt.Y("{}_name:N".format(level_considered),
-            axis = alt.Axis(labelLimit = 0, title = None) 
+            axis = alt.Axis(labelLimit = 0, title = None, grid = True) 
             ),
         tooltip=[
             alt.Tooltip("doc_name_clean:N", title = "Document Type"),

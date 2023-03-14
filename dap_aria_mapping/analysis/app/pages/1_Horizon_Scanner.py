@@ -5,6 +5,7 @@ from nesta_ds_utils.viz.altair import formatting
 from dap_aria_mapping import PROJECT_DIR
 from dap_aria_mapping.getters.app_tables.horizon_scanner import volume_per_year
 from dap_aria_mapping.utils.app_utils import convert_to_pandas
+from dap_aria_mapping.getters.taxonomies import get_topic_names
 import polars as pl
 import pandas as pd
 from typing import List, Tuple
@@ -36,6 +37,32 @@ def load_overview_data() -> Tuple[pl.DataFrame, pl.DataFrame, List[str]]:
         List: unique domain names in dataset
     """
     volume_data = volume_per_year()
+
+    volume_data = volume_data.with_columns(
+        (pl.col('patent_count') + pl.col('publication_count')).alias('total_docs'),
+        pl.col('year').round(0)
+    )
+
+    #add chatgpt names for domain, area, topics
+    domain_names  = pl.DataFrame(
+        pd.DataFrame.from_dict(
+            get_topic_names("cooccur", "chatgpt", 1, n_top = 35), 
+            orient= "index").rename_axis("domain").reset_index().rename(
+                columns = {"name": "domain_name"})[["domain", "domain_name"]])
+    area_names  = pl.DataFrame(
+        pd.DataFrame.from_dict(
+            get_topic_names("cooccur", "chatgpt", 2, n_top = 35),
+            orient= "index").rename_axis("area").reset_index().rename(
+                columns = {"name": "area_name"})[["area", "area_name"]])
+    topic_names  = pl.DataFrame(
+        pd.DataFrame.from_dict(
+            get_topic_names("cooccur", "chatgpt", 3, n_top = 35),
+            orient= "index").rename_axis("topic").reset_index().rename(
+                columns = {"name": "topic_name"})[["topic", "topic_name"]])
+
+    volume_data = volume_data.join(domain_names, on="domain", how="left")
+    volume_data = volume_data.join(area_names, on="area", how="left")
+    volume_data = volume_data.join(topic_names, on="topic", how="left")
 
    #generate a list of the unique domain names to use as the filter
     unique_domains = list(list(volume_data.select(pl.col("domain_name").unique()))[0])

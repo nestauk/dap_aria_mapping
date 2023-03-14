@@ -1,63 +1,12 @@
 import streamlit as st
-from streamlit.components.v1 import html
 from st_click_detector import click_detector
 from PIL import Image
-import altair as alt
 from nesta_ds_utils.viz.altair import formatting
 from dap_aria_mapping import PROJECT_DIR
-import base64
-from pathlib import Path
+from dap_aria_mapping.utils.app_utils import img_to_bytes, nav_page_from_image
+
 
 formatting.setup_theme()
-
-
-def nav_page_from_image(page: str, timeout: int = 5) -> None:
-    """Navigates to a page in the Streamlit app.
-
-    Args:
-        page (str): The name of the page to navigate to.
-        timeout (int, optional): The number of seconds to wait before timing out
-            the navigation. Defaults to 5.
-    """
-    nav_script = """
-            <script type="text/javascript">
-                function nav_page(page, start_time, timeout) {
-                    var links = window.parent.document.getElementsByTagName("a");
-                    for (var i = 0; i < links.length; i++) {
-                        if (links[i].href.toLowerCase().endsWith("/" + page.toLowerCase())) {
-                            links[i].click();
-                            return;
-                        }
-                    }
-                    var elasped = new Date() - start_time;
-                    if (elasped < timeout * 1000) {
-                        setTimeout(nav_page, 100, page, start_time, timeout);
-                    } else {
-                        alert("Unable to navigate to page '" + page + "' after " + timeout + " second(s).");
-                    }
-                }
-                window.addEventListener("load", function() {
-                    nav_page("%s", new Date(), %d);
-                });
-            </script>
-        """ % (
-        page,
-        timeout,
-    )
-    html(nav_script)
-
-def img_to_bytes(img_path: str) -> str:
-    """Converts an image to a base64 encoded string.
-
-    Args:
-        img_path (str): The path to the image.
-
-    Returns:
-        str: The base64 encoded string.
-    """
-    img_bytes = Path(img_path).read_bytes()
-    encoded_img = base64.b64encode(img_bytes).decode()
-    return encoded_img
 
 
 PAGE_TITLE = "Innovation Explorer"

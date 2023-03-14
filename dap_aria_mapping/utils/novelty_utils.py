@@ -89,7 +89,7 @@ def document_novelty(
     # and one pair of topics in that document
     doc_topic_pairs = get_document_topic_pairs(topics_df, id_column=id_column)
     # Number of times each pair of topics appears each years across the data sample
-    topic_pair_counts = get_topic_pair_counts(doc_topic_pairs)
+    topic_pair_counts = get_topic_pair_counts(doc_topic_pairs, id_column=id_column)
     # Unique years in the data sample
     years = sorted(topic_pair_counts["year"].unique())
 
@@ -101,7 +101,7 @@ def document_novelty(
         topic_pair_counts_in_year = topic_pair_counts.query("year == @year")
         # Get all N_i_t / N_j_t values (counts of the pairs that a topic appears in, for a given year)
         topic_counts_dict = get_counts_of_pairs_with_topic(
-            topic_pair_counts_in_year, "work_id"
+            topic_pair_counts_in_year, id_column
         )
         # Get N_t (all topic pair counts)
         N_t = topic_pair_counts_in_year["counts"].sum()
@@ -122,20 +122,20 @@ def document_novelty(
         )
 
         # Aggregate commonness values at the level of documents and convert to novelty
-        work_novelty_df = aggregate_document_novelty(topic_pair_commonness, "work_id")
+        work_novelty_df = aggregate_document_novelty(topic_pair_commonness, id_column)
         work_novelty.append(work_novelty_df)
 
         # Save the topic pair commonness values for each year
         topic_pair_commonness_list.append(
             topic_pair_commonness.drop_duplicates(["topic_1", "topic_2", "year"]).drop(
-                ["work_id", "N_i_t", "N_j_t", "topic_pair"], axis=1
+                [id_column, "N_i_t", "N_j_t", "topic_pair"], axis=1
             )
         )
 
     return (
         pd.concat(work_novelty, ignore_index=True)
         # Add topics labels and number of topics to the document-level novelty dataframe
-        .merge(topics_df[[id_column, "n_topics", "topics"]], on="work_id", how="left")
+        .merge(topics_df[[id_column, "n_topics", "topics"]], on=id_column, how="left")
     ), (pd.concat(topic_pair_commonness_list, ignore_index=True))
 
 
@@ -173,6 +173,7 @@ def get_document_topic_pairs(
 
 def get_topic_pair_counts(
     document_topic_pairs: pd.DataFrame,
+    id_column = "work_id",
 ) -> pd.DataFrame:
     """
     Given a table with document ids, year and topic pairs mentioned in the document,
@@ -186,7 +187,7 @@ def get_topic_pair_counts(
     """
     return document_topic_pairs.groupby(
         ["topic_1", "topic_2", "topic_pair", "year"], as_index=False
-    ).agg(counts=("work_id", "count"))
+    ).agg(counts=(id_column, "count"))
 
 
 def get_counts_of_pairs_with_topic(

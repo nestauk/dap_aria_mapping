@@ -1,55 +1,16 @@
 import streamlit as st
-from st_click_detector import click_detector
+from st_click_detector import click_detector, create_hover_class
 from streamlit.components.v1 import html
 from PIL import Image
 from nesta_ds_utils.viz.altair import formatting
 from dap_aria_mapping import PROJECT_DIR
 from dap_aria_mapping.utils.app_utils import img_to_bytes, nav_page_from_image
 
-
 formatting.setup_theme()
-
-
-def nav_page_from_image(page: str, timeout: int = 5) -> None:
-    """Navigates to a page in the Streamlit app.
-
-    Args:
-        page (str): The name of the page to navigate to.
-        timeout (int, optional): The number of seconds to wait before timing out
-            the navigation. Defaults to 5.
-    """
-    nav_script = """
-            <script type="text/javascript">
-                function nav_page(page, start_time, timeout) {
-                    var links = window.parent.document.getElementsByTagName("a");
-                    for (var i = 0; i < links.length; i++) {
-                        if (links[i].href.toLowerCase().endsWith("/" + page.toLowerCase())) {
-                            links[i].click();
-                            return;
-                        }
-                    }
-                    var elasped = new Date() - start_time;
-                    if (elasped < timeout * 1000) {
-                        setTimeout(nav_page, 100, page, start_time, timeout);
-                    } else {
-                        alert("Unable to navigate to page '" + page + "' after " + timeout + " second(s).");
-                    }
-                }
-                window.addEventListener("load", function() {
-                    nav_page("%s", new Date(), %d);
-                });
-            </script>
-        """ % (
-        page,
-        timeout,
-    )
-    html(nav_script)
-
 
 PAGE_TITLE = "Innovation Explorer"
 
 IMAGE_DIR = f"{PROJECT_DIR}/dap_aria_mapping/analysis/app/images"
-
 
 # icon to be used as the favicon on the browser tab
 nesta_fav = Image.open(f"{IMAGE_DIR}/favicon.ico")
@@ -68,13 +29,27 @@ with home_tab:
         img_to_bytes(f"{IMAGE_DIR}/cm_homepage.png"),
     )
 
+    classes_images = {
+        "img-acu-1": {
+            "png": "https://s2.gifyu.com/images/hs_homepage.png",
+            "gif": "https://s2.gifyu.com/images/hs_homepage.gif",
+        },
+        "img-acu-2": {
+            "png": "https://s10.gifyu.com/images/cm_homepage.png",
+            "gif": "https://s10.gifyu.com/images/cm_homepage.gif",
+        },
+    }
+
+    for key, value in classes_images.items():
+        create_hover_class(key, value["png"], value["gif"])
+
     content = """
         <div style="display: flex; justify-content: center; margin: 0 auto; padding: 10px 0;">
-        <a href='#' id='img-1'><img width='90%' class='img-acu-1' src='data:image/png;base64,{hs_img}'></a>
-        <a href='#' id='img-2'><img width='90%' class='img-acu-2' src='data:image/png;base64,{cm_img}'></a>
+        <a href='#' id='img-1'><img width='90%' class='{acu1}' src='data:image/png;base64,{hs_img}'></a>
+        <a href='#' id='img-2'><img width='90%' class='{acu2}' src='data:image/png;base64,{cm_img}'></a>
         </div>
     """.format(
-        hs_img=hs_img, cm_img=cm_img
+        hs_img=hs_img, cm_img=cm_img, acu1="img-acu-1", acu2="img-acu-2"
     )
 
     clicked = click_detector(content)

@@ -1,5 +1,6 @@
 import streamlit as st
 from st_click_detector import click_detector
+from streamlit.components.v1 import html
 from PIL import Image
 from nesta_ds_utils.viz.altair import formatting
 from dap_aria_mapping import PROJECT_DIR
@@ -7,6 +8,43 @@ from dap_aria_mapping.utils.app_utils import img_to_bytes, nav_page_from_image
 
 
 formatting.setup_theme()
+
+
+def nav_page_from_image(page: str, timeout: int = 5) -> None:
+    """Navigates to a page in the Streamlit app.
+
+    Args:
+        page (str): The name of the page to navigate to.
+        timeout (int, optional): The number of seconds to wait before timing out
+            the navigation. Defaults to 5.
+    """
+    nav_script = """
+            <script type="text/javascript">
+                function nav_page(page, start_time, timeout) {
+                    var links = window.parent.document.getElementsByTagName("a");
+                    for (var i = 0; i < links.length; i++) {
+                        if (links[i].href.toLowerCase().endsWith("/" + page.toLowerCase())) {
+                            links[i].click();
+                            return;
+                        }
+                    }
+                    var elasped = new Date() - start_time;
+                    if (elasped < timeout * 1000) {
+                        setTimeout(nav_page, 100, page, start_time, timeout);
+                    } else {
+                        alert("Unable to navigate to page '" + page + "' after " + timeout + " second(s).");
+                    }
+                }
+                window.addEventListener("load", function() {
+                    nav_page("%s", new Date(), %d);
+                });
+            </script>
+        """ % (
+        page,
+        timeout,
+    )
+    html(nav_script)
+
 
 PAGE_TITLE = "Innovation Explorer"
 

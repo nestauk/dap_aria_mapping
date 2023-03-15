@@ -28,4 +28,9 @@ To produce these labels as dictionaries, execute the following command.
 
 `python dap_aria_mapping/pipeline/make_topic_name_assignments.py --taxonomy cooccur centroids imbalanced --name_type entity --levels 1 2 3 4 5 --n_top 5 --n_articles 50000`
 
-Additional arguments include `show_count` (to include counts of entities in database), and `save` (to export jsons to S3).
+Additional arguments include `show_count` (to include counts of entities in database), and `save` (to export jsons to S3). `name_type` options include:
+
+- entity
+- journal
+- webChatGPT
+- revChatGPT

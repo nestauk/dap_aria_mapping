@@ -12,20 +12,19 @@ import logging, random, time, ast, argparse
 class revChatGPTWrapper:
     def __init__(
         self,
-        first: Dict[str, bool],
         first_parse: bool,
         logger: logging.Logger,
         taxlabel: str,
         level: int,
         args: argparse.Namespace,
     ):
-        self.first = first
         self.first_parse = first_parse
         self.logger = logger
         self.taxlabel = taxlabel
         self.level = level
         self.args = args
 
+        self.first = {f"chatbot{n}": True for n in range(1, 8)}
         self.chatbots = {
             "chatbot1": Chatbot(
                 config={
@@ -170,14 +169,12 @@ class revChatGPTWrapper:
 class webChatGPTWrapper:
     def __init__(
         self,
-        first: bool,
         first_parse: bool,
         logger: logging.Logger,
         taxlabel: str,
         level: int,
         args: argparse.Namespace,
     ):
-        self.first = first
         self.first_parse = first_parse
         self.logger = logger
         self.taxlabel = taxlabel
@@ -185,6 +182,7 @@ class webChatGPTWrapper:
         self.args = args
 
         self.bot = ChatGPT(False)
+        self.first = True
 
     def __call__(
         self,
@@ -242,7 +240,7 @@ class webChatGPTWrapper:
         try:
             response_str = ast.literal_eval(response[1])
         except Exception as e:
-            raise Exception(f"ChatGPT response is still not a list: {e}")
+            raise Exception(f"ChatGPT response is not a list: {e}")
 
         # if past the exception, assume successful response
         self.logger.info(f"SUCCESS - ChatGPT response: {response_str}")

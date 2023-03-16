@@ -9,7 +9,7 @@
         - n_articles: The number of articles to use to count entities in a topic.
             -1 defaults to all.
         - save: Whether to save the topic names to S3.
-        - show_counts: Whether to show the counts of the entities in each topic. Used
+        - show_count: Whether to show the counts of the entities in each topic. Used
             in name_type 'chatgpt' as part of the query.
 
 Raises:
@@ -19,7 +19,7 @@ Returns:
     json: A json file containing the topic names, saved to S3.
 """
 import pandas as pd
-import argparse, json, boto3, time, os, ast
+import argparse, json, boto3, time, os, ast, subprocess
 from toolz import pipe
 from dap_aria_mapping import logger, PROJECT_DIR, BUCKET_NAME
 from functools import partial
@@ -256,9 +256,7 @@ if __name__ == "__main__":
                     )
 
                 if args.name_type[0] == "revChatGPT":
-                    first = {f"chatbot{n}": True for n in range(1, 8)}
                     revchatgpt = revChatGPTWrapper(
-                        first=first,
                         first_parse=first_parse,
                         logger=logger,
                         taxlabel=taxlabel,
@@ -266,9 +264,7 @@ if __name__ == "__main__":
                         args=args,
                     )
                 elif args.name_type[0] == "webChatGPT":
-                    first = True
                     webchatgpt = webChatGPTWrapper(
-                        first=first,
                         first_parse=first_parse,
                         logger=logger,
                         taxlabel=taxlabel,
@@ -335,8 +331,21 @@ if __name__ == "__main__":
                                 logger.info(
                                     "ChatGPT failed to respond. Idling for 5-10 minutes."
                                 )
+                                import subprocess
+                                # pkill firefox using subprocess
+                                subprocess.run("pkill firefox", shell=True)
                                 time.sleep(np.random.randint(300, 600))
+
+                                logger.info("Restarting chatbot")
+                                webchatgpt = webChatGPTWrapper(
+                                    first_parse=first_parse,
+                                    logger=logger,
+                                    taxlabel=taxlabel,
+                                    level=level,
+                                    args=args,
+                                )
                                 break
+
 
             logger.info("Finished level {}".format(str(level)))
         logger.info("Finished taxonomy {}".format(taxlabel))

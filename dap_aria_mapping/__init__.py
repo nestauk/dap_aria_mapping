@@ -20,6 +20,9 @@ def get_yaml_config(file_path: Path) -> Optional[dict]:
 # Define project base directory
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 
+# Define directory for images in app
+IMAGE_DIR = f"{PROJECT_DIR}/dap_aria_mapping/analysis/app/images"
+
 # Define log output locations
 info_out = str(PROJECT_DIR / "info.log")
 error_out = str(PROJECT_DIR / "errors.log")

@@ -2,12 +2,10 @@ import streamlit as st
 from PIL import Image
 import altair as alt
 from nesta_ds_utils.viz.altair import formatting
-from dap_aria_mapping import PROJECT_DIR
+from dap_aria_mapping import PROJECT_DIR, IMAGE_DIR
 formatting.setup_theme()
 
 PAGE_TITLE = "Change Makers"
-
-IMAGE_DIR = f"{PROJECT_DIR}/dap_aria_mapping/analysis/app/images"
 
 
 #icon to be used as the favicon on the browser tab

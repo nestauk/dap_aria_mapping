@@ -26,7 +26,7 @@ st.set_page_config(
     page_icon=icon
 )
 
-@st.cache_data
+@st.cache_data(show_spinner = "Loading data")
 def load_overview_data() -> Tuple[pl.DataFrame, pl.DataFrame, List[str]]:
     """loads in the volume per year chart and does initial formatting that is not impacted by filters
     caches results so the data is not loaded each time a filter is run
@@ -39,7 +39,7 @@ def load_overview_data() -> Tuple[pl.DataFrame, pl.DataFrame, List[str]]:
     volume_data = volume_per_year()
 
    #generate a list of the unique domain names to use as the filter
-    unique_domains = list(list(volume_data.select(pl.col("domain_name").unique()))[0])
+    unique_domains = volume_data["domain_name"].unique().to_list()
     unique_domains.insert(0,"All")
 
     #reformat the patent/publication counts to long form for the alignment chart
@@ -50,7 +50,7 @@ def load_overview_data() -> Tuple[pl.DataFrame, pl.DataFrame, List[str]]:
 
     return volume_data, alignment_data, unique_domains
 
-@st.cache_data
+@st.cache_data(show_spinner = "Filtering by domain")
 def filter_by_domain(domain: str, _volume_data: pl.DataFrame, _alignment_data: pl.DataFrame) -> Tuple[pl.DataFrame, pl.DataFrame, List[str]]:
     """filters volume data, alignment data, and filter options based on a Domain selection
 
@@ -64,10 +64,10 @@ def filter_by_domain(domain: str, _volume_data: pl.DataFrame, _alignment_data: p
     """
     volume_data = _volume_data.filter(pl.col("domain_name")==domain)
     alignment_data = _alignment_data.filter(pl.col("domain_name")==domain)
-    unique_areas = volume_data.select(pl.col("area_name")).unique().to_list()
+    unique_areas = volume_data["area_name"].unique().to_list()
     return volume_data, alignment_data, unique_areas
 
-@st.cache_data
+@st.cache_data(show_spinner = "Filtering by area")
 def filter_by_area(area:str, _volume_data: pl.DataFrame, _alignment_data: pl.DataFrame) -> Tuple[pl.DataFrame, pl.DataFrame, List[str]]:
     """filters volume data, alignment data, and filter options based on an area selection
 
@@ -81,7 +81,7 @@ def filter_by_area(area:str, _volume_data: pl.DataFrame, _alignment_data: pl.Dat
     """
     volume_data = _volume_data.filter(pl.col("area_name")==area)
     alignment_data = _alignment_data.filter(pl.col("area_name")==area)
-    unique_topics = volume_data.select(pl.col("topic_name")).unique().to_list()
+    unique_topics = volume_data["topic_name"].unique().to_list()
     return volume_data, alignment_data, unique_topics
 
 def group_emergence_by_level(_volume_data: pl.DataFrame, level: str, y_col: str) -> pl.DataFrame:

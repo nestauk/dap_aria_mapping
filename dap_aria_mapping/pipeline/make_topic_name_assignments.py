@@ -35,7 +35,7 @@ from dap_aria_mapping.getters.taxonomies import (
 from dap_aria_mapping.getters.openalex import get_openalex_works, get_openalex_entities
 from dap_aria_mapping.utils.entity_selection import get_sample, filter_entities
 from dap_aria_mapping.utils.topic_names import *
-from dap_aria_mapping.pipeline.chatgpt_utils import revChatGPTWrapper, webChatGPTWrapper
+from dap_aria_mapping.utils.chatgpt import revChatGPTWrapper, webChatGPTWrapper
 
 OUTPUT_DIR = PROJECT_DIR / "outputs" / "interim" / "topic_names"
 

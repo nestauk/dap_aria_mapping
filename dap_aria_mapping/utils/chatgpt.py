@@ -1,4 +1,3 @@
-# %%
 import numpy as np
 from typing import Dict, List, Any, Tuple, Sequence
 from revChatGPT.V1 import Chatbot
@@ -10,7 +9,7 @@ from dap_aria_mapping.getters.taxonomies import (
 import logging, random, time, ast, argparse
 from dap_aria_mapping import chatgpt_args
 
-# %%
+
 class revChatGPTWrapper:
     def __init__(
         self,

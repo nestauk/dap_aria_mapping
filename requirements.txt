@@ -21,4 +21,3 @@ polars==0.16.9
 typer
 streamlit
 st-click-detector @ git+https://github.com/ampudia19/st-click-detector.git
-st-clickable-images

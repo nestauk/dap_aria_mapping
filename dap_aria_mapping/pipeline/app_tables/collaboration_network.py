@@ -16,6 +16,17 @@ def docs_per_org(
     orgs_df: pl.DataFrame, 
     id_col: str = "publication_number", 
     org_name_col: str = "assignee_harmonized_names") -> Dict[str, int]:
+    """Creates a dataframe with the total number of documents generated per institution/organisation. 
+        Used to generate node weights.
+
+    Args:
+        orgs_df (pl.DataFrame): dataframe with institution/organisation names and document ids
+        id_col (str, optional): column to indicate a document id. Defaults to "publication_number".
+        org_name_col (str, optional): column to indicate the institution/organisation names. Defaults to "assignee_harmonized_names".
+
+    Returns:
+        Dict[str, int]: key: institution/organisastion name, value: total number of documents produced
+    """
 
     q = (
         orgs_df.lazy()
@@ -29,7 +40,20 @@ def docs_per_org(
 def node_data(
     orgs_df_with_topics: pl.DataFrame, 
     by: str = "topic", 
-    org_name_col: str = "assignee_harmonized_names"g) -> Dict[str, List[str]]:
+    org_name_col: str = "assignee_harmonized_names") -> Dict[str, List[str]]:
+    """generates a dictionary of domains, areas, or topics (specified with by) that an organisation/institution has
+    produced at least one document in. Used to populate node attributes.
+
+    Args:
+        orgs_df_with_topics (): dataframe with topic, area, and domain names and document ids
+        by (str, optional): either "domain", "area", or "topic". Specified what level to aggregate by. Defaults to "topic".
+        org_name_col (str, optional): column that specified organisation/institution name. Defaults to "assignee_harmonized_names".
+
+    Returns:
+        Dict[str, List[str]]: 
+            key: organisation/institution name, 
+            value: list of either domains, areas, or topics associated with the org/institution
+    """
     q = (
     orgs_df_with_topics.lazy()
     .groupby(org_name_col)
@@ -42,6 +66,17 @@ def get_edges(
     orgs_df: pl.DataFrame,
     id_col: str = "publication_number", 
     org_name_col: str = "assignee_harmonized_names") -> Dict[Tuple[str,str], int]:
+    """gets all pairs of orgs/institutions that have collaborated at least once on a document.
+        Used to created edges.
+
+    Args:
+        orgs_df (pl.DataFrame): dataframe with institution/organisation names and document ids
+        id_col (str, optional): column to indicate a document id. Defaults to "publication_number".
+        org_name_col (str, optional): column to indicate organisation/institution name. Defaults to "assignee_harmonized_names".
+
+    Returns:
+        Dict[Tuple[str,str], int]: key: pairs of institutions/organisations, value: total documents they have collaborated on
+    """
     q = (
         orgs_df.lazy()
         .unique(subset = [id_col, org_name_col])
@@ -58,6 +93,22 @@ def edge_data(
     by: str = "topic",
     id_col: str = "publication_number", 
     org_name_col: str = "assignee_harmonized_names") -> Dict[str, Dict[str, int]]:
+    """calculates the total number of documents within a domain, area, topic that a pair of institutions/orgs have collaborated on
+        Used to add metadata to the edges for filtering.
+
+    Args:
+        orgs_df_with_topics (pl.DataFrame): dataframe with topic, area, and domain names and document ids
+        by (str, optional): either "domain", "area", or "topic". Specified what level to aggregate by. Defaults to "topic".
+        id_col (str, optional): column to indicate a document id.. Defaults to "publication_number".
+        org_name_col (str, optional): column to indicate organisation/institution name. Defaults to "assignee_harmonized_names".
+
+    Returns:
+        Dict[Tuple[str, str], Dict[str, int]]: 
+            key: pair of institutions/organisations
+            value: 
+                key: area/domain/topic name as specified with "by"
+                value: count of number of times the pair has collaborated on the topic/area/domain
+    """
     q = (
         orgs_df_with_topics.lazy()
         .groupby([by, id_col])
@@ -91,18 +142,20 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--level",
-        default = "institutions"
+        default = "institutions",
         type=str,
         help = "options: institutions or individuals"
     )
 
     args = parser.parse_args()
 
-    if args.doc_type == "publications":
+    if args.doc_type == "publications" and args.level == "institutions":
+        logger.info("Loading openalex institutes data")
         institutions = pl.DataFrame(get_openalex_institutes()).select([pl.col("id"), pl.col("affiliation_string")])
         id_col = "id"
         org_name_col = "affiliation_string"
 
+        logger.info("Loading publications with topics")
         pubs_with_topics_df = pl.DataFrame(pd.DataFrame.from_dict(get_openalex_topics(tax = "cooccur", level = 3), orient='index').T.unstack().dropna().reset_index(drop=True, level=1).to_frame().reset_index())
         pubs_with_topics_df.columns = ["id", "topic"]
 

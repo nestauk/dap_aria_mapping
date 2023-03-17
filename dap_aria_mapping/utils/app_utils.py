@@ -71,6 +71,13 @@ def img_to_bytes(img_path: str) -> str:
 
 
 def create_hover_class(label: str, png_url: str, gif_url: str) -> None:
+    """Creates a hover class for a button in the Streamlit app.
+
+    Args:
+        label (str): The label of the button.
+        png_url (str): The url of the png image.
+        gif_url (str): The url of the gif image.
+    """    
     parent_dir = os.path.dirname(os.path.abspath(st_click_detector.__file__))
     build_dir = os.path.join(parent_dir, "frontend/build")
     with open(f"{build_dir}/bootstrap.min.css", "r") as f:

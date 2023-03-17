@@ -7,6 +7,7 @@ from streamlit_agraph import agraph, Node, Edge, Config
 import networkx as nx
 from typing import Tuple, List
 import polars as pl
+import math
 
 formatting.setup_theme()
 
@@ -118,7 +119,8 @@ def nx_to_agraph(_network: nx.Graph, filter_val: str, filter_field: str) -> Tupl
     """
     node_size = nx.get_node_attributes(_network, "overall_doc_count")
     edge_weight = nx.get_edge_attributes(_network, filter_field)
-    nodes = [Node(id=node, label = node, size = node_size[node]["publication_number"], shape = "dot") for node in _network.nodes()]
+    #log scale node size
+    nodes = [Node(id=node, label = node, size = math.log(node_size[node]["publication_number"]), shape = "dot") for node in _network.nodes()]
     edges = [Edge(source=edge[0], weight=edge_weight[edge][filter_val], target=edge[1]) for edge in _network.edges()]
     if len(nodes)>500:
         print("Warning: too many nodes to display, only displaying 500 nodes and edges")

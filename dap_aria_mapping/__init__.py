@@ -43,3 +43,7 @@ logger = logging.getLogger(__name__)
 # taxonomy config
 _base_config_path = Path(__file__).parent.resolve() / "config/taxonomy.yaml"
 taxonomy = get_yaml_config(_base_config_path)
+
+# tokens config
+_base_config_path = Path(__file__).parent.resolve() / "config/chatgpt_args.yaml"
+chatgpt_args = get_yaml_config(_base_config_path)

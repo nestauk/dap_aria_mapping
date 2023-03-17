@@ -12,6 +12,7 @@ from dap_aria_mapping.getters.cooccurrence_network import (
 )
 from dap_aria_mapping.getters.taxonomies import get_taxonomy_config
 import argparse
+from random import sample
 
 
 def generate_hierarchy(
@@ -99,9 +100,8 @@ def format_output(hierarchy: dict, total_splits: int) -> pd.DataFrame:
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(
-        description="Test Mode", formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
     parser.add_argument(
         "-t",
         "--test",
@@ -113,6 +113,13 @@ if __name__ == "__main__":
         "--local",
         action="store_true",
         help="save output locally rathern than to S3",
+    )
+
+    parser.add_argument(
+        "--sample_frac",
+        type = float,
+        action="store",
+        help="percent of total entities to sample for sensitivity analysis"
     )
     args = parser.parse_args()
 
@@ -128,6 +135,15 @@ if __name__ == "__main__":
             network = get_test_cooccurrence_network()
         else:
             network = get_cooccurrence_network()
+    
+    #if only running the algorithm on a sample, select a random sample of nodes from the network
+    if args.sample_frac is not None:
+        sample_size = int(args.sample_frac * network.number_of_nodes())
+        random_nodes = sample(list(network.nodes), k=sample_size)
+        network.remove_nodes_from([n for n in network if n not in random_nodes])
+    
+    print("Starting algorithm with {} entities".format(network.number_of_nodes()))
+
 
     # load taxonomy config file with parameters for community detection
     config = get_taxonomy_config()["community_detection"]
@@ -163,23 +179,32 @@ if __name__ == "__main__":
     print("Saving output")
     if args.local:
         if args.test:
-            output.to_parquet("outputs/test_community_detection_clusters.parquet", index=True)
+            output.to_parquet("outputs/community_detection_taxonomy/test.parquet", index=True)
         else:
-            output.to_parquet("outputs/community_detection_clusters.parquet", index=True)
+            output.to_parquet("outputs/community_detection_taxonomy/tax.parquet", index=True)
 
     
+    elif args.test:
+        upload_obj(
+                output,
+                BUCKET_NAME,
+                "outputs/community_detection_taxonomy/test.parquet",
+                kwargs_writing={"index": True},
+            )
+
+    elif args.sample_frac:
+        upload_obj(
+                output,
+                BUCKET_NAME,
+                "outputs/community_detection_taxonomy/{}.parquet".format(str(int(args.sample_frac*100))),
+                kwargs_writing={"index": True},
+            )
     else:
-        if args.test:
-            upload_obj(
+        upload_obj(
                 output,
                 BUCKET_NAME,
-                "outputs/test_community_detection_clusters.parquet",
+                "outputs/community_detection_taxonomy/tax.parquet",
                 kwargs_writing={"index": True},
             )
-        else:
-            upload_obj(
-                output,
-                BUCKET_NAME,
-                "outputs/community_detection_clusters.parquet",
-                kwargs_writing={"index": True},
-            )
+
+    

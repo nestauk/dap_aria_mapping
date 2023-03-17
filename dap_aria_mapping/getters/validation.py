@@ -54,18 +54,22 @@ def get_chisq(tax_name: str) -> Dict[str, int]:
     )
 
 
-def get_pairwise_depth(tax_name: str) -> Dict[str, Dict[str, int]]:
-    """gets a dictionary with the average pairwise depth of known
-        entities within topics and disciplines
+def get_pairwise_depth(tax_name: str, level: str) -> Dict[str, int]:
+    """gets a dictionary with the chi square test statistic that compares the frequency
+        distribution of entities/category to a uniform distribution
+
     Args:
         tax_name (str): name of taxonomy to load results. Options are: cooccur, centroids, imbalanced
+        level (str): either 'topic' or 'subtopic'
 
     Returns:
-        dict: key: topic, value: dict: key: discipline, value: average pairwise depth of entities
+        dict: key: taxonomy name, value: dict: key: level, value: chisq stat
     """
     return download_obj(
         BUCKET_NAME,
-        "outputs/validation_metrics/pairwise_depths/{}.json".format(tax_name),
+        "outputs/validation_metrics/pairwise_depths/{}_level/{}.json".format(
+            level, tax_name
+        ),
         download_as="dict",
     )
 

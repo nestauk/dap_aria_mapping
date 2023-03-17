@@ -104,7 +104,7 @@ def get_simulation_topic_distances(
 
 
 def get_simulation_pairwise_combinations(
-    taxonomy_class: str, ratio: str, simulation: str
+    taxonomy_class: str, ratio: str, simulation: str, topic_class: str = "topic"
 ) -> Dict[int, Dict[str, str]]:
     """Gets the pairwise combinations of pre-specified entities for a given simulation.
 
@@ -117,9 +117,10 @@ def get_simulation_pairwise_combinations(
         pd.DataFrame: A dictionary of dictionaries containing the topic names,
             and the frequency with which pairs survive at each level.
     """
+    assert topic_class in ["topic", "subtopic"]
     ratio_str = "ratio" if simulation == "noise" else "sample"
     return download_obj(
         BUCKET_NAME,
-        f"outputs/simulations/{simulation}/metrics/pairwise/class_{taxonomy_class}_{ratio_str}_{ratio}.parquet",
+        f"outputs/simulations/{simulation}/metrics/pairwise/{topic_class}_class_{taxonomy_class}_{ratio_str}_{ratio}.json",
         download_as="dict",
     )

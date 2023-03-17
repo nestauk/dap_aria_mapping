@@ -26,6 +26,7 @@ from functools import partial
 from itertools import islice
 from revChatGPT.V1 import Chatbot
 from chatgpt_wrapper import ChatGPT, AsyncChatGPT
+from nesta_ds_utils.loading_saving.S3 import get_bucket_filenames_s3
 from dap_aria_mapping.getters.taxonomies import (
     get_cooccurrence_taxonomy,
     get_semantic_taxonomy,
@@ -86,7 +87,8 @@ if __name__ == "__main__":
         nargs="+",
         help=(
             "The type of taxonomy to use. Can be a single taxonomy or a sequence \
-            of taxonomies, and accepts 'cooccur', 'centroids' or 'imbalanced' as tags."
+            of taxonomies, and accepts 'cooccur', 'centroids', 'imbalanced', \
+            'revChatGPT', or 'webChatGPT' as tags."
         ),
         required=True,
     )
@@ -205,12 +207,10 @@ if __name__ == "__main__":
                     n_top=args.n_top,
                 )
 
-                files_with_name = [
-                    file.key
-                    for file in bucket.objects.filter(
-                        Prefix=f"outputs/topic_names/class_{taxlabel}_nametype_chatgpt_top_{args.n_top}_level_{level}.json"
-                    )
-                ]
+                files_with_name = get_bucket_filenames_s3(
+                    bucket_name=BUCKET_NAME,
+                    prefix=f"outputs/topic_names/class_{taxlabel}_nametype_chatgpt_top_{args.n_top}_level_{level}.json",
+                )
 
                 if len(files_with_name) > 0:
                     logger.info("ChatGPT names already exist")
@@ -332,6 +332,7 @@ if __name__ == "__main__":
                                     "ChatGPT failed to respond. Idling for 5-10 minutes."
                                 )
                                 import subprocess
+
                                 # pkill firefox using subprocess
                                 subprocess.run("pkill firefox", shell=True)
                                 time.sleep(np.random.randint(300, 600))
@@ -345,7 +346,6 @@ if __name__ == "__main__":
                                     args=args,
                                 )
                                 break
-
 
             logger.info("Finished level {}".format(str(level)))
         logger.info("Finished taxonomy {}".format(taxlabel))

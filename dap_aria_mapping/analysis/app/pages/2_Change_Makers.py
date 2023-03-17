@@ -120,8 +120,21 @@ def nx_to_agraph(_network: nx.Graph, filter_val: str, filter_field: str) -> Tupl
     node_size = nx.get_node_attributes(_network, "overall_doc_count")
     edge_weight = nx.get_edge_attributes(_network, filter_field)
     #log scale node size
-    nodes = [Node(id=node, label = node, size = math.log(node_size[node]["publication_number"]), shape = "dot") for node in _network.nodes()]
-    edges = [Edge(source=edge[0], weight=edge_weight[edge][filter_val], target=edge[1]) for edge in _network.edges()]
+    nodes = [
+        Node(
+            id=node,
+            label = node,
+            size = math.log(node_size[node]["publication_number"]),
+            shape = "dot",
+            color = "0000FF")
+            for node in _network.nodes()]
+    edges = [
+        Edge(
+            source=edge[0],
+            weight=edge_weight[edge][filter_val],
+            target=edge[1],
+            color = "EB003B"
+            ) for edge in _network.edges()]
     if len(nodes)>500:
         print("Warning: too many nodes to display, only displaying 500 nodes and edges")
         return nodes[:500], edges[:500]

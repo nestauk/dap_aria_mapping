@@ -1,7 +1,6 @@
 import argparse
 from dap_aria_mapping.getters.openalex import get_openalex_institutes, get_openalex_topics
 from dap_aria_mapping.getters.patents import get_patents, get_patent_topics
-from dap_aria_mapping.getters.taxonomies import get_topic_names
 import polars as pl
 import pandas as pd
 import networkx as nx
@@ -156,9 +155,19 @@ if __name__ == "__main__":
         org_name_col = "affiliation_string"
 
         logger.info("Loading publications with topics")
-        pubs_with_topics_df = pl.DataFrame(pd.DataFrame.from_dict(get_openalex_topics(tax = "cooccur", level = 3), orient='index').T.unstack().dropna().reset_index(drop=True, level=1).to_frame().reset_index())
+        pubs_with_topics_df = pl.DataFrame(
+            pd.DataFrame.from_dict(
+                get_openalex_topics(tax = "cooccur", level = 3), orient='index')
+                .T
+                .unstack()
+                .dropna()
+                .reset_index(drop=True, level=1)
+                .to_frame()
+                .reset_index()
+                )
         pubs_with_topics_df.columns = ["id", "topic"]
 
+        # add institutions affiliated with authors to publications tagged with topics
         orgs_df = pubs_with_topics_df.join(institutions, on = "id", how = "left")
     
     elif args.doc_type == "patents" and args.level == "institution":

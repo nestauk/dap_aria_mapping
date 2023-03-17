@@ -1,10 +1,10 @@
 import streamlit as st
-from st_click_detector import click_detector, create_hover_class
+from st_click_detector import click_detector
 from streamlit.components.v1 import html
 from PIL import Image
 from nesta_ds_utils.viz.altair import formatting
 from dap_aria_mapping import PROJECT_DIR
-from dap_aria_mapping.utils.app_utils import img_to_bytes, nav_page_from_image
+from dap_aria_mapping.utils.app_utils import img_to_bytes, nav_page_from_image, create_hover_class
 
 formatting.setup_theme()
 

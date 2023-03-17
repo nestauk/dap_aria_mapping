@@ -2,10 +2,10 @@
 """
 import pandas as pd
 import polars as pl
-import base64
+import base64, re, os
 from pathlib import Path
 from streamlit.components.v1 import html
-
+import st_click_detector
 
 def convert_to_pandas(_df: pl.DataFrame) -> pd.DataFrame:
     """converts polars dataframe to pandas dataframe
@@ -68,3 +68,35 @@ def img_to_bytes(img_path: str) -> str:
     img_bytes = Path(img_path).read_bytes()
     encoded_img = base64.b64encode(img_bytes).decode()
     return encoded_img
+
+
+def create_hover_class(label: str, png_url: str, gif_url: str) -> None:
+    parent_dir = os.path.dirname(os.path.abspath(st_click_detector.__file__))
+    build_dir = os.path.join(parent_dir, "frontend/build")
+    with open(f"{build_dir}/bootstrap.min.css", "r") as f:
+        css = f.read()
+
+    str_default = re.findall('(?=(?s)\n.%s)((?s).*})' % label, css, re.M)
+    str_hover = re.findall('(?=(?s)\n.%s:hover)((?s).*})' % label, css, re.M)
+
+    if all([len(str_default) > 0, len(str_hover) > 0]):
+        css = css.replace(str_default[0], "")
+        css = css.replace(str_hover[0], "")
+
+    s = (
+        "\n" \
+        f".{label} {{\n  " \
+        "object-position: -99999px 99999px;\n  " \
+        f"background:transparent url('{png_url}');\n  " \
+        "background-size: cover;\n" \
+        "}\n" \
+        f".{label}:hover {{\n  " \
+        f"background-image: url('{gif_url}');\n  " \
+        "background-size: cover;\n" \
+        "}"
+    )
+
+    css = css + s
+
+    with open(f"{build_dir}/bootstrap.min.css", "w") as f:
+        f.write(css)

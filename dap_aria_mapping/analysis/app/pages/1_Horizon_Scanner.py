@@ -64,7 +64,7 @@ def filter_by_domain(domain: str, _volume_data: pl.DataFrame, _alignment_data: p
     """
     volume_data = _volume_data.filter(pl.col("domain_name")==domain)
     alignment_data = _alignment_data.filter(pl.col("domain_name")==domain)
-    unique_areas = list(list(volume_data.select(pl.col("area_name").unique()))[0])
+    unique_areas = volume_data.select(pl.col("area_name")).unique().to_list()
     return volume_data, alignment_data, unique_areas
 
 @st.cache_data
@@ -81,7 +81,7 @@ def filter_by_area(area:str, _volume_data: pl.DataFrame, _alignment_data: pl.Dat
     """
     volume_data = _volume_data.filter(pl.col("area_name")==area)
     alignment_data = _alignment_data.filter(pl.col("area_name")==area)
-    unique_topics = list(list(volume_data.select(pl.col("topic_name").unique()))[0])
+    unique_topics = volume_data.select(pl.col("topic_name")).unique().to_list()
     return volume_data, alignment_data, unique_topics
 
 def group_emergence_by_level(_volume_data: pl.DataFrame, level: str, y_col: str) -> pl.DataFrame:

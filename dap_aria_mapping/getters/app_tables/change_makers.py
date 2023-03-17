@@ -14,6 +14,8 @@ def get_collaboration_network(dataset: str) -> nx.Graph:
     """
     if dataset == "Industry":
         return download_obj(BUCKET_NAME, "outputs/app_data/change_makers/networks/patent_institutions.pkl")
+    elif dataset == "Academia":
+        return download_obj(BUCKET_NAME, "outputs/app_data/change_makers/networks/publications_institutions.pkl")
     else:
         return "Not implemented"
 

@@ -2,7 +2,7 @@ import streamlit as st
 from PIL import Image
 import altair as alt
 from nesta_ds_utils.viz.altair import formatting
-from dap_aria_mapping import PROJECT_DIR
+from dap_aria_mapping import PROJECT_DIR, IMAGE_DIR
 from dap_aria_mapping.getters.app_tables.horizon_scanner import volume_per_year
 from dap_aria_mapping.utils.app_utils import convert_to_pandas
 from dap_aria_mapping.getters.taxonomies import get_topic_names
@@ -13,8 +13,6 @@ from typing import List, Tuple
 formatting.setup_theme()
 
 PAGE_TITLE = "Horizon Scanner"
-
-IMAGE_DIR = f"{PROJECT_DIR}/dap_aria_mapping/analysis/app/images"
 
 #icon to be used as the favicon on the browser tab
 icon = Image.open(f"{IMAGE_DIR}/hs_icon.ico")

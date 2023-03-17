@@ -70,11 +70,15 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--doc_type",
+        default="patents",
+        type=str,
         help="options: patents or publications",
     )
 
     parser.add_argument(
         "--level",
+        default = "institutions"
+        type=str,
         help = "options: institutions or individuals"
     )
 
@@ -130,7 +134,7 @@ if __name__ == "__main__":
     nx.set_edge_attributes(network, edge_data(orgs_df_with_topics, by="domain_name"), "domains")
 
     logger.info("Saving network to S3")
-    upload_obj(network, BUCKET_NAME, "outputs/app_data/change_makers/networks/patent_institutions.pkl")
+    upload_obj(network, BUCKET_NAME, "outputs/app_data/change_makers/networks/{}_{}.pkl".format(args.doc_type, args.level))
     
 
 

@@ -18,14 +18,10 @@ Raises:
 Returns:
     json: A json file containing the topic names, saved to S3.
 """
-import pandas as pd
-import argparse, json, boto3, time, os, ast, subprocess
+import argparse, json, boto3, time, subprocess
 from toolz import pipe
 from dap_aria_mapping import logger, PROJECT_DIR, BUCKET_NAME
 from functools import partial
-from itertools import islice
-from revChatGPT.V1 import Chatbot
-from chatgpt_wrapper import ChatGPT, AsyncChatGPT
 from nesta_ds_utils.loading_saving.S3 import get_bucket_filenames_s3
 from dap_aria_mapping.getters.taxonomies import (
     get_cooccurrence_taxonomy,
@@ -38,15 +34,6 @@ from dap_aria_mapping.utils.topic_names import *
 from dap_aria_mapping.utils.chatgpt import revChatGPTWrapper, webChatGPTWrapper
 
 OUTPUT_DIR = PROJECT_DIR / "outputs" / "interim" / "topic_names"
-
-
-def chunked(it, size):
-    it = iter(it)
-    while True:
-        p = tuple(islice(it, size))
-        if not p:
-            break
-        yield p
 
 
 def save_names(
@@ -209,7 +196,7 @@ if __name__ == "__main__":
 
                 files_with_name = get_bucket_filenames_s3(
                     bucket_name=BUCKET_NAME,
-                    prefix=f"outputs/topic_names/class_{taxlabel}_nametype_chatgpt_top_{args.n_top}_level_{level}.json",
+                    dir_name=f"outputs/topic_names/class_{taxlabel}_nametype_chatgpt_top_{args.n_top}_level_{level}.json",
                 )
 
                 if len(files_with_name) > 0:

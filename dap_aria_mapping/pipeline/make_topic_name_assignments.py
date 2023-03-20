@@ -20,9 +20,9 @@ Returns:
 """
 import argparse, json, boto3, time, subprocess
 from toolz import pipe
-from dap_aria_mapping import logger, PROJECT_DIR, BUCKET_NAME
 from functools import partial
 from nesta_ds_utils.loading_saving.S3 import get_bucket_filenames_s3
+from dap_aria_mapping import logger, PROJECT_DIR, BUCKET_NAME, chatgpt_args
 from dap_aria_mapping.getters.taxonomies import (
     get_cooccurrence_taxonomy,
     get_semantic_taxonomy,
@@ -32,8 +32,6 @@ from dap_aria_mapping.getters.openalex import get_openalex_works, get_openalex_e
 from dap_aria_mapping.utils.entity_selection import get_sample, filter_entities
 from dap_aria_mapping.utils.topic_names import *
 from dap_aria_mapping.utils.chatgpt import revChatGPTWrapper, webChatGPTWrapper
-
-OUTPUT_DIR = PROJECT_DIR / "outputs" / "interim" / "topic_names"
 
 
 def save_names(
@@ -273,6 +271,37 @@ if __name__ == "__main__":
                         (topic, entity_names[topic]) for topic in random_sample
                     ]
 
+                    chunk_str = "\n\n ".join(
+                        ["List " + ': "'.join(x) + '"' for x in sample_entities]
+                    )
+
+                    first_query = (
+                        chatgpt_args["QUESTION"]
+                        + " \n\n "
+                        + f"{chunk_str}"
+                        + " \n\n "
+                        + chatgpt_args["CLARIFICATION"]
+                        + " \n\n"
+                        + chatgpt_args["EXAMPLE"]
+                        + " \n\n"
+                        + chatgpt_args["REQUEST"]
+                    )
+
+                    routine_query = (
+                        chatgpt_args["NEXT"]
+                        + f"\n\n {chunk_str} \n\n"
+                        + chatgpt_args["CLARIFICATION"]
+                        + "\n\n"
+                        + chatgpt_args["EXAMPLE"]
+                    )
+
+                    error_query = (
+                        chatgpt_args["ERROR"]
+                        + "\n\n"
+                        + chatgpt_args["EXAMPLE"]
+                        + "\n\n Please try again. Only return the list in the required structure. \n\n"
+                    )
+
                     tries = 0
                     while True:
                         logger.info("Asking ChatGPT")
@@ -282,13 +311,17 @@ if __name__ == "__main__":
                                 chatgpt_names = revchatgpt(
                                     chatbot_num=chatbot_num,
                                     chatgpt_names=chatgpt_names,
-                                    sample_entities=sample_entities,
+                                    first_query=first_query,
+                                    routine_query=routine_query,
+                                    error_query=error_query,
                                 )
                             elif args.name_type[0] == "webChatGPT":
                                 chatgpt_names = webchatgpt(
                                     chatgpt_names=chatgpt_names,
-                                    sample_entities=sample_entities,
                                     tries=tries,
+                                    first_query=first_query,
+                                    routine_query=routine_query,
+                                    error_query=error_query,
                                 )
 
                             # Update number of topics with names & pending groups
@@ -318,8 +351,6 @@ if __name__ == "__main__":
                                 logger.info(
                                     "ChatGPT failed to respond. Idling for 5-10 minutes."
                                 )
-                                import subprocess
-
                                 # pkill firefox using subprocess
                                 subprocess.run("pkill firefox", shell=True)
                                 time.sleep(np.random.randint(300, 600))

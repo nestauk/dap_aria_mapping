@@ -37,13 +37,12 @@ class revChatGPTWrapper:
         self,
         chatbot_num: int,
         chatgpt_names: Dict[str, Dict[str, Any]],
-        sample_entities: List[List[str]],
+        first_query: str,
+        routine_query: str,
+        error_query: str,
     ) -> Dict[str, Sequence[Tuple[str, str, int, List[str]]]]:
 
         chatbot = self.chatbots[f"chatbot{chatbot_num}"]
-        chunk_str = "\n\n ".join(
-            ["List " + ': "'.join(x) + '"' for x in sample_entities]
-        )
 
         if self.first[f"chatbot{chatbot_num}"]:
             for data in chatbot.ask(
@@ -51,28 +50,10 @@ class revChatGPTWrapper:
             ):
                 response = data["message"]
 
-            query = (
-                chatgpt_args["QUESTION"]
-                + " \n\n "
-                + f"{chunk_str}"
-                + " \n\n "
-                + chatgpt_args["CLARIFICATION"]
-                + " \n\n"
-                + chatgpt_args["EXAMPLE"]
-                + " \n\n"
-                + chatgpt_args["REQUEST"]
-            )
-            for data in chatbot.ask(query):
+            for data in chatbot.ask(first_query):
                 response = data["message"]
         else:
-            query = (
-                chatgpt_args["NEXT"]
-                + f"\n\n {chunk_str} \n\n"
-                + chatgpt_args["CLARIFICATION"]
-                + "\n\n"
-                + chatgpt_args["EXAMPLE"]
-            )
-            for data in chatbot.ask(query):
+            for data in chatbot.ask(routine_query):
                 response = data["message"]
 
         # Attempt to convert to list, if exception, try making it explicit
@@ -85,13 +66,7 @@ class revChatGPTWrapper:
                 f"Your response is not a list with the requested structure. Remember that I only want the topic name that best describes the group of entities, and a confidence score between 0 and 100 on how sure you are about the answer. If confidence is not high, also provide a list of entities that, if discarded, would help identify a topic. The structure of the answer should be a list of tuples of four elements: [(list identifier, topic name, confidence score, list of entities to discard (None if there are none)), ... ]. For example:utine idling - Sleeping for {sleep_time} seconds"
             )
             time.sleep(sleep_time)
-            query = (
-                chatgpt_args["ERROR"]
-                + "\n\n"
-                + chatgpt_args["EXAMPLE"]
-                + "\n\n Please try again. \n\n"
-            )
-            for data in chatbot.ask(query):
+            for data in chatbot.ask(error_query):
                 response = data["message"]
 
         # In case it failed to output a list the first time but not the second
@@ -159,37 +134,17 @@ class webChatGPTWrapper:
 
     def __call__(
         self,
-        sample_entities: List[List[str]],
         chatgpt_names: Dict[str, Sequence[Tuple[str, str, int, List[str]]]],
+        first_query: str,
+        routine_query: str,
+        error_query: str,
         tries: int,
     ) -> Dict[str, Sequence[Tuple[str, str, int, List[str]]]]:
 
-        chunk_str = "\n\n ".join(
-            ["List " + ': "'.join(x) + '"' for x in sample_entities]
-        )
-
         if self.first:
-            query = (
-                chatgpt_args["QUESTION"]
-                + " \n\n "
-                + f"{chunk_str}"
-                + " \n\n "
-                + chatgpt_args["CLARIFICATION"]
-                + " \n\n"
-                + chatgpt_args["EXAMPLE"]
-                + " \n\n"
-                + chatgpt_args["REQUEST"]
-            )
-            response = self.bot.ask(query)
+            response = self.bot.ask(first_query)
         else:
-            query = (
-                chatgpt_args["NEXT"]
-                + f"\n\n {chunk_str} \n\n"
-                + chatgpt_args["CLARIFICATION"]
-                + "\n\n"
-                + chatgpt_args["EXAMPLE"]
-            )
-            response = self.bot.ask(query)
+            response = self.bot.ask(routine_query)
 
         # Attempt to convert to list, if exception, try making it explicit
         try:
@@ -202,13 +157,7 @@ class webChatGPTWrapper:
             self.logger.info(f"Routine idling - Sleeping for {sleep_time} seconds")
             time.sleep(sleep_time)
             if tries > 2:
-                query = (
-                    chatgpt_args["ERROR"]
-                    + "\n\n"
-                    + chatgpt_args["EXAMPLE"]
-                    + "\n\n Please try again. Only return the list in the required structure. \n\n"
-                )
-                response = self.bot.ask(query)
+                response = self.bot.ask(error_query)
 
         # In case it failed to output a list the first time but not the second
         try:

@@ -107,7 +107,6 @@ def filter_by_topic(topic: str, _network: nx.Graph) -> nx.Graph:
 @st.cache_data
 def nx_to_agraph(_network: nx.Graph, filter_val: str, filter_field: str) -> Tuple[List[Node], List[Edge]]:
     """convert networkx graph to lists of streamlit-agraph nodes and edges.
-    Only returns a maximum of 500 nodes/edges
 
     Args:
         network (nx.Graph): networkx graph
@@ -126,7 +125,7 @@ def nx_to_agraph(_network: nx.Graph, filter_val: str, filter_field: str) -> Tupl
             label = node,
             size = math.log(node_size[node]["publication_number"]),
             shape = "dot",
-            color = "0000FF")
+            color = "#0f294a")
             for node in _network.nodes()]
     edges = [
         Edge(
@@ -135,11 +134,8 @@ def nx_to_agraph(_network: nx.Graph, filter_val: str, filter_field: str) -> Tupl
             target=edge[1],
             color = "EB003B"
             ) for edge in _network.edges()]
-    if len(nodes)>500:
-        print("Warning: too many nodes to display, only displaying 500 nodes and edges")
-        return nodes[:500], edges[:500]
-    else:
-        return nodes, edges
+            
+    return nodes, edges
 
 
 header1, header2 = st.columns([1,10])

@@ -1,12 +1,12 @@
 import argparse
-from dap_aria_mapping.getters.openalex import get_openalex_institutes, get_openalex_topics
+from dap_aria_mapping.getters.openalex import get_openalex_institutes, get_openalex_topics, get_openalex_authorships
 from dap_aria_mapping.getters.patents import get_patents, get_patent_topics
 import polars as pl
 import pandas as pd
 import networkx as nx
 from dap_aria_mapping.utils.app_data_utils import expand_topic_col, add_area_domain_chatgpt_names
 from dap_aria_mapping import BUCKET_NAME, logger
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Union
 from itertools import combinations, chain
 from collections import Counter, defaultdict
 from nesta_ds_utils.loading_saving.S3 import upload_obj
@@ -14,7 +14,8 @@ from nesta_ds_utils.loading_saving.S3 import upload_obj
 def docs_per_org(
     orgs_df: pl.DataFrame, 
     id_col: str = "publication_number", 
-    org_name_col: str = "assignee_harmonized_names") -> Dict[str, int]:
+    org_name_col: str = "assignee_harmonized_names",
+    top_n: Union[int, bool] = False) -> Union[Dict[str, int], Tuple[Dict[str,int], List[str]]]:
     """Creates a dataframe with the total number of documents generated per institution/organisation. 
         Used to generate node weights.
 
@@ -22,18 +23,24 @@ def docs_per_org(
         orgs_df (pl.DataFrame): dataframe with institution/organisation names and document ids
         id_col (str, optional): column to indicate a document id. Defaults to "publication_number".
         org_name_col (str, optional): column to indicate the institution/organisation names. Defaults to "assignee_harmonized_names".
+        top_n (str, optional): if this is included, filter the results to only include the top_n organisations by count of total documents
 
     Returns:
         Dict[str, int]: key: institution/organisastion name, value: total number of documents produced
     """
-
     q = (
         orgs_df.lazy()
         .unique(subset = [id_col,org_name_col])
         .groupby(org_name_col)
         .agg([pl.count(id_col)])
+        .sort(id_col, descending = True, nulls_last = True)
         )
-    return q.collect().to_pandas().set_index(org_name_col).to_dict(orient = "index")
+    if top_n:
+        df = q.collect().limit(top_n).to_pandas()
+        top_orgs = df[org_name_col].to_list()
+        return (df.set_index(org_name_col).to_dict(orient = "index"), top_orgs)
+    else:
+        return q.collect().to_pandas().set_index(org_name_col).to_dict(orient = "index")
 
 
 def node_data(
@@ -146,15 +153,22 @@ if __name__ == "__main__":
         help = "options: institutions or individuals"
     )
 
+    parser.add_argument(
+        "--top_n",
+        default= False,
+        type = int,
+        required=False
+    )
+
     args = parser.parse_args()
 
     if args.doc_type == "publications" and args.level == "institutions":
-        logger.info("Loading openalex institutes data")
-        institutions = pl.DataFrame(get_openalex_institutes()).select([pl.col("id"), pl.col("affiliation_string")])
+        print("Loading openalex institutes data")
+        authorships = pl.DataFrame(get_openalex_authorships()).select([pl.col("id"), pl.col("affiliation_string")])
         id_col = "id"
         org_name_col = "affiliation_string"
 
-        logger.info("Loading publications with topics")
+        print("Loading publications with topics")
         pubs_with_topics_df = pl.DataFrame(
             pd.DataFrame.from_dict(
                 get_openalex_topics(tax = "cooccur", level = 3), orient='index')
@@ -168,9 +182,14 @@ if __name__ == "__main__":
         pubs_with_topics_df.columns = ["id", "topic"]
 
         # add institutions affiliated with authors to publications tagged with topics
-        orgs_df = pubs_with_topics_df.join(institutions, on = "id", how = "left")
+        # filter out publications that we don't have org names for
+        # NOTE: WE HAVE ORG NAMES FOR 2,491,974 OUT OF 2,522,837 PUBLICATIONS
+        orgs_df = pubs_with_topics_df.join(
+            authorships, on = "id", how = "left"
+            ).filter(
+                ~pl.all(pl.col('affiliation_string').is_null()))
     
-    elif args.doc_type == "patents" and args.level == "institution":
+    elif args.doc_type == "patents" and args.level == "institutions":
         id_col = "publication_number"
         org_name_col = "assignee_harmonized_names"
         logger.info("Loading Patent Data")
@@ -200,25 +219,34 @@ if __name__ == "__main__":
     orgs_df_with_topics = add_area_domain_chatgpt_names(
         expand_topic_col(orgs_df).unique(subset=[id_col, "topic", org_name_col]))
 
-    logger.info("GENERATING NETWORK")
+    print("GENERATING NETWORK")
     network = nx.Graph()
 
-    logger.info("Adding nodes with the following attributes: topics, areas, domains")
-    network.add_nodes_from(set(orgs_df[org_name_col]))
-    nx.set_node_attributes(network, docs_per_org(orgs_df), "overall_doc_count")
-    nx.set_node_attributes(network, node_data(orgs_df_with_topics, "topic_name"), "topics")
-    nx.set_node_attributes(network, node_data(orgs_df_with_topics, "area_name"), "areas")
-    nx.set_node_attributes(network, node_data(orgs_df_with_topics, "domain_name"), "domains")
+    print("Adding nodes with the following attributes: topics, areas, domains")
+    if args.top_n:
+        print("Only including top {} orgs".format(args.top_n))
+        node_metadata, nodes =  docs_per_org(orgs_df, id_col, org_name_col, top_n = args.top_n)
+        orgs_df = orgs_df.filter(pl.col(org_name_col).is_in(nodes))
+        orgs_df_with_topics = orgs_df_with_topics.filter(pl.col(org_name_col).is_in(nodes))
+        network.add_nodes_from(nodes)
+    else:
+        node_metadata = docs_per_org(orgs_df, id_col, org_name_col)
+        network.add_nodes_from(set(orgs_df[org_name_col]))
 
-    logger.info("Adding edges")
-    edges = get_edges(orgs_df)
+    nx.set_node_attributes(network,node_metadata, "overall_doc_count")
+    nx.set_node_attributes(network, node_data(orgs_df_with_topics, "topic_name", org_name_col), "topics")
+    nx.set_node_attributes(network, node_data(orgs_df_with_topics, "area_name", org_name_col), "areas")
+    nx.set_node_attributes(network, node_data(orgs_df_with_topics, "domain_name", org_name_col), "domains")
+
+    print("Adding edges")
+    edges = get_edges(orgs_df, id_col, org_name_col)
     network.add_edges_from(list(edges.keys()))
     nx.set_edge_attributes(network, edges, "overall_doc_count")
-    nx.set_edge_attributes(network, edge_data(orgs_df_with_topics, by="topic_name"), "topics")
-    nx.set_edge_attributes(network, edge_data(orgs_df_with_topics, by="area_name"), "areas")
-    nx.set_edge_attributes(network, edge_data(orgs_df_with_topics, by="domain_name"), "domains")
+    nx.set_edge_attributes(network, edge_data(orgs_df_with_topics, by="topic_name", id_col= id_col, org_name_col = org_name_col), "topics")
+    nx.set_edge_attributes(network, edge_data(orgs_df_with_topics, by="area_name", id_col= id_col, org_name_col= org_name_col), "areas")
+    nx.set_edge_attributes(network, edge_data(orgs_df_with_topics, by="domain_name", id_col= id_col, org_name_col= org_name_col), "domains")
 
-    logger.info("Saving network to S3")
+    print("Saving network to S3")
     upload_obj(network, BUCKET_NAME, "outputs/app_data/change_makers/networks/{}_{}.pkl".format(args.doc_type, args.level))
     
 

@@ -117,6 +117,14 @@ def get_openalex_cd_scores(year: int) -> Dict[str, int]:
         download_as="dict",
     )
 
+def get_openalex_institutes():
+    return download_obj(
+        AI_GENOMICS_BUCKET_NAME,
+        "inputs/openalex/institutions.json",
+        download_as="dict",
+    )
+
+
 #########TEMPORARY AI GENOMICS GETTERS##########################
 
 
@@ -201,7 +209,7 @@ def get_openalex_genomics_abstracts() -> Dict[str, str]:
     )
 
 
-def get_openalex_institutes() -> pd.DataFrame:
+def get_openalex_ai_genomics_institutes() -> pd.DataFrame:
     """From S3 loads institutes information for work ids, including:
     - work_id;
     - auth_display_name;

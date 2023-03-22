@@ -78,7 +78,8 @@ def get_openalex_entities() -> Mapping[str, Mapping[str, Union[str, str]]]:
         download_as="dict",
     )
 
-def get_openalex_topics(tax: str = 'cooccur', level: int = 1) -> Dict[str, List[str]]:
+
+def get_openalex_topics(tax: str = "cooccur", level: int = 1) -> Dict[str, List[str]]:
     """gets openalex document ids tagged with topics from the specified taxonomy
     at a given level
 
@@ -96,9 +97,10 @@ def get_openalex_topics(tax: str = 'cooccur', level: int = 1) -> Dict[str, List[
 
     return download_obj(
         BUCKET_NAME,
-        "outputs/docs_with_topics/{}/openalex/Level_{}.json".format(tax,str(level)),
+        "outputs/docs_with_topics/{}/openalex/Level_{}.json".format(tax, str(level)),
         download_as="dict",
     )
+
 
 #########TEMPORARY AI GENOMICS GETTERS##########################
 
@@ -229,6 +231,22 @@ def get_openalex_forward_citations(
     return download_obj(
         BUCKET_NAME,
         f"{directory}{fname}",
+        download_as="dict",
+    )
+
+
+def get_openalex_cd_scores(year: int) -> Dict:
+    """From S3 loads openalex CD scores for a given year..
+
+    Args:
+        year (int): The year for which to fetch CD scores.
+
+    Returns:
+        Dict: Dictionary mapping work IDs to CD scores.
+    """
+    return download_obj(
+        BUCKET_NAME,
+        f"outputs/openalex_cd_scores_{year}.json",
         download_as="dict",
     )
 

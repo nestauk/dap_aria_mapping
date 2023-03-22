@@ -4,6 +4,7 @@ from dap_aria_mapping.getters.patents import get_patents, get_patent_topics
 import polars as pl
 import pandas as pd
 import networkx as nx
+import pickle
 from dap_aria_mapping.utils.app_data_utils import expand_topic_col, add_area_domain_chatgpt_names
 from dap_aria_mapping import BUCKET_NAME, logger
 from typing import List, Dict, Tuple, Union
@@ -246,8 +247,9 @@ if __name__ == "__main__":
     nx.set_edge_attributes(network, edge_data(orgs_df_with_topics, by="area_name", id_col= id_col, org_name_col= org_name_col), "areas")
     nx.set_edge_attributes(network, edge_data(orgs_df_with_topics, by="domain_name", id_col= id_col, org_name_col= org_name_col), "domains")
 
-    print("Saving network to S3")
-    upload_obj(network, BUCKET_NAME, "outputs/app_data/change_makers/networks/{}_{}.pkl".format(args.doc_type, args.level))
-    
+    print("Saving network")
+    #upload_obj(network, BUCKET_NAME, "outputs/app_data/change_makers/networks/{}_{}.pkl".format(args.doc_type, args.level))
+    with open("outputs/academia_institutions.pickle", "wb") as f:
+        pickle.dump(network, f)
 
 

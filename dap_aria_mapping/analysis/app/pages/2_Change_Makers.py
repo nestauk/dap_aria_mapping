@@ -24,7 +24,7 @@ st.set_page_config(
     page_icon=icon
 )
 
-@st.cache_data
+@st.cache_data(show_spinner = "Loading Data")
 def load_networks(dataset: str) -> nx.Graph:
     """get the collaboration network for either patents or publications
 
@@ -36,7 +36,7 @@ def load_networks(dataset: str) -> nx.Graph:
     """
     return get_collaboration_network(dataset)
 
-@st.cache_data
+@st.cache_data(show_spinner = "Loading Data")
 def load_filter_data(dataset: str) -> Tuple[pl.DataFrame, List[str]]:
     """gets lookup table of domains to areas and topic names to populate filters, 
     as well as initial list of all domains for starting filter value
@@ -53,7 +53,7 @@ def load_filter_data(dataset: str) -> Tuple[pl.DataFrame, List[str]]:
     unique_domains = data["domain_name"].unique().to_list()
     return data, unique_domains
 
-@st.cache_data
+@st.cache_data(show_spinner = "Filtering Data to Domain")
 def filter_by_domain(domain: str, dataset: str) -> Tuple[nx.Graph, List[str]]:
     """generates options for the topic filter, and filters the network to only contain nodes of a given domain
 
@@ -72,7 +72,7 @@ def filter_by_domain(domain: str, dataset: str) -> Tuple[nx.Graph, List[str]]:
     nodes = [node for node in network.nodes() if domain in node_domains[node]["domain_name"]]
     return network.subgraph(nodes), unique_areas
 
-@st.cache_data
+@st.cache_data(show_spinner = "Filtering Data to Area")
 def filter_by_area(area: str, _filter_data: pl.DataFrame, _network: nx.Graph) -> Tuple[nx.Graph, List[str]]:
     """generates options for the topic filter, and filters the network to only contain nodes of a given domain
 
@@ -105,13 +105,14 @@ def filter_by_topic(topic: str, _network: nx.Graph) -> nx.Graph:
     return network.subgraph(nodes)
 
 @st.cache_data
-def nx_to_agraph(_network: nx.Graph, filter_val: str, filter_field: str) -> Tuple[List[Node], List[Edge]]:
+def nx_to_agraph(_network: nx.Graph, filter_val: str, filter_field: str, id_col: str) -> Tuple[List[Node], List[Edge]]:
     """convert networkx graph to lists of streamlit-agraph nodes and edges.
 
     Args:
         network (nx.Graph): networkx graph
         filter_val (str): domain, area, or topic name (specified by filters)
         filter_field (str): domains, areas, or topics depending on the level selected in the filter
+        id_col (str): either "id" for publications for "publication_number" for patents
 
     Returns:
         Tuple[List[Node], List[Edge]]: lists of streamlit-agraph nodes and edges
@@ -123,7 +124,7 @@ def nx_to_agraph(_network: nx.Graph, filter_val: str, filter_field: str) -> Tupl
         Node(
             id=node,
             label = node,
-            size = math.log(node_size[node]["publication_number"]),
+            size = math.log(node_size[node][id_col]),
             shape = "dot",
             color = "#0f294a")
             for node in _network.nodes()]
@@ -170,13 +171,13 @@ with collaboration_tab:
     network_dropdown1, network_dropdown2 = st.columns(2)
     with network_dropdown1:
         dataset = st.selectbox(label = "Show me relationships in", options = ["Industry", "Academia"])
+        if dataset == "Academia":
+            id_col = "id"
+            org_name_col = "affiliation_string"
+        else:
+            id_col = "publication_number"
+            org_name_col = "assignee_harmonized_names"
     
-    #with network_dropdown2:
-    #    if dataset == "Academia":
-    #        groups = st.selectbox(label = "Explore relationships between", options = ["Individuals", "Research Groups", "Institutions"])
-    #    elif dataset == "Industry":
-    #        groups = st.selectbox(label = "Explore relationships between", options = ["Individuals", "Companies"])
-
     filter_data, unique_domains = load_filter_data(dataset)
     with st.sidebar:
         level = "domain"
@@ -186,22 +187,23 @@ with collaboration_tab:
         #allow user to filter by area, but also allow "all"
         network, unique_areas = filter_by_domain(domain, dataset)
         unique_areas.insert(0, "All")
-        nodes, edges = nx_to_agraph(network, domain, filter_field = "domains")
+        nodes, edges = nx_to_agraph(network, domain, filter_field = "domains", id_col = id_col)
         area = st.selectbox(label = "Select an Area", options = unique_areas)
         if area != "All":
             level = "area"
             #if an area is selected, filter data to the area and allow user to filter by topic or select "all"
             network, unique_topics = filter_by_area(area, filter_data, network)
-            nodes, edges = nx_to_agraph(network, area, filter_field = "areas")
+            nodes, edges = nx_to_agraph(network, area, filter_field = "areas", id_col= id_col)
             unique_topics.insert(0, "All")
             topic = st.selectbox(label = "Select a Topic", options = unique_topics)
 
             if topic != "All":
                 level = "topic"
                 network = filter_by_topic(topic, network)
-                nodes, edges = nx_to_agraph(network, topic, filter_field = "topics")
+                nodes, edges = nx_to_agraph(network, topic, filter_field = "topics", id_col=id_col)
 
     st.subheader("Collaboration Network")
+    st.markdown("🚨 This view is currently **experimental** and only shows relationships in the most productive 500 institutions in patents and publications")
     
     config = Config(width=1100,
                 height=950,

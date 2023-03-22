@@ -70,9 +70,9 @@ def get_top_novel_documents(
     year: int = YEAR,
     top_n: int = TOP_N_DOCS,
     min_topics: int = 2,
+    id_column = "work_id",
+    title_column = "display_name",
     output_columns: list = [
-        "work_id",
-        "display_name",
         "novelty",
         "n_topics",
         "topic",
@@ -94,12 +94,13 @@ def get_top_novel_documents(
             must be associated with to be included in the results.
         output_columns (list, optional): Columns to show in the output.
     """
+    output_columns = [id_column, title_column] + output_columns
     if topic is not None:
         # get all documents for the specified topic
         _df = pd.DataFrame(topic_to_document_dict[topic])
     else:
         # get all documents for all topics
-        _df = document_novelty_df.drop_duplicates("work_id")
+        _df = document_novelty_df.drop_duplicates(id_column)
     # select documents for the given year
     _df = (
         _df.query("year == @year")

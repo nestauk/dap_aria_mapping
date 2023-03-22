@@ -5,6 +5,10 @@ import pandas as pd
 from typing import List, Dict
 import altair as alt
 
+# remove the altair max row limit
+alt.data_transformers.disable_max_rows()
+import itertools
+
 alt.data_transformers.disable_max_rows()
 
 # Which novelty measure to use
@@ -216,6 +220,105 @@ def convert_long_to_wide_novelty_table(
     )
 
 
+def smoothed_growth_rate(
+    df: pd.DataFrame,
+    variable: str = NOVELTY_MEASURE,
+    start_year: int = 2018,
+    end_year: int = 2022,
+) -> float:
+    """
+    Uses a three-year rolling average to calculate the relative growth
+
+    Args:
+        df (pd.DataFrame): Dataframe with columns for year and novelty score for a given topic
+        variable (str, optional): Column in df containing novelty score
+        start_year (int, optional): Start year for calculating growth rate
+        end_year (int, optional): End year for calculating growth rate
+
+    Returns:
+        float: Smoothed estimate of the relative growth rate of novelty
+    """
+    start_years = list(range(start_year - 2, start_year))
+    end_years = list(range(end_year - 2, end_year))
+    start_novelty = df.query("year in @start_years")[variable].mean()
+    end_novelty = df.query("year in @end_years")[variable].mean()
+    return (end_novelty - start_novelty) / start_novelty
+
+
+def calculate_magnitude_growth(
+    topic_novelty_df: pd.DataFrame,
+    topic_names: Dict[str, str],
+    start_year: int = 2018,
+    end_year: int = 2022,
+) -> pd.DataFrame:
+    """_summary_
+
+    Args:
+        topic_novelty_df (pd.DataFrame): Dataframe with topic novelty scores
+        topic_names (Dict[str, str]): Dictionary mapping topic labels to topic names
+        start_year (int, optional): Start year for calculating growth rate
+        end_year (int, optional): End year for calculating growth rate
+
+    Returns:
+        pd.DataFrame: Dataframe with columns:
+            - topic: topic label
+            - topic_name: topic name
+            - avg_novelty: average novelty score for topic
+            - growth: smoothed estimate of the relative growth rate of novelty
+            - doc_counts: total number of documents for topic in the specified time period
+    """
+    unique_topics = topic_novelty_df.topic.unique()
+    years = list(range(start_year, end_year + 1))
+
+    avg_novelty = []
+    growth = []
+    doc_counts = []
+    for topic in unique_topics:
+        # get novelty scores for specific topic
+        topic_df = topic_novelty_df[topic_novelty_df.topic == topic]
+        # calculate average novelty score for topic
+        avg_novelty.append(topic_df.query("year in @years")[NOVELTY_MEASURE].mean())
+        # calculate growth rate for topic
+        growth.append(
+            smoothed_growth_rate(topic_df, start_year=start_year, end_year=end_year)
+        )
+        doc_counts.append(topic_df.query("year in @years").doc_counts.sum())
+
+    return pd.DataFrame(
+        {
+            "topic": unique_topics,
+            "avg_novelty": avg_novelty,
+            "growth": growth,
+            "doc_counts": doc_counts,
+        }
+    ).assign(
+        topic_name=lambda x: x.topic.map(topic_names),
+    )
+
+
+def get_topics_with_highest_growth(
+    magnitude_growth_df: pd.DataFrame,
+    growth: bool = True,
+    top_n: int = TOP_N_TOPICS,
+) -> pd.DataFrame:
+    """
+    Get topics with highest growth or decline in novelty
+
+    Args:
+        magnitude_growth_df (pd.DataFrame): Dataframe with columns for topic, topic_name,
+            avg_novelty, growth
+        growth (bool, optional): Whether to get topics with highest growth or decline. Defaults to True.
+        top_n (int, optional): Number of topics to return.
+
+    Returns:
+        pd.DataFrame: Dataframe with columns for topic, topic_name, avg_novelty, growth
+    """
+    if growth:
+        return magnitude_growth_df.nlargest(top_n, "growth")
+    else:
+        return magnitude_growth_df.nsmallest(top_n, "growth")
+
+
 def chart_top_topics_bubble(data: pd.DataFrame, values_label: str = "Topic novelty"):
     """
     Chart top topics as a bubble chart
@@ -345,3 +448,116 @@ def chart_topic_novelty_patent_vs_openalex(
     line_vertical = alt.Chart(pd.DataFrame({"x": [0]})).mark_rule().encode(x="x")
     line_horizontal = alt.Chart(pd.DataFrame({"y": [0]})).mark_rule().encode(y="y")
     return fig + line_vertical + line_horizontal
+
+
+def chart_topic_novelty_timeseries(
+    topic_novelty_df: pd.DataFrame,
+    topics_to_show: List[str],
+    values_label: str = "Topic novelty",
+    show_legend: bool = True,
+):
+    """
+    Chart showing topic novelty over time
+
+    Args:
+        topic_novelty_df (pd.DataFrame): Topic novelty dataframe with columns
+            topic_name, topic_doc_novelty, doc_counts
+        topics_to_show (List[str]): List of topics  (labels) show in the char
+        values_label (str, optional): Label for the y-axis
+        show_legend (bool, optional): Whether to show the legend
+    """
+
+    data = topic_novelty_df.query("topic in @topics_to_show")
+    legend = alt.Legend(orient="right") if show_legend else None
+    return (
+        alt.Chart(data)
+        .mark_line()
+        .encode(
+            x=alt.X("year:O", title=""),
+            y=alt.Y(f"{NOVELTY_MEASURE}:Q", title=values_label),
+            color=alt.Color(
+                "topic_name:N",
+                title="Topic",
+                scale=alt.Scale(scheme="tableau20"),
+                legend=legend,
+            ),
+            tooltip=[
+                alt.Tooltip("topic_name:N", title="Topic"),
+                alt.Tooltip("year:O", title="Year"),
+                alt.Tooltip(f"{NOVELTY_MEASURE}:Q", title=values_label, format=".3f"),
+            ],
+        )
+    )
+
+
+def chart_magnitude_growth(
+    magnitude_growth_df: pd.DataFrame,
+    growth: bool = True,
+    show_doc_counts: bool = False,
+):
+    """
+    Chart showing the relationship between the magnitude and growth of topic novely over time
+
+    Args:
+        magnitude_growth_df (pd.DataFrame): Topic magnitude and growth dataframe with columns
+            topic_name, avg_novelty, growth
+        growth (bool, optional): Whether to show topics with growth or decline
+        show_doc_counts (bool, optional): Whether to use the bubble size
+            to visualise the number of documents for each topic
+
+    Returns:
+        Altair chart
+    """
+    if growth:
+        data = magnitude_growth_df.query("growth > 0")
+        growth_label = "Growth"
+        reverse_axis = False
+    else:
+        data = magnitude_growth_df.query("growth < 0").assign(
+            growth=lambda x: x.growth.abs()
+        )
+        growth_label = "Decline"
+        reverse_axis = True
+
+    # add a mark for the median novelty
+    median_novelty = magnitude_growth_df.avg_novelty.median()
+    line_vertical = (
+        alt.Chart(pd.DataFrame({"x": [median_novelty]})).mark_rule().encode(x="x")
+    )
+
+    # axis limits
+    min_x = magnitude_growth_df.avg_novelty.min()
+    max_x = magnitude_growth_df.avg_novelty.max()
+
+    # show doc counts
+    if show_doc_counts:
+        size = alt.Size("doc_counts", title="Number of documents")
+    else:
+        size = alt.Size()
+
+    fig = (
+        alt.Chart(data)
+        .mark_circle()
+        .encode(
+            x=alt.X(
+                "avg_novelty",
+                title="Average novelty",
+                scale=alt.Scale(domain=(min_x, max_x)),
+            ),
+            y=alt.Y(
+                "growth",
+                title=growth_label,
+                scale=alt.Scale(type="log", reverse=reverse_axis),
+                axis=alt.Axis(format="%"),
+            ),
+            size=size,
+            tooltip=[
+                alt.Tooltip("topic_name", title="Topic"),
+                alt.Tooltip("avg_novelty", title="Average novelty", format=".2f"),
+                alt.Tooltip("growth", title=growth_label, format=".2%"),
+                alt.Tooltip("doc_counts", title="Number of documents"),
+            ],
+        )
+    )
+
+    return fig + line_vertical

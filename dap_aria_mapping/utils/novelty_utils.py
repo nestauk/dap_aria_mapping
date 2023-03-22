@@ -358,3 +358,20 @@ def pair_to_topic_novelty(
             )
         )
     )
+
+def create_topic_to_document_dict(
+    document_novelty_df,
+    document_df,
+    id_column="work_id",
+    document_title_column="display_name"
+):
+    """Generates dictionary for faster lookups"""
+    return (
+            document_novelty_df[[id_column, "topics", "novelty", "year", "n_topics"]]
+            .merge(document_df[[id_column, document_title_column]], on=id_column, how="left")
+            .groupby("topics")
+            .agg(lambda x: x.tolist())
+            .to_dict(orient='index')
+        )
+
+

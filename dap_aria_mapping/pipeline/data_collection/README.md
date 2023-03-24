@@ -34,6 +34,8 @@ Output data from these pipelines is stored on S3 in the `inputs/data_collection`
 
 #### Foward citations for measuring disruption
 
+#### OpenAlex
+
 To enable the calculation of the consolidation-disruption (CD) index for OpenAlex works, a separate pipeline must be run. This collects the work IDs and citations of all works that cite the 'focus works' collected by `dap_aria_mapping/pipeline/data_collection/openalex.py`. It is a separate flow as it generates a large number of API calls.
 
 To run this collection, execute the following:
@@ -45,6 +47,26 @@ Output data from these pipelines is stored on S3 at `inputs/data_collection/open
 ⚠️ The default parameters collect citations for works between 2007 and 2022 that have a minimum of 3 citations. This will generate a large volume of API calls and may result in rate limiting. You may want to use the `min_year` and `max_year` parameters to run the pipeline for individual years. The `min_citations` parameter can also be varied to exclude the collection of works that cite focus works with fewer than a particular number of citations.
 
 ☁️ This pipeline is set up to run in batch mode. This means that it will run on AWS Batch, and requires some configuration. Please [see below](#getting-up-and-running-with-batch-on-metaflow) for further details if you want to run these flows.
+
+#### Patents
+
+We also collect citation information for patents in 2007 and 2017 to calculate the consolidation-distruption (CD) index.
+
+We define 'focus patents' as the patent ids collected by `dap_aria_mapping/pipeline/data_collection/openalex.py.`.
+
+To collect the patent forward citations and backward citations, run the following flow:
+
+`python dap_aria_mapping/pipeline/data_collection/paents_citations.py run --production=False`
+
+If you run the flow in production (i.e. `production=True`), it will cost money to do so.
+
+This flow outputs three files stored on S3 at `inputs/data_collection/patents/`:
+
+1. **`patents_backward_citations.json`**: A json where the key is a focal patent id and the value is a list of patent ids that the focal id cites.
+
+2. **`patents_cited_by_citations.json`**: A json where the key is a focal patent id and the value is a list of patent ids that the focal patent id is cited by.
+
+3. **`patents_forward_citations.json`**: A json where the key is a cited by patent id and the value is a list of patents that it cites. At least one focal id will be present in each dictionary value. 
 
 ## Getting Up and Running With Batch on Metaflow
 

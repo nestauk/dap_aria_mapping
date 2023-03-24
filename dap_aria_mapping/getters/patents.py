@@ -1,7 +1,7 @@
 import pandas as pd
 from nesta_ds_utils.loading_saving.S3 import download_obj
-from dap_aria_mapping import BUCKET_NAME, AI_GENOMICS_BUCKET_NAME
-from typing import Mapping, Union, Dict, List
+from dap_aria_mapping import BUCKET_NAME
+from typing import Mapping, Union, List, Literal, Dict
 import pandas as pd
 
 
@@ -53,31 +53,66 @@ def get_patent_topics(tax: str = 'cooccur', level: int = 1) -> Dict[str, List[st
     )
 
 
-#########TEMPORARY AI GENOMICS GETTERS##########################
+def get_patents_forward_citations(
+    year: Literal[2007, 2017] = None,
+) -> Mapping[str, List[str]]:
+    """From S3 loads dictionary where key is patent id and value is list of forward citations.
 
+    Args:
+        year (Literal[2007, 2017], optional): year citations were collected for. Defaults to None.
 
-def get_ai_genomics_patents_entities() -> Mapping[str, Mapping[str, Union[str, str]]]:
-    """From S3 loads post-processed AI in genomics patents DBpedia entities"""
+    Returns:
+        Mapping[str, List[str]]: Dictionary where key is patent id and value is list of forward citations.
+    """
+    directory = "inputs/data_collection/patents/yearly_subsets/"
+    fname = f"patents_forward_citations_{year}.json"
+
     return download_obj(
-        AI_GENOMICS_BUCKET_NAME,
-        "outputs/entity_extraction/ai_genomics_patents_lookup_clean.json",
+        BUCKET_NAME,
+        f"{directory}{fname}",
         download_as="dict",
     )
 
 
-def get_ai_patents_entities() -> Mapping[str, Mapping[str, Union[str, str]]]:
-    """From S3 loads post-processed AI patents DBpedia entities"""
+def get_patents_backward_citations(
+    year: Literal[2007, 2017] = None,
+) -> Mapping[str, List[str]]:
+    """From S3 loads dictionary where key is patent id and value is list of backward citations.
+
+    Args:
+        year (Literal[2007, 2017], optional): year citations were collected for. Defaults to None.
+
+    Returns:
+        Mapping[str, List[str]]: Dictionary where key is patent id and value is list of backward citations.
+    """
+
+    directory = "inputs/data_collection/patents/yearly_subsets/"
+    fname = f"patents_backward_citations_{year}.json"
+
     return download_obj(
-        AI_GENOMICS_BUCKET_NAME,
-        "outputs/entity_extraction/ai_patents_lookup_clean.json",
+        BUCKET_NAME,
+        f"{directory}{fname}",
         download_as="dict",
     )
 
 
-def get_genomics_patents_entities() -> Mapping[str, Mapping[str, Union[str, str]]]:
-    """From S3 loads post-processed genomics patents DBpedia entities"""
+# not really sure this is especially helpful but it exists
+def get_patent_cited_by_citations(
+    year: Literal[2007, 2017] = None,
+) -> Mapping[str, List[str]]:
+    """From S3 loads dictionary where key is patent id and value is list of cited by citations.
+
+    Args:
+        year (Literal[2007, 2017], optional): year citations were collected for. Defaults to None.
+
+    Returns:
+        Mapping[str, List[str]]: Dictionary where key is patent id and value is list of cited by citations.
+    """
+    directory = "inputs/data_collection/patents/yearly_subsets/"
+    fname = f"patents_cited_by_citations_{year}.json"
+
     return download_obj(
-        AI_GENOMICS_BUCKET_NAME,
-        "outputs/entity_extraction/genomics_patents_lookup_clean.json",
+        BUCKET_NAME,
+        f"{directory}{fname}",
         download_as="dict",
     )

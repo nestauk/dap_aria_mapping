@@ -101,6 +101,21 @@ def get_openalex_topics(tax: str = "cooccur", level: int = 1) -> Dict[str, List[
         download_as="dict",
     )
 
+def get_openalex_cd_scores(year: int) -> Dict[str, int]:
+    """From S3 loads openalex CD scores for a given year..
+
+    Args:
+        year (int): The year for which to fetch CD scores.
+        Current available options for years are 2007 and 2017.
+
+    Returns:
+        Dict: Dictionary mapping work IDs to CD scores. Scores range from [-1, 1].
+    """
+    return download_obj(
+        BUCKET_NAME,
+        f"outputs/cd_index/openalex_cd_scores_{year}.json",
+        download_as="dict",
+    )
 
 #########TEMPORARY AI GENOMICS GETTERS##########################
 
@@ -231,22 +246,6 @@ def get_openalex_forward_citations(
     return download_obj(
         BUCKET_NAME,
         f"{directory}{fname}",
-        download_as="dict",
-    )
-
-
-def get_openalex_cd_scores(year: int) -> Dict:
-    """From S3 loads openalex CD scores for a given year..
-
-    Args:
-        year (int): The year for which to fetch CD scores.
-
-    Returns:
-        Dict: Dictionary mapping work IDs to CD scores.
-    """
-    return download_obj(
-        BUCKET_NAME,
-        f"outputs/openalex_cd_scores_{year}.json",
         download_as="dict",
     )
 

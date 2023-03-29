@@ -5,6 +5,7 @@ from dap_aria_mapping.getters.taxonomies import (
 )
 from dap_aria_mapping.utils.topic_names import *
 from chatgpt_wrapper import ChatGPT, AsyncChatGPT
+from dap_aria_mapping import chatgpt_args
 
 OUTPUT_DIR = PROJECT_DIR / "outputs" / "interim" / "preprune_topics"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -26,6 +27,7 @@ if __name__ == "__main__":
     except FileNotFoundError:
         logger.info("No entities.pkl found, creating new list.")
         entities = get_cooccurrence_taxonomy().index.tolist()
+        entities = entities[:35000]
 
     # Prompt chatGPT with the problem
     bot = ChatGPT(False)
@@ -87,24 +89,36 @@ if __name__ == "__main__":
         # Attempt to convert to list, if exception, try making it explicit
         try:
             print(response)
-            response = re.findall("\[.*\]", response)[0]
+            response = re.findall("\[.*\]", response)
+            if len(response) > 1:
+                time.sleep(np.random.uniform(15, 30))
+                response_ok, response, response_reason = bot.ask(
+                    chatgpt_args["PRUNE-ERROR"]
+                )
+                response = re.findall("\[.*\]", response)[0]
+            else:
+                response = response[0]
             response = re.sub("(?<!,)'(?!\s)", '"', response)
             response = ast.literal_eval(response)
         except Exception as e:
             logger.info(
                 f"FAILURE: {response_reason} - ChatGPT response is not a list: {response}."
             )
-            error_script = f"Your response was not a Python list. Please try again. \
-                Remember that your task is to identify the entities that may represent modern day countries, regions, cities, institutions and films. \
-                \n\n \
-                Your response should be a single Python list of entities that are in one of the categories above, and the list should be \
-                empty if you think that no entities belong to those categories. Please return a single list."
             time.sleep(np.random.uniform(15, 30))
-            response_ok, response, response_reason = bot.ask(error_script)
+            response_ok, response, response_reason = bot.ask(
+                chatgpt_args["PRUNE-ERROR"]
+            )
             print("Before:" + str(response))
             try:
                 try:  # There is a list somewghere in the response
-                    response = re.findall("\[.*\]", response)[0]
+                    if len(response) > 1:
+                        time.sleep(np.random.uniform(15, 30))
+                        response_ok, response, response_reason = bot.ask(
+                            chatgpt_args["PRUNE-ERROR"]
+                        )
+                        response = re.findall("\[.*\]", response)[0]
+                    else:
+                        response = response[0]
                     found_list = True
                 except:  # The list is itemized and broken into lines. Identify the line breaks,
                     # and then join the lines into a single list

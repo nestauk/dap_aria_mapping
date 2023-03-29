@@ -6,7 +6,7 @@ from dap_aria_mapping.getters.taxonomies import (
     get_topic_names,
 )
 
-import logging, random, time, ast, argparse
+import logging, random, time, ast, argparse, re
 from dap_aria_mapping import chatgpt_args
 
 
@@ -61,9 +61,9 @@ class revChatGPTWrapper:
             response = ast.literal_eval(response)
         except Exception as e:
             self.logger.info(f"FAILURE - ChatGPT response is not a list: {response}.")
-            sleep_time = np.random.randint(4, 6)
+            sleep_time = np.random.randint(8, 16)
             self.logger.info(
-                f"Your response is not a list with the requested structure. Remember that I only want the topic name that best describes the group of entities, and a confidence score between 0 and 100 on how sure you are about the answer. If confidence is not high, also provide a list of entities that, if discarded, would help identify a topic. The structure of the answer should be a list of tuples of four elements: [(list identifier, topic name, confidence score, list of entities to discard (None if there are none)), ... ]. For example:utine idling - Sleeping for {sleep_time} seconds"
+                f"Your response is not a Python list with the requested structure. Remember that I only want the topic name that best describes the group of entities, and a confidence score between 0 and 100 on how sure you are about the answer. If confidence is not high, also provide a list of entities that, if discarded, would help identify a topic. The structure of the answer should be a list of tuples of four elements: [(list identifier, topic name, confidence score, list of entities to discard (None if there are none)), ... ]. For example:utine idling - Sleeping for {sleep_time} seconds"
             )
             time.sleep(sleep_time)
             for data in chatbot.ask(error_query):
@@ -92,7 +92,7 @@ class revChatGPTWrapper:
         if self.first[f"chatbot{chatbot_num}"]:
             self.first[f"chatbot{chatbot_num}"] = False
 
-        sleep_time = np.random.randint(9, 12)
+        sleep_time = np.random.randint(15, 20)
         self.logger.info(f"Routine idling - Sleeping for {sleep_time} seconds")
         time.sleep(sleep_time)
 

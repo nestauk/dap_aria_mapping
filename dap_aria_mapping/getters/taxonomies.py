@@ -61,7 +61,9 @@ def get_taxonomy_config() -> dict:
     return config
 
 
-def get_cooccurrence_taxonomy(sample: int = None) -> pd.DataFrame:
+def get_cooccurrence_taxonomy(
+    sample: int = None, postproc: bool = False
+) -> pd.DataFrame:
     """gets taxonomy developed using community detection on term cooccurrence network.
         Algorithm to generate taxonomy can be found in pipeline/taxonomy_development/community_detection.py.
         Parameters of taxonomy can be found in config/taxonomy.yaml.
@@ -81,12 +83,18 @@ def get_cooccurrence_taxonomy(sample: int = None) -> pd.DataFrame:
             download_as="dataframe",
         )
     
-    else:
+    elif postproc:
         return download_obj(
             BUCKET_NAME,
-            "outputs/community_detection_taxonomy/tax.parquet",
+            "outputs/community_detection_taxonomy/postproc_tax.parquet",
             download_as="dataframe",
         )
+    else:
+        return download_obj(
+                BUCKET_NAME,
+                "outputs/community_detection_taxonomy/tax.parquet",
+                download_as="dataframe",
+            )
 
 
 def get_test_cooccurrence_taxonomy() -> pd.DataFrame:
@@ -140,8 +148,8 @@ def get_topic_names(
     taxonomy_class: str,
     name_type: str,
     level: int,
-    long: bool = False,
     n_top: int = None,
+    postproc: bool = False,
 ) -> Dict[str, str]:
     """Downloads topic names from S3 and returns them as a dictionary.
 
@@ -151,20 +159,27 @@ def get_topic_names(
         level (int): The level of the taxonomy to download.
         n_top (int, optional): The number of top entities used to label. Defaults to None (10).
             chatgpt name_type uses 35 entities per topic to hit the API endpoint.
-        long (bool, optional): Whether to download long names. Defaults to False.
+        postproc (bool, optional): Whether to download the postprocessed topic names. Defaults to False.
 
     Returns:
         pd.DataFrame: A dictionary containing the topic names.
     """
-    if n_top is not None:
-        return download_obj(
-            BUCKET_NAME,
-            f"outputs/topic_names/class_{taxonomy_class}_nametype_{name_type}_top_{str(n_top)}_level_{str(level)}.json",
-            download_as="dict",
-        )
+    if not postproc:
+        if n_top is not None:
+            return download_obj(
+                BUCKET_NAME,
+                f"outputs/topic_names/class_{taxonomy_class}_nametype_{name_type}_top_{str(n_top)}_level_{str(level)}.json",
+                download_as="dict",
+            )
+        else:
+            return download_obj(
+                BUCKET_NAME,
+                f"outputs/topic_names/class_{taxonomy_class}_nametype_{name_type}_level_{str(level)}.json",
+                download_as="dict",
+            )
     else:
         return download_obj(
             BUCKET_NAME,
-            f"outputs/topic_names/class_{taxonomy_class}_nametype_{name_type}_level_{str(level)}.json",
+            f"outputs/topic_names/postproc/level_{str(level)}.json",
             download_as="dict",
         )

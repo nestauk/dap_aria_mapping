@@ -28,6 +28,7 @@ from dap_aria_mapping.getters.taxonomies import (
     get_semantic_taxonomy,
     get_topic_names,
 )
+from nesta_ds_utils.loading_saving.S3 import upload_obj
 from dap_aria_mapping.getters.openalex import get_openalex_works, get_openalex_entities
 from dap_aria_mapping.utils.entity_selection import get_sample, filter_entities
 from dap_aria_mapping.utils.topic_names import *
@@ -81,7 +82,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--name_type",
         nargs="+",
-        help="The type of names to use. Can be 'entity', 'journal', or both.",
+        help="The type of names to use. Can be 'entity', 'journal', revChatGPT, or webChatGPT.",
         default="entity",
     )
 
@@ -102,6 +103,12 @@ if __name__ == "__main__":
         help="The number of articles to use. If -1, all articles are used.",
     )
 
+    parser.add_argument(
+        "--postproc",
+        help="Whether to use the postprocessed chatgpt names.",
+        action="store_true",
+    )
+
     parser.add_argument("--save", help="Whether to save the plot.", action="store_true")
 
     parser.add_argument(
@@ -116,7 +123,7 @@ if __name__ == "__main__":
     logger.info("Loading data - taxonomy")
     taxonomies = []
     if "cooccur" in args.taxonomy:
-        cooccur_taxonomy = get_cooccurrence_taxonomy()
+        cooccur_taxonomy = get_cooccurrence_taxonomy(postproc=args.postproc)
         taxonomies.append(["cooccur", cooccur_taxonomy])
     if "centroids" in args.taxonomy:
         semantic_centroids_taxonomy = get_semantic_taxonomy("centroids")
@@ -157,10 +164,14 @@ if __name__ == "__main__":
                     clust_counts, num_entities=args.n_top, show_count=args.show_count
                 )
                 if args.save:
+                    if args.postproc:
+                        name_type = "entity_postproc"
+                    else:
+                        name_type = "entity"
                     logger.info("Saving dictionary as pickle")
                     save_names(
                         taxonomy=taxlabel,
-                        name_type="entity",
+                        name_type=name_type,
                         level=level,
                         n_top=args.n_top,
                         names=names,
@@ -185,17 +196,32 @@ if __name__ == "__main__":
                     )
 
             if "chatgpt" in args.name_type[0].lower():
-                entity_names = get_topic_names(
-                    taxonomy_class=taxlabel,
-                    name_type="entity",
-                    level=level,
-                    n_top=args.n_top,
-                )
+                logger.info("Loading ChatGPT names")
+                if args.postproc:
+                    entity_names = get_topic_names(
+                        taxonomy_class=taxlabel,
+                        name_type="entity_postproc",
+                        level=level,
+                        n_top=args.n_top,
+                    )
+                else:
+                    entity_names = get_topic_names(
+                        taxonomy_class=taxlabel,
+                        name_type="entity",
+                        level=level,
+                        n_top=args.n_top,
+                    )
 
-                files_with_name = get_bucket_filenames_s3(
-                    bucket_name=BUCKET_NAME,
-                    dir_name=f"outputs/topic_names/class_{taxlabel}_nametype_chatgpt_top_{args.n_top}_level_{level}.json",
-                )
+                if not args.postproc:
+                    files_with_name = get_bucket_filenames_s3(
+                        bucket_name=BUCKET_NAME,
+                        dir_name=f"outputs/topic_names/class_{taxlabel}_nametype_chatgpt_top_{args.n_top}_level_{level}.json",
+                    )
+                else:
+                    files_with_name = get_bucket_filenames_s3(
+                        bucket_name=BUCKET_NAME,
+                        dir_name=f"outputs/topic_names/postproc/level_{level}.json",
+                    )
 
                 if len(files_with_name) > 0:
                     logger.info("ChatGPT names already exist")
@@ -204,6 +230,7 @@ if __name__ == "__main__":
                         name_type="chatgpt",
                         level=level,
                         n_top=args.n_top,
+                        postproc=args.postproc,
                     )
 
                     num_topics_file, num_topics_total = (
@@ -261,12 +288,17 @@ if __name__ == "__main__":
                     logger.info(f"Selecting random chatbot to use")
 
                     if args.name_type[0] == "revChatGPT":
-                        chatbot_num = np.random.randint(1, 8)
+                        chatbot_num = np.random.randint(
+                            1, len(chatgpt_args["TOKENS"]) + 1
+                        )
+                        chatbot_num = 1
                         logger.info(
                             f"Starting batch of topics using chatbot {chatbot_num}"
                         )
-
-                    random_sample = random.sample(list(entity_names.keys()), 6)
+                    try:
+                        random_sample = random.sample(list(entity_names.keys()), 6)
+                    except:
+                        random_sample = entity_names.keys()
                     sample_entities = [
                         (topic, entity_names[topic]) for topic in random_sample
                     ]
@@ -332,13 +364,20 @@ if __name__ == "__main__":
                             }
                             if args.save:
                                 logger.info("Saving dictionary as json")
-                                save_names(
-                                    taxonomy=taxlabel,
-                                    name_type="chatgpt",
-                                    level=level,
-                                    n_top=args.n_top,
-                                    names=chatgpt_names,
-                                )
+                                if not args.postproc:
+                                    save_names(
+                                        taxonomy=taxlabel,
+                                        name_type="chatgpt",
+                                        level=level,
+                                        n_top=args.n_top,
+                                        names=chatgpt_names,
+                                    )
+                                else:
+                                    upload_obj(
+                                        chatgpt_names,
+                                        bucket=BUCKET_NAME,
+                                        path_to=f"outputs/topic_names/postproc/level_{str(level)}.json",
+                                    )
                             break
 
                         except Exception as e:

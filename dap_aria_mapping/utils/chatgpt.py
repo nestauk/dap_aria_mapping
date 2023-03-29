@@ -103,6 +103,7 @@ class revChatGPTWrapper:
                 name_type="chatgpt",
                 level=self.level,
                 n_top=self.args.n_top,
+                postproc=self.args.postproc,
             )
         else:
             chatgpt_names_updated = {}
@@ -193,6 +194,7 @@ class webChatGPTWrapper:
                 name_type="chatgpt",
                 level=self.level,
                 n_top=self.args.n_top,
+                postproc=self.args.postproc,
             )
         else:
             chatgpt_names_updated = {}

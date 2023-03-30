@@ -138,7 +138,9 @@ def edge_data(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
 
     parser.add_argument(
         "--doc_type",
@@ -164,15 +166,17 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.doc_type == "publications" and args.level == "institutions":
-        print("Loading openalex institutes data")
-        authorships = pl.DataFrame(get_openalex_authorships()).select([pl.col("id"), pl.col("affiliation_string")])
+        logger.info("Loading openalex institutes data")
+        authorships = pl.DataFrame(
+            get_openalex_authorships()).select([pl.col("id"), pl.col("affiliation_string")]
+        )
         id_col = "id"
         org_name_col = "affiliation_string"
 
-        print("Loading publications with topics")
+        logger.info("Loading publications with topics")
         pubs_with_topics_df = pl.DataFrame(
             pd.DataFrame.from_dict(
-                get_openalex_topics(tax = "cooccur", level = 3), orient='index')
+                get_openalex_topics(tax="cooccur", level=3), orient='index')
                 .T
                 .unstack()
                 .dropna()
@@ -180,53 +184,65 @@ if __name__ == "__main__":
                 .to_frame()
                 .reset_index()
                 )
-        pubs_with_topics_df.columns = ["id", "topic"]
+        pubs_with_topics_df.columns = [id_col, "topic"]
 
         # add institutions affiliated with authors to publications tagged with topics
         # filter out publications that we don't have org names for
         # NOTE: WE HAVE ORG NAMES FOR 2,491,974 OUT OF 2,522,837 PUBLICATIONS
         orgs_df = pubs_with_topics_df.join(
-            authorships, on = "id", how = "left"
-            ).filter(
-                ~pl.all(pl.col('affiliation_string').is_null()))
+            authorships, on=id_col, how="left"
+        ).filter(
+            ~pl.all(pl.col(org_name_col).is_null())
+        )
     
     elif args.doc_type == "patents" and args.level == "institutions":
         id_col = "publication_number"
         org_name_col = "assignee_harmonized_names"
         logger.info("Loading Patent Data")
-        docs = pl.DataFrame(get_patents())[["publication_number", "assignee_harmonized_names", "assignee_harmonized_names_types"]]
-        patents_with_topics = get_patent_topics(tax = "cooccur", level = 3)
+        docs = pl.DataFrame(get_patents())[
+            [id_col, org_name_col, "assignee_harmonized_names_types"]
+        ]
+        patents_with_topics = get_patent_topics(tax="cooccur", level=3)
         patents_with_topics_df = pl.DataFrame(
-            pd.DataFrame.from_dict(patents_with_topics, orient='index'
-            ).T.unstack().dropna().reset_index(drop=True, level=1).to_frame().reset_index())
-        patents_with_topics_df.columns = ["publication_number", "topic"]
-        
+            pd.DataFrame.from_dict(
+                patents_with_topics, orient='index'
+            )
+            .T
+            .unstack()
+            .dropna()
+            .reset_index(drop=True, level=1)
+            .to_frame()
+            .reset_index()
+        )
+
+        patents_with_topics_df.columns = [id_col, "topic"]
         
         logger.info("Formatting patents data")
         #add assignees and the assignee types to patents tagged with topics
-        df = patents_with_topics_df.join(docs, how = "left", on = "publication_number")
+        df = patents_with_topics_df.join(docs, how="left", on=id_col)
 
         #explode assignee name and type columns so each row contains a single assignee and the associated type vs a list
         #NOTE: I DONT THINK THIS WORKS PROPERLY AS THE LISTS OF NAME TYPES SEEM TO BE OUT OF ORDER OF THE NAMES (see patent WO-2012141480-A2)
         df = df.filter(
-            pl.col("assignee_harmonized_names").arr.lengths() == pl.col("assignee_harmonized_names_types").arr.lengths()
-            ).explode(
-                ["assignee_harmonized_names", "assignee_harmonized_names_types"]
-                )
+            pl.col(org_name_col).arr.lengths() == pl.col("assignee_harmonized_names_types").arr.lengths()
+        ).explode(
+            [org_name_col, "assignee_harmonized_names_types"]
+        )
         #only consider organisations (not individuals)
         orgs_df = df.filter(pl.col("assignee_harmonized_names_types") == "ORGANISATION")
 
     #add area and domain col
     orgs_df_with_topics = add_area_domain_chatgpt_names(
-        expand_topic_col(orgs_df).unique(subset=[id_col, "topic", org_name_col]))
+        expand_topic_col(orgs_df).unique(subset=[id_col, "topic", org_name_col])
+    )
 
-    print("GENERATING NETWORK")
+    logger.info("GENERATING NETWORK")
     network = nx.Graph()
 
-    print("Adding nodes with the following attributes: topics, areas, domains")
+    logger.info("Adding nodes with the following attributes: topics, areas, domains")
     if args.top_n:
         print("Only including top {} orgs".format(args.top_n))
-        node_metadata, nodes =  docs_per_org(orgs_df, id_col, org_name_col, top_n = args.top_n)
+        node_metadata, nodes =  docs_per_org(orgs_df, id_col, org_name_col, top_n=args.top_n)
         orgs_df = orgs_df.filter(pl.col(org_name_col).is_in(nodes))
         orgs_df_with_topics = orgs_df_with_topics.filter(pl.col(org_name_col).is_in(nodes))
         network.add_nodes_from(nodes)
@@ -239,7 +255,7 @@ if __name__ == "__main__":
     nx.set_node_attributes(network, node_data(orgs_df_with_topics, "area_name", org_name_col), "areas")
     nx.set_node_attributes(network, node_data(orgs_df_with_topics, "domain_name", org_name_col), "domains")
 
-    print("Adding edges")
+    logger.info("Adding edges")
     edges = get_edges(orgs_df, id_col, org_name_col)
     network.add_edges_from(list(edges.keys()))
     nx.set_edge_attributes(network, edges, "overall_doc_count")
@@ -247,7 +263,7 @@ if __name__ == "__main__":
     nx.set_edge_attributes(network, edge_data(orgs_df_with_topics, by="area_name", id_col= id_col, org_name_col= org_name_col), "areas")
     nx.set_edge_attributes(network, edge_data(orgs_df_with_topics, by="domain_name", id_col= id_col, org_name_col= org_name_col), "domains")
 
-    print("Saving network")
+    logger.info("Saving network")
     #upload_obj(network, BUCKET_NAME, "outputs/app_data/change_makers/networks/{}_{}.pkl".format(args.doc_type, args.level))
     with open("outputs/academia_institutions.pickle", "wb") as f:
         pickle.dump(network, f)

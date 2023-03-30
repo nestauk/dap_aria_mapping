@@ -187,20 +187,20 @@ with collaboration_tab:
         #allow user to filter by area, but also allow "all"
         network, unique_areas = filter_by_domain(domain, dataset)
         unique_areas.insert(0, "All")
-        nodes, edges = nx_to_agraph(network, domain, filter_field = "domains", id_col = id_col)
-        area = st.selectbox(label = "Select an Area", options = unique_areas)
+        nodes, edges = nx_to_agraph(network, domain, filter_field="domains", id_col=id_col)
+        area = st.selectbox(label="Select an Area", options=unique_areas)
         if area != "All":
             level = "area"
             #if an area is selected, filter data to the area and allow user to filter by topic or select "all"
             network, unique_topics = filter_by_area(area, filter_data, network)
-            nodes, edges = nx_to_agraph(network, area, filter_field = "areas", id_col= id_col)
+            nodes, edges = nx_to_agraph(network, area, filter_field="areas", id_col=id_col)
             unique_topics.insert(0, "All")
-            topic = st.selectbox(label = "Select a Topic", options = unique_topics)
+            topic = st.selectbox(label="Select a Topic", options=unique_topics)
 
             if topic != "All":
                 level = "topic"
                 network = filter_by_topic(topic, network)
-                nodes, edges = nx_to_agraph(network, topic, filter_field = "topics", id_col=id_col)
+                nodes, edges = nx_to_agraph(network, topic, filter_field="topics", id_col=id_col)
 
     st.subheader("Collaboration Network")
     st.markdown("🚨 This view is currently **experimental** and only shows relationships in the most productive 500 institutions in patents and publications")

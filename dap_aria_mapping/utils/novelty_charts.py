@@ -93,6 +93,9 @@ def get_top_novel_documents(
         min_topics (int, optional): Minimum number of topics a document
             must be associated with to be included in the results.
         output_columns (list, optional): Columns to show in the output.
+
+    Return:
+        pd.DataFrame: Table with the most/least novel documents for the given year.
     """
     output_columns = [id_column, title_column] + output_columns
     if topic is not None:
@@ -252,7 +255,9 @@ def calculate_magnitude_growth(
     start_year: int = 2018,
     end_year: int = 2022,
 ) -> pd.DataFrame:
-    """_summary_
+    """Calculate magnitude and growth of novelty for each topic. The magnitude is the average
+    novelty score for the topic, and the growth is the smoothed estimate of the relative growth
+    rate of novelty.
 
     Args:
         topic_novelty_df (pd.DataFrame): Dataframe with topic novelty scores
@@ -320,7 +325,9 @@ def get_topics_with_highest_growth(
         return magnitude_growth_df.nsmallest(top_n, "growth")
 
 
-def chart_top_topics_bubble(data: pd.DataFrame, values_label: str = "Topic novelty"):
+def chart_top_topics_bubble(
+        data: pd.DataFrame, values_label: str = "Topic novelty"
+) -> alt.Chart:
     """
     Chart top topics as a bubble chart
 
@@ -329,7 +336,8 @@ def chart_top_topics_bubble(data: pd.DataFrame, values_label: str = "Topic novel
             following columns: topic_name, novelty_score, doc_counts
 
     Returns:
-        Altair chart
+        alt.Chart: A bubble chart with the top topics on the x-axis
+            and the number of documents in the topic on the y-axis
     """
     # A bubble chart
     bubbles = (
@@ -379,7 +387,7 @@ def chart_topic_novelty_vs_popularity(
     novelty_measure_label: str = "Topic novelty",
     year: int = YEAR,
     min_docs: int = 50,
-):
+) -> alt.Chart:
     """
     Chart topic novelty vs. number of documents
 
@@ -390,7 +398,8 @@ def chart_topic_novelty_vs_popularity(
         min_docs (int, optional): Minimum number of documents a topic must have to be included in the chart
 
     Returns:
-        Altair chart
+        alt.Chart: A scatter plot with topic novelty on the x-axis and
+            number of documents in the topic on the y-axis
     """
     data = topic_novelty_df.query("year == @year").query("doc_counts >= @min_docs")
 
@@ -417,7 +426,7 @@ def chart_topic_novelty_vs_popularity(
 
 def chart_topic_novelty_patent_vs_openalex(
     topic_novelty_wide_df: pd.DataFrame,
-):
+) -> alt.Chart:
     """
     Chart show novelty for the same topics, for patents vs. OpenAlex, for a given year
     and indicate four quadrants depending on whether patents or OpenAlex are more novel
@@ -430,7 +439,8 @@ def chart_topic_novelty_patent_vs_openalex(
             - patents_zscore: z-score of novelty score for patents
 
     Returns:
-        Altair chart
+        alt.Chart: A scatter plot with novelty for patents on the x-axis and
+            novelty for OpenAlex on the y-axis
     """
     fig = (
         alt.Chart(topic_novelty_wide_df)
@@ -456,7 +466,7 @@ def chart_topic_novelty_timeseries(
     topics_to_show: List[str],
     values_label: str = "Topic novelty",
     show_legend: bool = True,
-):
+) -> alt.Chart:
     """
     Chart showing topic novelty over time
 
@@ -466,6 +476,10 @@ def chart_topic_novelty_timeseries(
         topics_to_show (List[str]): List of topics  (labels) show in the char
         values_label (str, optional): Label for the y-axis
         show_legend (bool, optional): Whether to show the legend
+
+    Returns:
+        alt.Chart: A line chart with topic novelty over time
+            on the y-axis and year on the x-axis
     """
 
     data = topic_novelty_df.query("topic in @topics_to_show")
@@ -495,7 +509,7 @@ def chart_magnitude_growth(
     magnitude_growth_df: pd.DataFrame,
     growth: bool = True,
     show_doc_counts: bool = False,
-):
+) -> alt.Chart:
     """
     Chart showing the relationship between the magnitude and growth of topic novely over time
 
@@ -507,7 +521,8 @@ def chart_magnitude_growth(
             to visualise the number of documents for each topic
 
     Returns:
-        Altair chart
+        alt.Chart: A scatter plot with topic novelty magnitude on the x-axis and
+            growth on the y-axis
     """
     if growth:
         data = magnitude_growth_df.query("growth > 0")

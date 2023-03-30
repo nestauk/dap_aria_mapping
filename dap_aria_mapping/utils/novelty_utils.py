@@ -27,7 +27,7 @@ from dap_aria_mapping import logging
 import pandas as pd
 import itertools
 import numpy as np
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Sequence
 
 
 def preprocess_topics_dict(
@@ -360,12 +360,24 @@ def pair_to_topic_novelty(
     )
 
 def create_topic_to_document_dict(
-    document_novelty_df,
-    document_df,
-    id_column="work_id",
-    document_title_column="display_name"
-):
-    """Generates dictionary for faster lookups"""
+    document_novelty_df: pd.DataFrame,
+    document_df: pd.DataFrame,
+    id_column: str = "work_id",
+    document_title_column:str = "display_name"
+) -> Dict[str, Sequence[str]]:
+    """Generates dictionary for faster lookups of documents by topic
+
+    Args:
+        document_novelty_df (pd.DataFrame): The dataframe with novelty scores and list of 
+            topics for each document (output of document_to_topic_novelty)
+        document_df (pd.DataFrame): The dataframe with document metadata
+        id_column (str, optional): The column name for the document id. Defaults to "work_id".
+        document_title_column (str, optional): The column name for the document title. Defaults 
+            to "display_name".
+
+    Returns:
+        Dict[str, Sequence[str]]: A dictionary with topic as key and a list of document titles as value
+    """    
     return (
             document_novelty_df[[id_column, "topics", "novelty", "year", "n_topics"]]
             .merge(document_df[[id_column, document_title_column]], on=id_column, how="left")

@@ -55,9 +55,9 @@ def calculate_patent_novelty(
         topics_dict = patents.get_patent_topics(level=level)
         topics_df = nu.preprocess_topics_dict(
             topics_dict,
-            patents_df.assign(priority_year=lambda df: df.priority_date.dt.year),
+            patents_df.assign(publication_year=lambda df: df.publication_date.dt.year),
             "publication_number",
-            "priority_year",
+            "publication_year",
         )
         logging.info(
             f"Using {len(topics_df)} patents with sufficient data for novelty calculation"

@@ -1,4 +1,3 @@
-
 import numpy as np
 import pandas as pd
 import argparse
@@ -301,4 +300,3 @@ if __name__ == "__main__":
     fig = build_cluster_sunburst(
         cluster_entity_journal_df, entity_dict=MAIN_ENTITIES, save=save
     )
-

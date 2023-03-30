@@ -10,6 +10,9 @@ def get_tree_depths(tax_name: str) -> Dict[str, Dict[str, int]]:
     Args:
         tax_name (str): name of taxonomy to load results. Options are: cooccur, centroids, imbalanced
 
+    Args:
+        tax_name (str): name of taxonomy to load results. Options are: cooccur, centroids, imbalanced
+
     Returns:
         dict: size and depth metrics of trees in taxonomy
     """
@@ -28,7 +31,7 @@ def get_entropy(tax_name: str) -> Dict[str, int]:
         tax_name (str): name of taxonomy to load results. Options are: cooccur, centroids, imbalanced
 
     Returns:
-        dict: key: taxonomy name, value: dict: key: level, value: entropy of frequency distribution
+        dict: key: level, value: entropy of frequency distribution
     """
     return download_obj(
         BUCKET_NAME,
@@ -45,7 +48,7 @@ def get_chisq(tax_name: str) -> Dict[str, int]:
         tax_name (str): name of taxonomy to load results. Options are: cooccur, centroids, imbalanced
 
     Returns:
-        dict: key: taxonomy name, value: dict: key: level, value: chisq stat
+        dict: key: level, value: chisq stat
     """
     return download_obj(
         BUCKET_NAME,

@@ -1,4 +1,3 @@
-
 import numpy as np
 import pandas as pd
 import argparse
@@ -277,4 +276,3 @@ if __name__ == "__main__":
     fig = build_journal_sunburst(
         cooccur_taxonomy_named.reset_index(), level=args.levels, save=save
     )
-

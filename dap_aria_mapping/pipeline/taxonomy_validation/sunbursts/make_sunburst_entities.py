@@ -1,4 +1,3 @@
-
 import numpy as np
 import pandas as pd
 import argparse
@@ -208,4 +207,3 @@ if __name__ == "__main__":
         save = False
 
     fig = build_entity_sunburst(entity_counts_df, save=save, entity_dict=MAIN_ENTITIES)
-

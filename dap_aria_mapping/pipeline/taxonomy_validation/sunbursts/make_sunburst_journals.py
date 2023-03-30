@@ -1,4 +1,3 @@
-
 import numpy as np
 import pandas as pd
 import argparse
@@ -68,7 +67,7 @@ def propagate_sunburst_journal_values(
     )
     return {
         "ids": [fig.data[0]["ids"]],
-        "names": [fig.data[0]["names"]],
+        "labels": [fig.data[0]["labels"]],
         "parents": [fig.data[0]["parents"]],
         "values": [fig.data[0]["values"]],
     }
@@ -114,7 +113,7 @@ def build_journal_sunburst(
             "buttons": [
                 {
                     "method": "update",
-                    "name": "Top Publishing Journals",
+                    "label": "Top Publishing Journals",
                     "args": [
                         propagate_sunburst_journal_values(
                             df, journal=False, level=level
@@ -125,7 +124,7 @@ def build_journal_sunburst(
             + [
                 {
                     "method": "update",
-                    "name": journal,
+                    "label": journal,
                     "args": [
                         propagate_sunburst_journal_values(
                             df, journal=journal, level=level
@@ -152,7 +151,7 @@ def build_journal_sunburst(
             + [
                 {
                     "args": [{"maxdepth": int(level[-1]) + 2}],
-                    "name": "Entities",
+                    "label": "Entities",
                     "method": "restyle",
                 }
             ],
@@ -176,7 +175,7 @@ def build_journal_sunburst(
     )
 
     fig.update_traces(
-        hovertemplate="<b>%{name}</b><br>Entity Count: %{value}<br>",
+        hovertemplate="<b>%{label}</b><br>Entity Count: %{value}<br>",
     )
 
     if isinstance(save, bool):
@@ -277,4 +276,3 @@ if __name__ == "__main__":
     fig = build_journal_sunburst(
         cooccur_taxonomy_named.reset_index(), level=args.levels, save=save
     )
-

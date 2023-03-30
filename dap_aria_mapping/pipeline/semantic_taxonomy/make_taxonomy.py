@@ -134,9 +134,9 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--sample_frac",
-        type = float,
+        type=float,
         action="store",
-        help="percent of total entities to sample for sensitivity analysis"
+        help="percent of total entities to sample for sensitivity analysis",
     )
 
     args = parser.parse_args()
@@ -153,10 +153,10 @@ if __name__ == "__main__":
     if args.test:
         embeddings = embeddings.iloc[:1000, :1000]
         args.cluster_method = args.cluster_method + "_test"
-    
+
     if args.sample_frac is not None:
-        embeddings = embeddings.sample(frac = args.sample_frac)
-    
+        embeddings = embeddings.sample(frac=args.sample_frac)
+
     logger.info("Running UMAP on {} embeddings".format(len(embeddings)))
     embeddings_2d = umap.UMAP(
         n_neighbors=5, min_dist=0.05, n_components=2, random_state=args.seed
@@ -195,16 +195,6 @@ if __name__ == "__main__":
             Bucket=BUCKET_NAME,
             Key=f"{OUTPUT_DIR}/raw_outputs/semantic_{args.cluster_method}.pkl",
         )
-    """
-    elif all([args.production, args.test is False, args.sample_frac is not None]):
-        logger.info("Saving clustering results to S3")
-        s3 = boto3.client("s3")
-        s3.put_object(
-            Body=pickle.dumps(cluster_outputs),
-            Bucket=BUCKET_NAME,
-            Key=f"{OUTPUT_DIR}/raw_outputs/semantic_{args.cluster_method}_{str(int(args.sample_frac*100))}.pkl",
-        )
-    """
 
     if args.plot:
         plot_folder = PROJECT_DIR / "outputs" / "figures" / "semantic_taxonomy"
@@ -245,7 +235,7 @@ if __name__ == "__main__":
         dataframe.to_parquet(
             f"s3://aria-mapping/{OUTPUT_DIR}/assignments/semantic_{args.cluster_method}_clusters.parquet"
         )
-    
+
     elif all([args.production, args.sample_frac is not None]):
         logger.info("Saving dataframe of clustering results to S3")
         dataframe.to_parquet(

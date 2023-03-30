@@ -1,4 +1,3 @@
-
 import numpy as np
 import pandas as pd
 import argparse
@@ -66,7 +65,7 @@ def propagate_sunburst_cluster_values(
     fig = px.sunburst(df, path=path, values="Count")
     return {
         "ids": [fig.data[0]["ids"]],
-        "Names": [fig.data[0]["Names"]],
+        "labels": [fig.data[0]["labels"]],
         "parents": [fig.data[0]["parents"]],
         "values": [fig.data[0]["values"]],
     }
@@ -149,7 +148,7 @@ def build_cluster_sunburst(
     )
 
     fig.update_traces(
-        hovertemplate="<b>%{name}</b><br>Entity Count: %{value}<br>",
+        hovertemplate="<b>%{label}</b><br>Entity Count: %{value}<br>",
     )
 
     if isinstance(save, bool):
@@ -301,4 +300,3 @@ if __name__ == "__main__":
     fig = build_cluster_sunburst(
         cluster_entity_journal_df, entity_dict=MAIN_ENTITIES, save=save
     )
-

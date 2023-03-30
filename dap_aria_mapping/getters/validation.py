@@ -1,7 +1,8 @@
 from nesta_ds_utils.loading_saving.S3 import download_obj
-from dap_aria_mapping import BUCKET_NAME
+from dap_aria_mapping import BUCKET_NAME, PROJECT_DIR
 from typing import Dict
 import yaml
+
 
 def get_tree_depths(tax_name: str) -> Dict[str, Dict[str, int]]:
     """gets a dictionary with metrics about the tree depth of the given taxonomies
@@ -10,7 +11,7 @@ def get_tree_depths(tax_name: str) -> Dict[str, Dict[str, int]]:
         tax_name (str): name of taxonomy to load results. Options are: cooccur, centroids, imbalanced
 
     Args:
-        tax_name (str): name of taxonomy to load results. Options are: cooccur, centroids, imbalanced 
+        tax_name (str): name of taxonomy to load results. Options are: cooccur, centroids, imbalanced
 
     Returns:
         dict: size and depth metrics of trees in taxonomy

@@ -1,4 +1,3 @@
-
 import numpy as np
 import pandas as pd
 import argparse
@@ -48,7 +47,7 @@ def propagate_sunburst_entity_values(
     )
     return {
         "ids": [fig.data[0]["ids"]],
-        "names": [fig.data[0]["names"]],
+        "labels": [fig.data[0]["labels"]],
         "parents": [fig.data[0]["parents"]],
         "values": [fig.data[0]["values"]],
     }
@@ -82,7 +81,7 @@ def build_entity_sunburst(
             "buttons": [
                 {
                     "method": "update",
-                    "name": "Top {} Entities".format(str(length)),
+                    "label": "Top {} Entities".format(str(length)),
                     "args": [
                         propagate_sunburst_entity_values(
                             df, entity_dict=entity_dict, entity_length=length
@@ -103,7 +102,7 @@ def build_entity_sunburst(
         margin=dict(l=10, r=0, b=0, t=10),
     )
 
-    fig.update_traces(hovertemplate="<b>%{name}</b><br>Entity Count: %{value}")
+    fig.update_traces(hovertemplate="<b>%{label}</b><br>Entity Count: %{value}")
 
     if isinstance(save, bool):
         if save:
@@ -208,4 +207,3 @@ if __name__ == "__main__":
         save = False
 
     fig = build_entity_sunburst(entity_counts_df, save=save, entity_dict=MAIN_ENTITIES)
-

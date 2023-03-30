@@ -291,12 +291,11 @@ if __name__ == "__main__":
                         chatbot_num = np.random.randint(
                             1, len(chatgpt_args["TOKENS"]) + 1
                         )
-                        chatbot_num = 1
                         logger.info(
                             f"Starting batch of topics using chatbot {chatbot_num}"
                         )
                     try:
-                        random_sample = random.sample(list(entity_names.keys()), 6)
+                        random_sample = list(entity_names.keys())[:6]
                     except:
                         random_sample = entity_names.keys()
                     sample_entities = [
@@ -385,13 +384,14 @@ if __name__ == "__main__":
                             logger.info(
                                 f"ChatGPT failed to respond. Reason: {e}. Trying again."
                             )
-                            time.sleep(np.random.randint(6, 12))
+                            time.sleep(np.random.randint(20, 30))
                             if tries > 3:
                                 logger.info(
                                     "ChatGPT failed to respond. Idling for 5-10 minutes."
                                 )
-                                # pkill firefox using subprocess
-                                subprocess.run("pkill firefox", shell=True)
+                                if args.name_type[0] == "webChatGPT":
+                                    subprocess.run("pkill firefox", shell=True)
+
                                 time.sleep(np.random.randint(300, 600))
 
                                 logger.info("Restarting chatbot")

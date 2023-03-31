@@ -2,17 +2,17 @@ import streamlit as st
 from PIL import Image
 from nesta_ds_utils.viz.altair import formatting
 from dap_aria_mapping import PROJECT_DIR, IMAGE_DIR
-from dap_aria_mapping.getters.app_tables.change_makers import get_collaboration_network, get_topic_domain_area_lookup
+from dap_aria_mapping.getters.app_tables.change_makers import get_collaboration_network, get_quad_chart_data
 from streamlit_agraph import agraph, Node, Edge, Config
 import networkx as nx
 from typing import Tuple, List
 import polars as pl
 import math
+import altair as alt
 
 formatting.setup_theme()
 
 PAGE_TITLE = "Change Makers"
-
 
 #icon to be used as the favicon on the browser tab
 icon = Image.open(f"{IMAGE_DIR}/cm_icon.ico")
@@ -36,25 +36,8 @@ def load_networks(dataset: str) -> nx.Graph:
     """
     return get_collaboration_network(dataset)
 
-@st.cache_data(show_spinner = "Loading Data")
-def load_filter_data(dataset: str) -> Tuple[pl.DataFrame, List[str]]:
-    """gets lookup table of domains to areas and topic names to populate filters, 
-    as well as initial list of all domains for starting filter value
-
-    Args:
-        dataset: "Industry" or "Academia" specified by filter
-    Returns:
-        Tuple[pl.DataFrame, List[str]]: lookup table for filtering and unique domains
-    """
-    if dataset == "Industry":
-        data = get_topic_domain_area_lookup("patents")
-    elif dataset == "Academia":
-        data = get_topic_domain_area_lookup("publications")
-    unique_domains = data["domain_name"].unique().to_list()
-    return data, unique_domains
-
 @st.cache_data(show_spinner = "Filtering Data to Domain")
-def filter_by_domain(domain: str, dataset: str) -> Tuple[nx.Graph, List[str]]:
+def filter_network_by_domain(domain: str, dataset: str) -> Tuple[nx.Graph, List[str]]:
     """generates options for the topic filter, and filters the network to only contain nodes of a given domain
 
     Args:
@@ -66,14 +49,12 @@ def filter_by_domain(domain: str, dataset: str) -> Tuple[nx.Graph, List[str]]:
     """
     #must load the network in the function, otherwise won't be able to go back to another domain
     network = load_networks(dataset)
-    filter_data, unique_domains = load_filter_data(dataset)
-    unique_areas = filter_data.filter(pl.col("domain_name") == domain)["area_name"].unique().to_list()
     node_domains = nx.get_node_attributes(network, "domains")
     nodes = [node for node in network.nodes() if domain in node_domains[node]["domain_name"]]
-    return network.subgraph(nodes), unique_areas
+    return network.subgraph(nodes) 
 
 @st.cache_data(show_spinner = "Filtering Data to Area")
-def filter_by_area(area: str, _filter_data: pl.DataFrame, _network: nx.Graph) -> Tuple[nx.Graph, List[str]]:
+def filter_network_by_area(area: str, _network: nx.Graph) -> Tuple[nx.Graph, List[str]]:
     """generates options for the topic filter, and filters the network to only contain nodes of a given domain
 
     Args:
@@ -84,13 +65,12 @@ def filter_by_area(area: str, _filter_data: pl.DataFrame, _network: nx.Graph) ->
     Returns:
         Tuple[nx.Graph, List[str]]: subgraph only containing nodes within the area, and unique topics to populate filter
     """
-    unique_topics = _filter_data.filter(pl.col("area_name") == domain)["topic_name"].unique().to_list()
     node_areas= nx.get_node_attributes(_network, "areas")
     nodes = [node for node in network.nodes() if area in node_areas[node]["area_name"]]
-    return network.subgraph(nodes), unique_topics
+    return network.subgraph(nodes)
 
 @st.cache_data
-def filter_by_topic(topic: str, _network: nx.Graph) -> nx.Graph:
+def filter_network_by_topic(topic: str, _network: nx.Graph) -> nx.Graph:
     """generates options for the topic filter, and filters the network to only contain nodes of a given domain
 
     Args:
@@ -119,7 +99,7 @@ def nx_to_agraph(_network: nx.Graph, filter_val: str, filter_field: str, id_col:
     """
     node_size = nx.get_node_attributes(_network, "overall_doc_count")
     edge_weight = nx.get_edge_attributes(_network, filter_field)
-    #log scale node size
+
     nodes = [
         Node(
             id=node,
@@ -138,7 +118,57 @@ def nx_to_agraph(_network: nx.Graph, filter_val: str, filter_field: str, id_col:
             
     return nodes, edges
 
+@st.cache_data(show_spinner = "Loading quad chart")
+def load_quad_data():
+    """gets the disruption and volume by institution to populate the quad chart
 
+    Returns:
+        pl.DataFrame: polars dataframe with columns ["domain_name", "area_name", "topic_name", "affiliation_string", "volume", "average_cd_score"]
+    """
+    quad_data = get_quad_chart_data()
+    domain_filter_options = quad_data["domain_name"].unique().to_list()
+    return quad_data, domain_filter_options
+
+@st.cache_data(show_spinner = "Filtering by domain")
+def filter_quad_by_domain(_quad_data,domain):
+    quad_data = _quad_data.filter(
+        pl.col("domain_name")==domain
+        )
+
+    unique_areas = quad_data["area_name"].unique().to_list()
+    return quad_data, unique_areas
+
+@st.cache_data(show_spinner = "Filtering by area")
+def filter_quad_by_area(_quad_data,area):
+    quad_data = _quad_data.filter(
+        pl.col("area_name")==area
+        )
+    unique_topics = quad_data["topic_name"].unique().to_list()
+
+    return quad_data, unique_topics
+
+@st.cache_data(show_spinner = "Filtering by topic")
+def filter_quad_by_topic(_quad_data,topic):
+    return _quad_data.filter(pl.col("topic_name")==topic)
+
+
+def group_quad_data(_quad_data):
+    q = (
+    _quad_data.lazy()
+    .select(
+            [pl.col("affiliation_string"),
+            pl.col("volume"),
+            pl.col("average_cd_score")
+            ]
+        )
+    .groupby(["affiliation_string"])
+    .agg([
+        pl.sum("volume").alias("volume"),
+        pl.mean("average_cd_score").alias("average_cd_score")
+        ])
+    )
+    return q.collect()
+    
 header1, header2 = st.columns([1,10])
 with header1:
     st.image(icon)
@@ -152,20 +182,43 @@ overview_tab, collaboration_tab = st.tabs(["Overview", "Collaboration"])
 with overview_tab:
     dropdown1, dropdown2, dropdown3 = st.columns(3)
     with dropdown1:
-        group = st.selectbox(label = "Show me the:" , options = ["Individuals", "Research Groups", "Institutions"])
+        #In theory this would say "Individuals", "Institutions", or "Research Groups"
+        group = st.selectbox(label = "Show me the:" , options = ["Institutions"])
     with dropdown2:
-        indicator = st.selectbox(label = "Who are producing research that is:", options = ["Emergent", "Disruptive", "Novel"])
-    with dropdown3:
-        topics = st.multiselect(label = "In at least one of the following topics:", options = ["Placeholder Topic1", "Placeholder Topic2"])
+        #Currently only showing disruptive
+        indicator = st.selectbox(label = "Who are producing research that is:", options = ["Disruptive", "Novel"])
+    
+    quad_data, domain_filter_options = load_quad_data()
 
-    quad_chart, stacked_bars = st.columns(2)
+    with st.sidebar:
+        domain = st.selectbox(label = "Select a Domain", options = domain_filter_options)
+        area = "All"
+        topic = "All"
+        quad_data, area_filter_options = filter_quad_by_domain(quad_data, domain)
+        area_filter_options.insert(0, "All")
+        area = st.selectbox(label = "Select a Area", options = area_filter_options)
 
-    with quad_chart:
-        st.subheader("{} {}".format(indicator, group))
-        st.markdown("This would be used to show where individuals/institutions are on the axis of high-low disruptiveness (etc.) vs. volume within certain topics. PDs may want to find {} that haven't put out much research yet (low volume) but that research is highly {}.".format(group.lower(),indicator.lower()))
-    with stacked_bars:
-        st.subheader("Overlaps")
-        st.markdown("This would show a breakdown of other research topics that the {} are looking at to help illustrate where there are opportunities for collaboration".format(group.lower()))
+        if area != "All":
+            quad_data, topic_filter_options = filter_quad_by_area(quad_data, area)
+            topic_filter_options.insert(0, "All")
+            topic = st.selectbox(label = "Select a Topic", options = topic_filter_options)
+            
+            if topic != "All":
+
+                quad_data = filter_quad_by_topic(quad_data, topic)
+    
+    quad_data_to_plot = group_quad_data(quad_data).to_pandas()
+    quad_chart = alt.Chart(quad_data_to_plot).mark_circle().encode(
+        x = alt.X("volume:Q", axis = alt.Axis(tickCount = 2, title = "Total Publications"), scale = alt.Scale(domain = [0, quad_data_to_plot["volume"].max()])),
+        y = alt.Y("average_cd_score:Q", axis = alt.Axis(tickCount = 2, title = "Average Disruptiveness"), scale = alt.Scale(domain = [-1,1])),
+        tooltip = [
+            alt.Tooltip(field = "affiliation_string", title = "Organisation"),
+            alt.Tooltip(field = "volume", title = "Total Publications"),
+            alt.Tooltip(field = "average_cd_score", title = "Average C-D score")]
+    ).properties(width = 1200, height = 500).configure_mark(color = "#0000FF").interactive()
+
+    st.altair_chart(quad_chart)
+
 
 with collaboration_tab:
     network_dropdown1, network_dropdown2 = st.columns(2)
@@ -178,29 +231,31 @@ with collaboration_tab:
             id_col = "publication_number"
             org_name_col = "assignee_harmonized_names"
     
-    filter_data, unique_domains = load_filter_data(dataset)
-    with st.sidebar:
-        level = "domain"
-        domain = st.selectbox(label = "Select a Domain", options = unique_domains)
-        #NOTE: YOU MUST SELECT A DOMAIN
+    level = "domain"
+    #NOTE: YOU MUST SELECT A DOMAIN
 
-        #allow user to filter by area, but also allow "all"
-        network, unique_areas = filter_by_domain(domain, dataset)
-        unique_areas.insert(0, "All")
-        nodes, edges = nx_to_agraph(network, domain, filter_field="domains", id_col=id_col)
-        area = st.selectbox(label="Select an Area", options=unique_areas)
-        if area != "All":
-            level = "area"
-            #if an area is selected, filter data to the area and allow user to filter by topic or select "all"
-            network, unique_topics = filter_by_area(area, filter_data, network)
-            nodes, edges = nx_to_agraph(network, area, filter_field="areas", id_col=id_col)
-            unique_topics.insert(0, "All")
-            topic = st.selectbox(label="Select a Topic", options=unique_topics)
+    #allow user to filter by area, but also allow "all"
+    no_network = False
+    network = filter_network_by_domain(domain, dataset)
+    nodes, edges = nx_to_agraph(network, domain, filter_field = "domains", id_col = id_col)
+    if area != "All":
+        level = "area"
+        #if an area is selected, filter data to the area and allow user to filter by topic or select "all"
+        network = filter_network_by_area(area, network)
+        try:
+            nodes, edges = nx_to_agraph(network, area, filter_field = "areas", id_col= id_col)
+        except KeyError:
+            no_network = True
+            st.markdown("No groups in the top 500 institutions in {} produced research in {}".format(dataset, area))
 
-            if topic != "All":
-                level = "topic"
-                network = filter_by_topic(topic, network)
-                nodes, edges = nx_to_agraph(network, topic, filter_field="topics", id_col=id_col)
+        if topic != "All":
+            level = "topic"
+            network = filter_network_by_topic(topic, network)
+            try:
+                nodes, edges = nx_to_agraph(network, topic, filter_field = "topics", id_col=id_col)
+            except KeyError:
+                no_network = True
+                st.markdown("No groups in the top 500 institutions in {} produced research in {}".format(dataset, area))
 
     st.subheader("Collaboration Network")
     st.markdown("🚨 This view is currently **experimental** and only shows relationships in the most productive 500 institutions in patents and publications")
@@ -213,7 +268,8 @@ with collaboration_tab:
                 # **kwargs
                 )
 
-    agraph(nodes, edges, config)
+    if not no_network:
+        agraph(nodes, edges, config)
 
 
 #adds the nesta x aria logo at the bottom of each tab, 3 lines below the contents

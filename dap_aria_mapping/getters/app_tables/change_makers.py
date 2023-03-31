@@ -40,3 +40,17 @@ def get_topic_domain_area_lookup(doc_type: str) -> pl.DataFrame:
         ]).unique(subset = "topic")
     else:
         print("Invalid doctype option")
+
+def get_quad_chart_data() -> pl.DataFrame:
+    """gets the disruption and volume by institution to populate the quad chart
+
+    Returns:
+        pl.DataFrame: polars dataframe with columns ["domain_name", "area_name", "topic_name", "affiliation_string", "volume", "average_cd_score"]
+    """
+    return pl.DataFrame(
+        download_obj(
+            BUCKET_NAME, 
+            "outputs/app_data/change_makers/disruption_by_institution.parquet",
+            download_as = "dataframe"
+            )
+        )

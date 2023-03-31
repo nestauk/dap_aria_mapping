@@ -11,6 +11,7 @@ from copy import deepcopy
 OUTPUT_DIR = PROJECT_DIR / "outputs" / "interim" / "country_tags"
 OUTPUT_DIR_PREPRUNE = PROJECT_DIR / "outputs" / "interim" / "preprune_topics"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+PATTERN = r"(\w)'(\w|\s)"
 
 if __name__ == "__main__":
     try:
@@ -43,20 +44,17 @@ if __name__ == "__main__":
         else:
             entity_sample = entities_to_check
 
-        print(entity_sample)
-
         logger.info("Asking model for response...")
         response_ok, response, response_reason = bot.ask(f"{entity_sample}")
         time.sleep(np.random.uniform(1, 10))
 
         # Attempt to convert to list, if exception, try making it explicit
         try:
-            print(response)
             # Deal with apostrophes within strings, and excess strings
             start = response.find("[('")
             end = response.rfind("'])]")
             response = response[start : end + 4]
-            response = re.sub(r"(\w)'(\w|\s)", r"\1\'\2", response)
+            response = re.sub(PATTERN, r"\1\'\2", response)
 
             response = ast.literal_eval(response)
         except Exception as e:
@@ -67,14 +65,12 @@ if __name__ == "__main__":
             response_ok, response, response_reason = bot.ask(
                 chatgpt_args["TAG-ERROR-NOLIST"]
             )
-            print("Before:" + str(response))
             try:
                 # response = re.findall(r"\[.*\]", response)[0]
                 start = response.find("[('")
                 end = response.rfind("'])]")
                 response = response[start : end + 4]
-                response = re.sub(r"(\w)'(\w|\s)", r"\1\'\2", response)
-                print("After:" + str(response))
+                response = re.sub(PATTERN, r"\1\'\2", response)
                 response = ast.literal_eval(response)
             except Exception as e:
                 logger.info(

@@ -27,29 +27,10 @@ if __name__ == "__main__":
     except FileNotFoundError:
         logger.info("No entities.pkl found, creating new list.")
         entities = get_cooccurrence_taxonomy().index.tolist()
-        entities = entities[:35000]
 
     # Prompt chatGPT with the problem
     bot = ChatGPT(False)
-    initial_script = f"I have created a hierarchical taxonomy of topics that are relevant to the academic literature \
-        and the commercialization of science. This taxonomy is created from a list of entities, which \
-        represent Wikipedia topics and which should represent relevant concepts in academia. These entities \
-        are clustered into topics given a co-occurrence matrix. \n\n \
-        The problem is that some of these entities may instead represent modern day countries, regions, or cities. \
-        If possible, also identify institutions and films. \
-        \n\n \
-        Your task is to identify these entities and remove them from the taxonomy. \
-        I will give you a list of entities and you will return the list of entities to remove. \
-        \n\n \
-        Your response should be a single Python list of entities that should be removed. \
-        For example, if you think that the entities 'United States', 'United Kingdom', and 'Canada' \
-        should be removed, you would respond with ['United States', 'United Kingdom', 'Canada']. \
-        \n\n \
-        If you think that no entities should be removed, you would respond with an empty list, \
-        like this: []. \n\n \
-        Here is a first list of entities: \
-        \n\n \
-        {entities[:50]} \n\n"
+    initial_script = chatgpt_args["PREPRUNE-INTRO"] + f"{entities[:50]} \n\n"
 
     response = bot.ask(initial_script)
     logger.info(f"Initial response: {response}")
@@ -69,18 +50,7 @@ if __name__ == "__main__":
             entity_sample = entities
 
         # Define script & get response
-        script = f"Your task is to identify entities in a list that represent modern day countries, regions, or cities. \
-            If possible, also identify institutions and films. \
-            \n\n \
-            Your response should be a single Python list of entities that correspond to these categories. Please return a single list. \
-            For example, if you think that the entities 'United States', 'United Kingdom', and 'Canada' \
-            correspond to modern-day countries, you would respond with ['United States', 'United Kingdom', 'Canada']. \
-            \n\n \
-            If you think that no entities match any of the above categories, you would respond with an empty list, \
-            like this: []. \n\n \
-            Here is the list of entities: \
-            \n\n \
-            {entity_sample} \n\n"
+        script = chatgpt_args["PREPRUNE-REQUEST"] + f"{entity_sample} \n\n"
 
         logger.info("Asking model for response...")
         response_ok, response, response_reason = bot.ask(script)

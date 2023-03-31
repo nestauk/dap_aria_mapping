@@ -42,7 +42,7 @@ def calculate_topic_novelty(
         min_doc_counts (int, optional): Minimum number of times a topic must appear in the corpus to be considered for including into the analysis outputs
     """
     if taxonomy_level == 0:
-        levels = list(range(1, 6))
+        levels = list(range(1, 4))
     else:
         levels = [taxonomy_level]
     # Loop over taxonomy levels

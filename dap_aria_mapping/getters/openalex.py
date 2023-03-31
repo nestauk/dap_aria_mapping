@@ -113,7 +113,7 @@ def get_openalex_cd_scores(year: int) -> Dict[str, int]:
     """
     return download_obj(
         BUCKET_NAME,
-        f"outputs/cd_index/openalex_cd_scores_{year}.json",
+        "outputs/cd_index/openalex_cd_scores_{}.json".format(year),
         download_as="dict",
     )
 
@@ -257,21 +257,6 @@ def get_openalex_forward_citations(
         download_as="dict",
     )
 
-
-def get_openalex_cd_scores(year: int) -> Dict:
-    """From S3 loads openalex CD scores for a given year..
-
-    Args:
-        year (int): The year for which to fetch CD scores.
-
-    Returns:
-        Dict: Dictionary mapping work IDs to CD scores.
-    """
-    return download_obj(
-        BUCKET_NAME,
-        f"outputs/openalex_cd_scores_{year}.json",
-        download_as="dict",
-    )
 
 
 # We didn't use this table - it looks like it would need cleaning up if you were keen

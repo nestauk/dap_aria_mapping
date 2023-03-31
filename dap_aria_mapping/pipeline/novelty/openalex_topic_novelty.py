@@ -45,7 +45,7 @@ def calculate_topic_novelty(
             to be considered for including into the analysis outputs
     """
     if taxonomy_level == 0:
-        levels = list(range(1, 6))
+        levels = list(range(1, 4))
     else:
         levels = [taxonomy_level]
     # Loop over taxonomy levels

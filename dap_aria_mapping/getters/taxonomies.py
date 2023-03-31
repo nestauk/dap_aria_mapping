@@ -62,7 +62,7 @@ def get_taxonomy_config() -> dict:
 
 
 def get_cooccurrence_taxonomy(
-    sample: int = None, postproc: bool = False
+    sample: int = None, postproc: bool = True
 ) -> pd.DataFrame:
     """gets taxonomy developed using community detection on term cooccurrence network.
         Algorithm to generate taxonomy can be found in pipeline/taxonomy_development/community_detection.py.
@@ -149,7 +149,7 @@ def get_topic_names(
     name_type: str,
     level: int,
     n_top: int = None,
-    postproc: bool = False,
+    postproc: bool = True,
 ) -> Dict[str, str]:
     """Downloads topic names from S3 and returns them as a dictionary.
 
@@ -178,8 +178,15 @@ def get_topic_names(
                 download_as="dict",
             )
     else:
-        return download_obj(
-            BUCKET_NAME,
-            f"outputs/topic_names/postproc/level_{str(level)}.json",
-            download_as="dict",
-        )
+        if name_type!="chatgpt":
+            return download_obj(
+                BUCKET_NAME,
+                f"outputs/topic_names/class_{taxonomy_class}_nametype_{name_type}_top_{str(n_top)}_level_{str(level)}.json",
+                download_as="dict",
+            )
+        else:
+            return download_obj(
+                BUCKET_NAME,
+                f"outputs/topic_names/postproc/level_{str(level)}.json",
+                download_as="dict",
+            )

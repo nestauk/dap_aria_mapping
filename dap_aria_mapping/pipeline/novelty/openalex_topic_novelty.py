@@ -61,7 +61,7 @@ def calculate_topic_novelty(
         )
         # Fetch topic names
         topic_names = get_topic_names(
-            taxonomy_class="cooccur", name_type="entity", level=level
+            taxonomy_class="cooccur", name_type="chatgpt", level=level
         )
         # Calculate novelty scores for topics
         topic_doc_novelty_df = nu.document_to_topic_novelty(work_novelty_df)

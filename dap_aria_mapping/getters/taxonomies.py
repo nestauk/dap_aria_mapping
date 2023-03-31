@@ -152,7 +152,6 @@ def get_topic_names(
     postproc: bool = True,
 ) -> Dict[str, str]:
     """Downloads topic names from S3 and returns them as a dictionary.
-
     Args:
         taxonomy_class (str): The type of taxonomy to download.
         name_type (str): The type of name to download.
@@ -161,6 +160,7 @@ def get_topic_names(
             chatgpt name_type uses 35 entities per topic to hit the API endpoint.
         postproc (bool, optional): Whether to download the postprocessed topic names. Defaults to False.
 
+        postproc (bool, optional): Whether to download the postprocessed topic names. Defaults to True.
     Returns:
         pd.DataFrame: A dictionary containing the topic names.
     """

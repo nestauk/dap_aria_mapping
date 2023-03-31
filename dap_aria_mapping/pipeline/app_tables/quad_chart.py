@@ -18,39 +18,44 @@ if __name__ == "__main__":
     cd_scores = pl.DataFrame(data = None)
     for year in years:
         df = pl.DataFrame(
-                    pd.DataFrame.from_dict(
-                        get_openalex_cd_scores(year), orient='index')
-                        .T
-                        .unstack()
-                        .dropna()
-                        .reset_index(drop=True, level=1)
-                        .to_frame()
-                        .reset_index()
-                        )
-        cd_scores = pl.concat([cd_scores, df])
-    cd_scores.columns = ["id", "cd_score"]
-
-    logger.info("Loading publication novelty scores")
-
-
-    logger.info("Have c-d scores for {} publications".format(len(cd_scores)))
-
-    logger.info("Loading publication authorship info and filtering to only include docs with cd scores")
-    authorships = pl.DataFrame(get_openalex_authorships()
-        ).select([pl.col("id"), pl.col("affiliation_string")]
-        ).filter(pl.col("id").is_in(cd_scores["id"]))
-
-    logger.info("Loading publications with topics and filtering to only include docs with cd scores")
-    pubs_with_topics_df = pl.DataFrame(
-        pd.DataFrame.from_dict(
-            get_openalex_topics(tax = "cooccur", level = 3), orient='index')
+            pd.DataFrame.from_dict(
+                get_openalex_cd_scores(year), orient='index'
+            )
             .T
             .unstack()
             .dropna()
             .reset_index(drop=True, level=1)
             .to_frame()
             .reset_index()
-            )
+        )
+        cd_scores = pl.concat([cd_scores, df])
+    cd_scores.columns = ["id", "cd_score"]
+
+    logger.info("Loading publication novelty scores")
+
+    logger.info("Have c-d scores for {} publications".format(len(cd_scores)))
+
+    logger.info("Loading publication authorship info and filtering to only include docs with cd scores")
+    authorships = pl.DataFrame(
+        get_openalex_authorships()
+    ).select(
+        [pl.col("id"), pl.col("affiliation_string")]
+    ).filter(
+        pl.col("id").is_in(cd_scores["id"])
+    )
+
+    logger.info("Loading publications with topics and filtering to only include docs with cd scores")
+    pubs_with_topics_df = pl.DataFrame(
+        pd.DataFrame.from_dict(
+            get_openalex_topics(tax = "cooccur", level = 3), orient='index'
+        )
+        .T
+        .unstack()
+        .dropna()
+        .reset_index(drop=True, level=1)
+        .to_frame()
+        .reset_index()
+    )
 
     pubs_with_topics_df.columns = ["id", "topic"]
 
@@ -59,12 +64,13 @@ if __name__ == "__main__":
     logger.info("Calculating volume and average cd score per organisation per topic")
 
     orgs_df_with_topics_and_scores = pubs_with_topics_df.join(
-            authorships, on = "id", how = "left"
-            ).filter(
-                ~pl.all(pl.col('affiliation_string').is_null())
-                ).join(
-                    cd_scores, on = "id", how = "left"
-                )
+        authorships, on = "id", how = "left"
+    ).filter(
+        ~pl.all(pl.col('affiliation_string').is_null())
+    ).join(
+        cd_scores, on = "id", how = "left"
+    )
+
     q = (
         orgs_df_with_topics_and_scores.lazy()
         .groupby(["affiliation_string", "topic"])
@@ -78,7 +84,7 @@ if __name__ == "__main__":
 
     logger.info("Adding topic names")
 
-    aggregated_data_with_names =  add_area_domain_chatgpt_names(expand_topic_col(aggregated_data))
+    aggregated_data_with_names = add_area_domain_chatgpt_names(expand_topic_col(aggregated_data))
     
     logger.info("Uploading file to S3")
     buffer = io.BytesIO()

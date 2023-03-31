@@ -123,14 +123,24 @@ def load_quad_data():
     """gets the disruption and volume by institution to populate the quad chart
 
     Returns:
-        pl.DataFrame: polars dataframe with columns ["domain_name", "area_name", "topic_name", "affiliation_string", "volume", "average_cd_score"]
+        pl.DataFrame: polars dataframe with columns 
+        ["domain_name", "area_name", "topic_name", "affiliation_string", "volume", "average_cd_score", "average_novelty_score"]
     """
     quad_data = get_quad_chart_data()
     domain_filter_options = quad_data["domain_name"].unique().to_list()
     return quad_data, domain_filter_options
 
 @st.cache_data(show_spinner = "Filtering by domain")
-def filter_quad_by_domain(_quad_data,domain):
+def filter_quad_by_domain(_quad_data: pl.DataFrame, domain: str) -> Tuple[pl.DataFrame, List[str]]:
+    """filters the quad chart data by a domain
+
+    Args:
+        _quad_data (pl.DataFrame): quad chart data
+        domain (str): domain selected by filter
+
+    Returns:
+        Tuple[pl.DataFrame, List[str]]: filtered quad chart data, list of unique areas to populate filter
+    """
     quad_data = _quad_data.filter(
         pl.col("domain_name")==domain
         )
@@ -139,7 +149,16 @@ def filter_quad_by_domain(_quad_data,domain):
     return quad_data, unique_areas
 
 @st.cache_data(show_spinner = "Filtering by area")
-def filter_quad_by_area(_quad_data,area):
+def filter_quad_by_area(_quad_data: pl.DataFrame, area: str) -> Tuple[pl.DataFrame, List[str]]:
+    """filters the quad chart data by a topic
+
+    Args:
+        _quad_data (pl.DataFrame): quad chart data
+        area (str): area selected by filter
+
+    Returns:
+        Tuple[pl.DataFrame, List[str]]: filtered quad chart data, list of unique topics to populate filter
+    """
     quad_data = _quad_data.filter(
         pl.col("area_name")==area
         )
@@ -148,23 +167,43 @@ def filter_quad_by_area(_quad_data,area):
     return quad_data, unique_topics
 
 @st.cache_data(show_spinner = "Filtering by topic")
-def filter_quad_by_topic(_quad_data,topic):
+def filter_quad_by_topic(_quad_data: pl.DataFrame, topic: str) -> pl.DataFrame:
+    """filters the quad data by an area
+
+    Args:
+        _quad_data (pl.DataFrame): quad chart data
+        topic (str): topic selected by filter
+
+    Returns:
+        pl.DataFrame: filtered quad chart data
+    """
     return _quad_data.filter(pl.col("topic_name")==topic)
 
 
-def group_quad_data(_quad_data):
+def group_quad_data(_quad_data: pl.DataFrame, select_field: str) -> pl.DataFrame:
+    """groups the quad chart data by affiliaton string and calculates the total volume and 
+        average disruptiveness or novelty
+
+    Args:
+        _quad_data (pl.DataFrame): quad chart data
+        select_field (str): field to visualize (either c-d score or novelty score) specified by filter
+
+    Returns:
+        pl.DataFrame: grouped quad chart data
+    """
     q = (
     _quad_data.lazy()
     .select(
             [pl.col("affiliation_string"),
             pl.col("volume"),
-            pl.col("average_cd_score")
+            pl.col(select_field)
             ]
         )
+    .drop_nulls()
     .groupby(["affiliation_string"])
     .agg([
         pl.sum("volume").alias("volume"),
-        pl.mean("average_cd_score").alias("average_cd_score")
+        pl.mean(select_field).alias(select_field)
         ])
     )
     return q.collect()
@@ -188,6 +227,15 @@ with overview_tab:
         #Currently only showing disruptive
         indicator = st.selectbox(label = "Who are producing research that is:", options = ["Disruptive", "Novel"])
     
+    if indicator == "Disruptive":
+        select_field = "average_cd_score"
+        axis_title = "Average C-D Score"
+
+    elif indicator == "Novel":
+        select_field = "average_novelty_score"
+        axis_title = "Average Novelty Score"
+
+    
     quad_data, domain_filter_options = load_quad_data()
 
     with st.sidebar:
@@ -207,14 +255,14 @@ with overview_tab:
 
                 quad_data = filter_quad_by_topic(quad_data, topic)
     
-    quad_data_to_plot = group_quad_data(quad_data).to_pandas()
+    quad_data_to_plot = group_quad_data(quad_data, select_field).to_pandas()
     quad_chart = alt.Chart(quad_data_to_plot).mark_circle().encode(
         x = alt.X("volume:Q", axis = alt.Axis(tickCount = 2, title = "Total Publications"), scale = alt.Scale(domain = [0, quad_data_to_plot["volume"].max()])),
-        y = alt.Y("average_cd_score:Q", axis = alt.Axis(tickCount = 2, title = "Average Disruptiveness"), scale = alt.Scale(domain = [-1,1])),
+        y = alt.Y("{}:Q".format(select_field), axis = alt.Axis(tickCount = 2, title = axis_title)),
         tooltip = [
             alt.Tooltip(field = "affiliation_string", title = "Organisation"),
             alt.Tooltip(field = "volume", title = "Total Publications"),
-            alt.Tooltip(field = "average_cd_score", title = "Average C-D score")]
+            alt.Tooltip(field = select_field, title = axis_title)]
     ).properties(width = 1200, height = 500).configure_mark(color = "#0000FF").interactive()
 
     st.altair_chart(quad_chart)

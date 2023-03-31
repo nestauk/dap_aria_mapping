@@ -263,9 +263,8 @@ if __name__ == "__main__":
     nx.set_edge_attributes(network, edge_data(orgs_df_with_topics, by="area_name", id_col= id_col, org_name_col= org_name_col), "areas")
     nx.set_edge_attributes(network, edge_data(orgs_df_with_topics, by="domain_name", id_col= id_col, org_name_col= org_name_col), "domains")
 
-    logger.info("Saving network")
-    #upload_obj(network, BUCKET_NAME, "outputs/app_data/change_makers/networks/{}_{}.pkl".format(args.doc_type, args.level))
-    with open("outputs/academia_institutions.pickle", "wb") as f:
-        pickle.dump(network, f)
+    print("Saving network")
+    upload_obj(network, BUCKET_NAME, "outputs/app_data/change_makers/networks/{}_{}.pkl".format(args.doc_type, args.level))
+
 
 

@@ -45,17 +45,17 @@ def add_area_domain_chatgpt_names(df_with_topic_ids: pl.DataFrame) -> pl.DataFra
 
     domain_names  = pl.DataFrame(
         pd.DataFrame.from_dict(
-            get_topic_names("cooccur", "chatgpt", 1, n_top=35), 
+            get_topic_names("cooccur", "chatgpt", 1, n_top=35, postproc = True), 
             orient= "index").rename_axis("domain").reset_index().rename(
                 columns = {"name": "domain_name"})[["domain", "domain_name"]])
     area_names  = pl.DataFrame(
         pd.DataFrame.from_dict(
-            get_topic_names("cooccur", "chatgpt", 2, n_top=35),
+            get_topic_names("cooccur", "chatgpt", 2, n_top=35, postproc = True),
             orient= "index").rename_axis("area").reset_index().rename(
                 columns = {"name": "area_name"})[["area", "area_name"]])
     topic_names  = pl.DataFrame(
         pd.DataFrame.from_dict(
-            get_topic_names("cooccur", "chatgpt", 3, n_top=35),
+            get_topic_names("cooccur", "chatgpt", 3, n_top=35, postproc = True),
             orient= "index").rename_axis("topic").reset_index().rename(
                 columns = {"name": "topic_name"})[["topic", "topic_name"]])
     

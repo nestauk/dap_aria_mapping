@@ -24,7 +24,7 @@ def docs_per_org(
         orgs_df (pl.DataFrame): dataframe with institution/organisation names and document ids
         id_col (str, optional): column to indicate a document id. Defaults to "publication_number".
         org_name_col (str, optional): column to indicate the institution/organisation names. Defaults to "assignee_harmonized_names".
-        top_n (str, optional): if this is included, filter the results to only include the top_n organisations by count of total documents
+        top_n (Union[int, bool], optional): if this is included, filter the results to only include the top_n organisations by count of total documents
 
     Returns:
         Dict[str, int]: key: institution/organisastion name, value: total number of documents produced
@@ -159,7 +159,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--top_n",
         default= False,
-        type = int,
+        type = Union[bool,int],
         required=False
     )
 

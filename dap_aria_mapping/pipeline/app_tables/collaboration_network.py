@@ -159,7 +159,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--top_n",
         default= False,
-        type = Union[bool,int],
+        type = int,
         required=False
     )
 

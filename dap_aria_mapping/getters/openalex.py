@@ -97,9 +97,19 @@ def get_openalex_topics(tax: str = "cooccur", level: int = 1) -> Dict[str, List[
 
     return download_obj(
         BUCKET_NAME,
-        "outputs/docs_with_topics/{}/openalex/Level_{}.json".format(tax, str(level)),
+        "outputs/docs_with_topics/{}/openalex/Level_{}.json".format(
+            tax, str(level)),
         download_as="dict",
     )
+
+
+def get_openalex_institutes():
+    return download_obj(
+        AI_GENOMICS_BUCKET_NAME,
+        "inputs/openalex/institutions.json",
+        download_as="dict",
+    )
+
 
 def get_openalex_cd_scores(year: int) -> Dict[str, int]:
     """From S3 loads openalex CD scores for a given year..
@@ -125,7 +135,7 @@ def get_openalex_institutes():
     )
 
 
-#########TEMPORARY AI GENOMICS GETTERS##########################
+######### TEMPORARY AI GENOMICS GETTERS##########################
 
 
 def get_openalex_ai_genomics_works() -> pd.DataFrame:
@@ -256,7 +266,6 @@ def get_openalex_forward_citations(
         f"{directory}{fname}",
         download_as="dict",
     )
-
 
 
 # We didn't use this table - it looks like it would need cleaning up if you were keen

@@ -32,11 +32,11 @@ if __name__ == "__main__":
 
     unique_pub_topics = pubs_with_topics_df.unique(subset="topic")
     pub_topics_with_names = add_area_domain_chatgpt_names(
-        expand_topic_col(unique_pub_topics))
+        expand_topic_col(unique_pub_topics)).select((pl.col("domain_name"), pl.col("area_name"), pl.col("topic_name")))
 
     unique_patent_topics = patents_with_topics_df.unique(subset="topic")
     patent_topics_with_names = add_area_domain_chatgpt_names(
-        expand_topic_col(unique_patent_topics))
+        expand_topic_col(unique_patent_topics)).select((pl.col("domain_name"), pl.col("area_name"), pl.col("topic_name")))
 
     logger.info("Saving publication lookup table to s3")
     buffer = io.BytesIO()

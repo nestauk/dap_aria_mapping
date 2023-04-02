@@ -33,10 +33,18 @@ if __name__ == "__main__":
     logger.info("Loading publication novelty scores")
     novelty_scores = pl.DataFrame(get_openalex_novelty_scores(level=3)).select(pl.col(
         "work_id"), pl.col("novelty"), pl.col("year")).rename({"work_id": "id"})
+
     logger.info("Have novelty scores for {} publications".format(
         len(novelty_scores)))
 
-    scores_df = cd_scores.join(novelty_scores, on="id", how="outer")
+    scores_df = cd_scores.join(novelty_scores, on="id", how="outer").with_column(
+        pl.when(pl.col("year").is_null())
+        .then(pl.col("year_right"))
+        .when(pl.col("year_right").is_null())
+        .then(pl.col("year"))
+        .when((~pl.col("year_right").is_null()) & (~pl.col("year").is_null()))
+        .then(pl.col("year")).alias("year_combined")
+    ).drop(["year", "year_right"]).rename({"year_combined": "year"})
 
     logger.info("Loading publication authorship info")
     authorships = pl.DataFrame(get_openalex_authorships()
@@ -59,13 +67,16 @@ if __name__ == "__main__":
 
     logger.info("Calculating volume, average cd score per organisation per topic, and average novelty score per organisation per topic")
 
-    orgs_df_with_topics_and_scores = pubs_with_topics_df.join(
+    orgs_df_with_topics = pubs_with_topics_df.join(
         authorships, on="id", how="left"
     ).filter(
         ~pl.all(pl.col('affiliation_string').is_null())
-    ).join(
-        scores_df, on="id", how="left"
     )
+
+    orgs_df_with_topics_and_scores = scores_df.join(
+        orgs_df_with_topics, on="id", how="left"
+    )
+
     q = (
         orgs_df_with_topics_and_scores.lazy()
         .groupby(["affiliation_string", "topic", "year"])
@@ -81,10 +92,10 @@ if __name__ == "__main__":
     logger.info("Adding topic names")
 
     aggregated_data_with_names = add_area_domain_chatgpt_names(
-        expand_topic_col(aggregated_data))
+        expand_topic_col(aggregated_data)).drop(["domain", "area", "topic"])
 
     logger.info("Uploading yearly files to S3")
-    years = aggregated_data_with_names[["year"]].unique()
+    years = aggregated_data_with_names.get_column("year").unique().to_list()
     for year in years:
         yearly_data = aggregated_data_with_names.filter(pl.col("year") == year)
         buffer = io.BytesIO()

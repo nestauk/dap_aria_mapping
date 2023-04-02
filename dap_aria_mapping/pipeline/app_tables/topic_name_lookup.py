@@ -53,13 +53,3 @@ if __name__ == "__main__":
     s3 = boto3.client("s3")
     s3.upload_fileobj(buffer, BUCKET_NAME,
                       "outputs/app_data/patent_topic_filter_lookup.parquet")
-
-    logger.info("Saving combined lookup table to S3")
-    combined_filter = pl.concat(
-        [pub_topics_with_names, patent_topics_with_names]).unique()
-    buffer = io.BytesIO()
-    combined_filter.write_parquet(buffer)
-    buffer.seek(0)
-    s3 = boto3.client("s3")
-    s3.upload_fileobj(buffer, BUCKET_NAME,
-                      "outputs/app_data/combined_topic_filter_lookup.parquet")

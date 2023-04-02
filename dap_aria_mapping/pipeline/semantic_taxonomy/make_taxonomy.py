@@ -1,24 +1,27 @@
-import warnings
-
-warnings.simplefilter(action="ignore", category=FutureWarning)
-import argparse, boto3, pickle, random
-from typing import Dict, Tuple, Any, Sequence
-import numpy as np
-import umap.umap_ as umap
-import matplotlib.pyplot as plt
-from toolz import pipe
-from functools import partial
-from sklearn.cluster import KMeans, AgglomerativeClustering, DBSCAN
-from hdbscan import HDBSCAN
-from dap_aria_mapping import PROJECT_DIR, BUCKET_NAME, logger, taxonomy
+import random
+import pickle
+import boto3
+import argparse
+from random import sample
+from dap_aria_mapping.getters.taxonomies import get_entity_embeddings
 from dap_aria_mapping.utils.semantics import (
     make_dataframe,
     run_clustering_generators,
     normalise_centroids,
     make_subplot_embeddings,
 )
-from dap_aria_mapping.getters.taxonomies import get_entity_embeddings
-from random import sample
+from dap_aria_mapping import PROJECT_DIR, BUCKET_NAME, logger, taxonomy
+from hdbscan import HDBSCAN
+from sklearn.cluster import KMeans, AgglomerativeClustering, DBSCAN
+from functools import partial
+from toolz import pipe
+import matplotlib.pyplot as plt
+import umap.umap_ as umap
+import numpy as np
+from typing import Dict, Tuple, Any, Sequence
+import warnings
+
+warnings.simplefilter(action="ignore", category=FutureWarning)
 
 METHODS = {
     "KMeans": KMeans,
@@ -42,7 +45,8 @@ def plot_centroids(cluster_outputs: Dict[str, Any]) -> plt.Figure:
         plt.Figure: A figure with a subplot for each level of clustering.
     """
     num_levels = len(cluster_outputs[-1]["silhouette"])
-    fig, axis = plt.subplots(1, num_levels, figsize=(int(num_levels * 8), 8), dpi=300)
+    fig, axis = plt.subplots(1, num_levels, figsize=(
+        int(num_levels * 8), 8), dpi=300)
     for idx, cdict in enumerate(cluster_outputs):
         if idx == 0:
             axis[idx].scatter(
@@ -78,7 +82,8 @@ def plot_imbalanced(
         plt.Figure: A figure with a subplot for each level of clustering.
     """
     num_levels = len(cluster_outputs[-1]["silhouette"])
-    fig, axis = plt.subplots(1, num_levels, figsize=(int(num_levels * 8), 8), dpi=300)
+    fig, axis = plt.subplots(1, num_levels, figsize=(
+        int(num_levels * 8), 8), dpi=300)
 
     for idx, (cdict, cluster) in enumerate(plot_dicts):
         labels = [int(e) for e in cdict.values()]
@@ -218,9 +223,11 @@ if __name__ == "__main__":
     logger.info("Creating dataframe of clustering results")
     dataframe = pipe(
         cluster_outputs[-1],
-        partial(make_dataframe, label=f"_{args.cluster_method}", cumulative=True),
+        partial(make_dataframe,
+                label=f"_{args.cluster_method}", cumulative=True),
         lambda df: df.rename(
-            columns={k: "Level_{}".format(int(v) + 1) for v, k in enumerate(df.columns)}
+            columns={k: "Level_{}".format(int(v) + 1)
+                     for v, k in enumerate(df.columns)}
         ),
         lambda df: df.reset_index()
         .rename(columns={"index": "Entity"})

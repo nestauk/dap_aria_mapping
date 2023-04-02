@@ -1,7 +1,9 @@
 from dap_aria_mapping import BUCKET_NAME, PROJECT_DIR
 from typing import Dict
 from nesta_ds_utils.loading_saving.S3 import download_obj
-import boto3, yaml, pickle
+import boto3
+import yaml
+import pickle
 import pandas as pd
 from toolz import pipe
 
@@ -79,7 +81,8 @@ def get_cooccurrence_taxonomy(
     if sample:
         return download_obj(
             BUCKET_NAME,
-            "outputs/community_detection_taxonomy/{}.parquet".format(str(sample)),
+            "outputs/community_detection_taxonomy/{}.parquet".format(
+                str(sample)),
             download_as="dataframe",
         )
     

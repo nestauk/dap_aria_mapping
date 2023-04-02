@@ -181,7 +181,7 @@ def get_topic_names(
                 download_as="dict",
             )
     else:
-        if name_type!="chatgpt":
+        if name_type != "chatgpt":
             return download_obj(
                 BUCKET_NAME,
                 f"outputs/topic_names/class_{taxonomy_class}_nametype_{name_type}_top_{str(n_top)}_level_{str(level)}.json",

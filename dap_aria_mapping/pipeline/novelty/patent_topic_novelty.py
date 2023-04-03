@@ -42,7 +42,7 @@ def calculate_topic_novelty(
         min_doc_counts (int, optional): Minimum number of times a topic must appear in the corpus to be considered for including into the analysis outputs
     """
     if taxonomy_level == 0:
-        levels = list(range(1, 6))
+        levels = list(range(1, 4))
     else:
         levels = [taxonomy_level]
     # Loop over taxonomy levels
@@ -58,7 +58,7 @@ def calculate_topic_novelty(
         )
         # Fetch topic names
         topic_names = get_topic_names(
-            taxonomy_class="cooccur", name_type="entity", level=level
+            taxonomy_class="cooccur", name_type="chatgpt", level=level
         )
         # Calculate novelty scores for topics
         topic_doc_novelty_df = nu.document_to_topic_novelty(patent_novelty_df, id_column="publication_number")

@@ -27,6 +27,7 @@ if __name__ == "__main__":
     except FileNotFoundError:
         logger.info("No entities.pkl found, creating new list.")
         entities = get_cooccurrence_taxonomy().index.tolist()
+        entities = entities[:35000]
 
     # Prompt chatGPT with the problem
     bot = ChatGPT(False)

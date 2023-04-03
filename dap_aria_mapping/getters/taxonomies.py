@@ -1,7 +1,9 @@
 from dap_aria_mapping import BUCKET_NAME, PROJECT_DIR
 from typing import Dict
 from nesta_ds_utils.loading_saving.S3 import download_obj
-import boto3, yaml, pickle
+import boto3
+import yaml
+import pickle
 import pandas as pd
 from toolz import pipe
 
@@ -79,7 +81,8 @@ def get_cooccurrence_taxonomy(
     if sample:
         return download_obj(
             BUCKET_NAME,
-            "outputs/community_detection_taxonomy/{}.parquet".format(str(sample)),
+            "outputs/community_detection_taxonomy/{}.parquet".format(
+                str(sample)),
             download_as="dataframe",
         )
     
@@ -152,7 +155,6 @@ def get_topic_names(
     postproc: bool = True,
 ) -> Dict[str, str]:
     """Downloads topic names from S3 and returns them as a dictionary.
-
     Args:
         taxonomy_class (str): The type of taxonomy to download.
         name_type (str): The type of name to download.
@@ -161,6 +163,7 @@ def get_topic_names(
             chatgpt name_type uses 35 entities per topic to hit the API endpoint.
         postproc (bool, optional): Whether to download the postprocessed topic names. Defaults to False.
 
+        postproc (bool, optional): Whether to download the postprocessed topic names. Defaults to True.
     Returns:
         pd.DataFrame: A dictionary containing the topic names.
     """
@@ -178,7 +181,7 @@ def get_topic_names(
                 download_as="dict",
             )
     else:
-        if name_type!="chatgpt":
+        if name_type != "chatgpt":
             return download_obj(
                 BUCKET_NAME,
                 f"outputs/topic_names/class_{taxonomy_class}_nametype_{name_type}_top_{str(n_top)}_level_{str(level)}.json",

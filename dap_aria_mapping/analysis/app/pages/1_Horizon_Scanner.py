@@ -369,7 +369,7 @@ with disruption_tab:
 with novelty_tab:
     st.subheader("Trends in Novelty")
     filtered_novelty_data = convert_to_pandas(
-        filter_novelty_by_level(_novelty_data=novelty_data, _level=level_considered)
+        filter_novelty_by_level(_novelty_data=novelty_data, level=level_considered)
     )
 
     novelty_bump_chart = (

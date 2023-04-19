@@ -1,4 +1,5 @@
 import streamlit as st
+from streamlit_option_menu import option_menu
 from PIL import Image
 import altair as alt
 from nesta_ds_utils.viz.altair import formatting
@@ -11,6 +12,7 @@ from dap_aria_mapping.utils.app_utils import convert_to_pandas
 from dap_aria_mapping.getters.taxonomies import get_topic_names
 import polars as pl
 import pandas as pd
+import numpy as np
 from typing import List, Tuple
 
 formatting.setup_theme()
@@ -25,7 +27,7 @@ st.set_page_config(page_title=PAGE_TITLE, layout="wide", page_icon=icon)
 
 
 @st.cache_data(show_spinner="Loading data")
-def load_overview_data() -> Tuple[pl.DataFrame, pl.DataFrame, List[str]]:
+def load_overview_data() -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, List[str]]:
     """loads in the volume per year chart and does initial formatting that is not impacted by filters
     caches results so the data is not loaded each time a filter is run
 
@@ -65,47 +67,59 @@ def load_overview_data() -> Tuple[pl.DataFrame, pl.DataFrame, List[str]]:
         "count",
     ]
 
-    return volume_data, alignment_data, unique_domains
+    novelty_data = novelty_per_year()
+
+    return volume_data, alignment_data, novelty_data, unique_domains
 
 
 @st.cache_data(show_spinner="Filtering by domain")
 def filter_by_domain(
-    domain: str, _volume_data: pl.DataFrame, _alignment_data: pl.DataFrame
-) -> Tuple[pl.DataFrame, pl.DataFrame, List[str]]:
+    domain: str,
+    _volume_data: pl.DataFrame,
+    _alignment_data: pl.DataFrame,
+    _novelty_data: pl.DataFrame,
+) -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, List[str]]:
     """filters volume data, alignment data, and filter options based on a Domain selection
 
     Args:
         domain (str): domain selected by the filter
         _volume_data (pl.DataFrame): volume data for emergence chart
         _alignment_data (pl.DataFrame): alignment data for alignment chart
+        _novelty_data (pl.DataFrame): novelty data for novelty chart
 
     Returns:
-        Tuple[pl.DataFrame, pl.DataFrame, List[str]]: updated dataframes filtered by a domain, and a list of unique areas to populate area filter
+        Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, List[str]]: updated dataframes filtered by a domain, and a list of unique areas to populate area filter
     """
     volume_data = _volume_data.filter(pl.col("domain_name") == domain)
     alignment_data = _alignment_data.filter(pl.col("domain_name") == domain)
+    novelty_data = _novelty_data.filter(pl.col("domain_name") == domain)
     unique_areas = volume_data["area_name"].unique().to_list()
-    return volume_data, alignment_data, unique_areas
+    return volume_data, alignment_data, novelty_data, unique_areas
 
 
 @st.cache_data(show_spinner="Filtering by area")
 def filter_by_area(
-    area: str, _volume_data: pl.DataFrame, _alignment_data: pl.DataFrame
-) -> Tuple[pl.DataFrame, pl.DataFrame, List[str]]:
+    area: str,
+    _volume_data: pl.DataFrame,
+    _alignment_data: pl.DataFrame,
+    _novelty_data: pl.DataFrame,
+) -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, List[str]]:
     """filters volume data, alignment data, and filter options based on an area selection
 
     Args:
         area (str): domain selected by the filter
         _volume_data (pl.DataFrame): volume data for emergence chart
         _alignment_data (pl.DataFrame): alignment data for alignment chart
+        _novelty_data (pl.DataFrame): novelty data for novelty chart
 
     Returns:
-        Tuple[pl.DataFrame, pl.DataFrame, List[str]]: updated dataframes filtered by an area, and a list of unique topics to populate topic filter
+        Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, List[str]]: updated dataframes filtered by an area, and a list of unique topics to populate topic filter
     """
     volume_data = _volume_data.filter(pl.col("area_name") == area)
     alignment_data = _alignment_data.filter(pl.col("area_name") == area)
+    novelty_data = _novelty_data.filter(pl.col("area_name") == area)
     unique_topics = volume_data["topic_name"].unique().to_list()
-    return volume_data, alignment_data, unique_topics
+    return volume_data, alignment_data, novelty_data, unique_topics
 
 
 def group_emergence_by_level(
@@ -172,18 +186,6 @@ def group_alignment_by_level(_alignment_data: pl.DataFrame, level: str) -> pl.Da
     return q.collect()
 
 
-@st.cache_data(show_spinner="Loading novelty data")
-def load_novelty_trends_data() -> pl.DataFrame:
-    """Loads non-filtered novelty data
-
-    Returns:
-        pl.DataFrame: novelty data for chart
-    """
-    novelty_data = novelty_per_year()
-
-    return novelty_data
-
-
 def filter_novelty_by_level(_novelty_data: pl.DataFrame, level: str) -> pl.DataFrame:
     """Groups the data for the novelty chart by the level specified by the filters
 
@@ -197,12 +199,48 @@ def filter_novelty_by_level(_novelty_data: pl.DataFrame, level: str) -> pl.DataF
     return (
         _novelty_data.unique(subset=[level, "year"])
         .select(
-            ["year"]
-            + [col for col in _novelty_data.columns if col.startswith("domain")]
+            ["year"] + [col for col in _novelty_data.columns if col.startswith(level)]
         )
         .rename(
-            {f"{level}_name": "name", f"{level}_mean": "mean", f"{level}_std": "std"}
+            {
+                f"{level}_name": "name",
+                f"{level}_doc_counts": "doc_counts",
+                f"{level}_novelty25": "novelty25",
+                f"{level}_novelty50": "novelty50",
+                f"{level}_novelty75": "novelty75",
+                f"{level}_entities": "entities",
+            }
         )
+    )
+
+
+def group_novelty_counts(
+    _novelty_data: pl.DataFrame, level: str, year_start: int, year_end: int
+) -> pl.DataFrame:
+    """Groups the data for the novelty chart by the level specified by the filters
+
+    Args:
+        _novelty_data (pl.DataFrame): data for backend of novelty chart
+        level (str): level to view, specified by domain/area filters
+        year_start (int): start year for novelty chart
+        year_end (int): end year for novelty chart
+
+    Returns:
+        pl.DataFrame: novelty data for chart
+    """
+    return (
+        _novelty_data.filter(
+            (pl.col("year") >= year_start) & (pl.col("year") <= year_end)
+        )
+        .groupby(level)
+        .agg(
+            [
+                pl.sum("doc_counts"),
+                (pl.col("novelty50") * pl.col("doc_counts")).sum()
+                / pl.col("doc_counts").sum(),
+            ]
+        )
+        .join(_novelty_data.select([level, "name"]).unique(), on=level, how="left")
     )
 
 
@@ -220,11 +258,8 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# load in volume data
-volume_data, alignment_data, unique_domains = load_overview_data()
-
-# load in novelty data
-novelty_data = load_novelty_trends_data()
+# load in volume, alignment, and novelty data
+volume_data, alignment_data, novelty_data, unique_domains = load_overview_data()
 
 with st.sidebar:
     # filter for domains comes from unique domain names
@@ -234,8 +269,8 @@ with st.sidebar:
     level_considered = "domain"
     # if a domain is selected in the filter, then filter the data
     if domain != "All":
-        volume_data, alignment_data, unique_areas = filter_by_domain(
-            domain, volume_data, alignment_data
+        volume_data, alignment_data, novelty_data, unique_areas = filter_by_domain(
+            domain, volume_data, alignment_data, novelty_data
         )
         unique_areas.insert(0, "All")
         # if a domain is selected, the plots that are being visualised are by area (i.e. level 2)
@@ -245,16 +280,18 @@ with st.sidebar:
         area = st.selectbox(label="Select an Area", options=unique_areas)
         if area != "All":
             # if an area is selected, filter data to the area and present at topic level
-            volume_data, alignment_data, unique_topics = filter_by_area(
-                area, volume_data, alignment_data
+            volume_data, alignment_data, novelty_data, unique_topics = filter_by_area(
+                area, volume_data, alignment_data, novelty_data
             )
             level_considered = "topic"
+
+    st.sidebar.markdown("---")
+    years = st.slider("Select a range of years", 2007, 2022, (2007, 2022))
 
 
 overview_tab, disruption_tab, novelty_tab, overlaps_tab = st.tabs(
     ["Overview", "Disruption", "Novelty", "Overlaps"]
 )
-
 with overview_tab:
 
     st.subheader("Growth Over Time")
@@ -367,24 +404,113 @@ with disruption_tab:
         )
 
 with novelty_tab:
-    st.subheader("Trends in Novelty")
-    filtered_novelty_data = convert_to_pandas(
-        filter_novelty_by_level(_novelty_data=novelty_data, level=level_considered)
-    )
 
-    novelty_bump_chart = (
-        alt.Chart(filtered_novelty_data)
-        .mark_line(point=True)
-        .encode(x=alt.X("year:O"), y="rank:O", color=alt.Color("name:N", title=None))
-        .transform_window(
-            rank="rank()",
-            sort=[alt.SortField("mean", order="descending")],
-            groupby=["year"],
+    novelty_charts_tab, novelty_docs_tab = st.tabs(["Charts", "Search"])
+    with novelty_charts_tab:
+
+        st.subheader("Trends in Novelty")
+
+        filtered_novelty_data = filter_novelty_by_level(
+            _novelty_data=novelty_data, level=level_considered
+        ).filter((pl.col("year") >= years[0]) & (pl.col("year") <= years[1]))
+
+        col1, col2 = st.columns([0.65, 0.35])
+        with col1:
+
+            selection = alt.selection_single(
+                fields=["name"], on="click"
+            )  # bind="legend")#nearest=True, on='mouseover', empty="none")
+            novelty_bump_chart = (
+                alt.Chart(convert_to_pandas(filtered_novelty_data))
+                .mark_line(point=True)
+                .encode(
+                    x=alt.X("year:O"),
+                    y="rank:Q",
+                    color=alt.Color(
+                        "name:N",
+                        title=None,
+                        legend=alt.Legend(
+                            labelFontSize=10, title=None, labelLimit=0, symbolSize=20
+                        ),
+                    ),
+                    tooltip=["name:N", "doc_counts:Q", "entities:N"],
+                    opacity=alt.condition(selection, alt.value(1), alt.value(0.1)),
+                )
+                .transform_window(
+                    rank="rank()",
+                    sort=[alt.SortField("novelty50", order="ascending")],
+                    groupby=["year"],
+                )
+                .properties(
+                    height=150
+                    * np.log(1 + filtered_novelty_data["name"].unique().shape[0]),
+                    # width=900,
+                    padding={"left": 50, "top": 10, "right": 10, "bottom": 50},
+                )
+                .add_selection(selection)
+            )
+
+            # selected_data = alt.data_transformers.get()(novelty_bump_chart.data)
+            # st.session_state.selected_category = selected_data['category'][0]
+
+            st.altair_chart(novelty_bump_chart, use_container_width=True)
+            print("he")
+
+        with col2:
+            novelty_bubbles = group_novelty_counts(
+                _novelty_data=filtered_novelty_data,
+                level=level_considered,
+                year_start=years[0],
+                year_end=years[1],
+            )
+
+            novelty_bubble_chart = (
+                alt.Chart(convert_to_pandas(novelty_bubbles))
+                .mark_circle()
+                .encode(
+                    x=alt.X(
+                        "novelty50",
+                        title="Novelty Score",
+                        scale=alt.Scale(zero=False),
+                    ),
+                    y=alt.Y(
+                        "name",
+                        title="",
+                        sort=alt.EncodingSortField(
+                            field="novelty50", order="descending"
+                        ),
+                        axis=alt.Axis(labels=False, ticks=False, domain=False),
+                    ),
+                    size=alt.Size(
+                        "doc_counts",
+                        title="",
+                        legend=None,
+                    ),
+                    tooltip=[
+                        alt.Tooltip("name", title="Topic title"),
+                        alt.Tooltip(
+                            "novelty50", title="Topic novelty (document-based)"
+                        ),
+                        alt.Tooltip("doc_counts", title="Number of documents"),
+                    ],
+                )
+            )
+
+            labels = novelty_bubble_chart.mark_text(
+                align="left", baseline="middle", dx=7
+            ).encode(
+                # limit text length
+                text=alt.Text("name:N"),
+                size=alt.Size(),
+            )
+
+            st.altair_chart(novelty_bubble_chart + labels, use_container_width=True)
+
+    with novelty_docs_tab:
+        st.subheader("Search for Novel Documents")
+        st.markdown(
+            "This would allow a user to search for novel documents within a topic"
         )
-        .properties(
-            width=1100,
-        )
-    )
 
 
 with overlaps_tab:

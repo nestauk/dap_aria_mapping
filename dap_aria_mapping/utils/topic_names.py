@@ -220,7 +220,9 @@ def get_journal_entity_counts(
 
 
 def get_cluster_entity_names(
-    cluster_counts: Dict[str, List[Tuple[str, int]]], num_entities: int = 10, show_count: bool = False
+    cluster_counts: Dict[str, List[Tuple[str, int]]],
+    num_entities: int = 10,
+    show_count: bool = False,
 ) -> Dict[str, str]:
     """Creates a dictionary of cluster names to entities.
 
@@ -247,12 +249,12 @@ def get_cluster_entity_names(
         )
     if show_count:
         return {
-            k: "E: " + ", ".join([f"{x[0]} ({x[1]} times)" for x in v[:num_entities]])
+            k: ", ".join([f"{x[0]} ({x[1]} times)" for x in v[:num_entities]])
             for k, v in cluster_tuples.items()
         }
     else:
         return {
-            k: "E: " + ", ".join([x[0] for x in v[:num_entities]])
+            k: ", ".join([x[0] for x in v[:num_entities]])
             for k, v in cluster_tuples.items()
         }
 

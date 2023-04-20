@@ -6,7 +6,9 @@ from dap_aria_mapping import PROJECT_DIR, IMAGE_DIR
 from dap_aria_mapping.getters.app_tables.horizon_scanner import (
     volume_per_year,
     novelty_per_year,
+    novelty_documents,
 )
+
 from dap_aria_mapping.utils.app_utils import convert_to_pandas
 from dap_aria_mapping.getters.taxonomies import get_topic_names
 import polars as pl
@@ -67,8 +69,9 @@ def load_overview_data() -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, List
     ]
 
     novelty_data = novelty_per_year()
+    novelty_docs = novelty_documents()
 
-    return volume_data, alignment_data, novelty_data, unique_domains
+    return volume_data, alignment_data, novelty_data, novelty_docs, unique_domains
 
 
 @st.cache_data(show_spinner="Filtering by domain")
@@ -213,8 +216,12 @@ def filter_novelty_by_level(_novelty_data: pl.DataFrame, level: str) -> pl.DataF
     )
 
 
-def group_novelty_counts(
-    _novelty_data: pl.DataFrame, level: str, year_start: int, year_end: int
+def group_filter_novelty_counts(
+    _novelty_data: pl.DataFrame,
+    _novelty_docs: pl.DataFrame,
+    level: str,
+    year_start: int,
+    year_end: int,
 ) -> pl.DataFrame:
     """Groups the data for the novelty chart by the level specified by the filters
 
@@ -227,7 +234,7 @@ def group_novelty_counts(
     Returns:
         pl.DataFrame: novelty data for chart
     """
-    return (
+    novelty_subdata = (
         _novelty_data.filter(
             (pl.col("year") >= year_start) & (pl.col("year") <= year_end)
         )
@@ -241,6 +248,14 @@ def group_novelty_counts(
         )
         .join(_novelty_data.select([level, "name"]).unique(), on=level, how="left")
     )
+
+    novelty_subdocs = (
+        _novelty_docs.filter(
+            (pl.col("year") >= year_start) & (pl.col("year") <= year_end)
+        )
+    ).sort(by="novelty", descending=True)
+
+    return novelty_subdata, novelty_subdocs
 
 
 header1, header2 = st.columns([1, 10])
@@ -258,7 +273,13 @@ st.markdown(
 )
 
 # load in volume, alignment, and novelty data
-volume_data, alignment_data, novelty_data, unique_domains = load_overview_data()
+(
+    volume_data,
+    alignment_data,
+    novelty_data,
+    novelty_docs,
+    unique_domains,
+) = load_overview_data()
 
 with st.sidebar:
     # filter for domains comes from unique domain names
@@ -453,11 +474,11 @@ with novelty_tab:
             # st.session_state.selected_category = selected_data['category'][0]
 
             st.altair_chart(novelty_bump_chart, use_container_width=True)
-            print("he")
 
         with col2:
-            novelty_bubbles = group_novelty_counts(
+            novelty_bubbles, novelty_docs = group_filter_novelty_counts(
                 _novelty_data=filtered_novelty_data,
+                _novelty_docs=novelty_docs,
                 level=level_considered,
                 year_start=years[0],
                 year_end=years[1],
@@ -504,6 +525,8 @@ with novelty_tab:
             )
 
             st.altair_chart(novelty_bubble_chart + labels, use_container_width=True)
+
+        st.dataframe(convert_to_pandas(novelty_docs).head(5))
 
     with novelty_docs_tab:
         st.subheader("Search for Novel Documents")

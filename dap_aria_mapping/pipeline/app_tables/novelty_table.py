@@ -56,6 +56,10 @@ def get_openalex_novelty_df(level: int) -> pl.DataFrame:
 
 
 if __name__ == "__main__":
+
+    logger.info("Loading documents")
+    openalex_df = pl.DataFrame(get_openalex_works())
+
     logger.info("Loading novelty data")
     openalex_novelty_df = pl.concat(
         [get_openalex_novelty_df(level) for level in [1, 2, 3]]
@@ -96,6 +100,17 @@ if __name__ == "__main__":
         .reset_index()
         .rename(columns={"index": "topic", 0: "entities"})
     )
+
+    novelty_documents = pipe(
+        openalex_novelty_df.unique(subset=["work_id", "level"]),
+        lambda dl: (
+            dl[["work_id", "year", "topic", "level", "novelty"]]
+            .filter(pl.col("level") == "topic")
+            .join(openalex_df[["work_id", "display_name"]], on="work_id", how="left")
+        ),
+        partial(expand_topic_col),
+    )
+    [["work_id", "year", "domain", "area", "topic", "novelty", "display_name"]]
 
     # rename column
     novelty_trends = pipe(
@@ -225,4 +240,13 @@ if __name__ == "__main__":
         buffer,
         BUCKET_NAME,
         "outputs/app_data/horizon_scanner/agg_novelty_documents.parquet",
+    )
+
+    buffer = io.BytesIO()
+    novelty_documents.write_parquet(buffer)
+    buffer.seek(0)
+    s3.upload_fileobj(
+        buffer,
+        BUCKET_NAME,
+        "outputs/app_data/horizon_scanner/novelty_documents.parquet",
     )

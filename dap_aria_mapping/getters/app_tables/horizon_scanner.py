@@ -44,3 +44,18 @@ def novelty_per_year() -> pl.DataFrame:
             download_as="dataframe",
         )
     )
+
+
+def novelty_documents() -> pl.DataFrame:
+    """Gets a polars dataframe with the novelty scores per document
+
+    Returns:
+        pl.DataFrame: A polars dataframe.
+    """
+    return pl.DataFrame(
+        download_obj(
+            BUCKET_NAME,
+            "outputs/app_data/horizon_scanner/novelty_documents.parquet",
+            download_as="dataframe",
+        )
+    )

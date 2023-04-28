@@ -112,7 +112,8 @@ def validation_app():
             alt.Chart(df_plot)
             .mark_bar()
             .encode(
-                x=alt.X(f"Level_{level_shown}:N", axis=alt.Axis(title=""), sort="-y"),
+                x=alt.X(f"Level_{level_shown}:N",
+                        axis=alt.Axis(title=""), sort="-y"),
                 y=alt.Y("count()", axis=alt.Axis(title="", grid=False)),
                 tooltip=[
                     alt.Tooltip(
@@ -154,7 +155,8 @@ def validation_app():
             st.altair_chart(size_chart)
 
         with st.expander(label="Percent of Topics that Split at the Next Level"):
-            level_split = {alg: get_tree_depths(alg)["split_fractions"] for alg in algs}
+            level_split = {alg: get_tree_depths(
+                alg)["split_fractions"] for alg in algs}
             level_split_df = pd.DataFrame(level_split).unstack().reset_index()
             level_split_df.columns = ["algorithm", "level", "split_percentage"]
 
@@ -217,7 +219,8 @@ def validation_app():
         with st.expander(
             label="Depth of Pairs of Topics Known to be Related Within Each Discipline"
         ):
-            topic_depth = {alg: get_pairwise_depth(alg, "topic") for alg in algs}
+            topic_depth = {alg: get_pairwise_depth(
+                alg, "topic") for alg in algs}
             topic_depth_df = pd.DataFrame(topic_depth).unstack().reset_index()
             topic_depth_df = pd.concat(
                 [topic_depth_df, topic_depth_df[0].apply(pd.Series)], axis=1
@@ -263,7 +266,8 @@ def validation_app():
         with st.expander(
             label="Depth of Pairs of Subtopics Known to be Related Within Each Topic"
         ):
-            subtopic_depth = {alg: get_pairwise_depth(alg, "subtopic") for alg in algs}
+            subtopic_depth = {alg: get_pairwise_depth(
+                alg, "subtopic") for alg in algs}
             temp = []
             for alg, alg_data in subtopic_depth.items():
                 for domain, domain_data in alg_data.items():
@@ -417,7 +421,8 @@ def validation_app():
                     entity = "All entities"
 
             if entity != "All entities":
-                df = df.loc[df.TopicName.str.contains("|".join(entity), case=False)]
+                df = df.loc[df.TopicName.str.contains(
+                    "|".join(entity), case=False)]
 
             st.altair_chart(
                 alt.Chart(df, width=180)
@@ -426,7 +431,8 @@ def validation_app():
                     x=alt.X(
                         "jitter:Q",
                         title=None,
-                        axis=alt.Axis(values=[0], ticks=True, grid=False, labels=False),
+                        axis=alt.Axis(values=[0], ticks=True,
+                                      grid=False, labels=False),
                     ),
                     y=alt.Y(
                         "PropEntities",
@@ -496,7 +502,8 @@ def validation_app():
                     .configure_axis(gridOpacity=0.3),
                 )
             else:
-                df_ts = get_timeseries_data(df, taxonomies=taxonomy, ratios=ratio)
+                df_ts = get_timeseries_data(
+                    df, taxonomies=taxonomy, ratios=ratio)
 
                 chart_mean = (
                     alt.Chart(df_ts)
@@ -507,7 +514,8 @@ def validation_app():
                             "mean",
                             title=None,
                             scale=alt.Scale(
-                                domain=(int(df_ts.lci.min()), int(df_ts.uci.max()))
+                                domain=(int(df_ts.lci.min()),
+                                        int(df_ts.uci.max()))
                             ),
                         ),
                         color=alt.Color("config", title=None),
@@ -563,7 +571,8 @@ def validation_app():
                             x=alt.X("level:N", axis=alt.Axis(title="")),
                             y=alt.Y(
                                 "prop:Q",
-                                axis=alt.Axis(title="", grid=False, labelFontSize=8),
+                                axis=alt.Axis(title="", grid=False,
+                                              labelFontSize=8),
                                 scale=alt.Scale(domain=[0, 1]),
                             ),
                             row=alt.Row(
@@ -574,7 +583,8 @@ def validation_app():
                             ),
                             column=alt.Column(
                                 "subtopic:N",
-                                header=alt.Header(title=topic, labelFontSize=10),
+                                header=alt.Header(
+                                    title=topic, labelFontSize=10),
                             ),
                             tooltip=["pairs"],
                         )
@@ -623,7 +633,8 @@ def validation_app():
                                 ),
                                 column=alt.Column(
                                     "concept:N",
-                                    header=alt.Header(title=subtopic, labelFontSize=10),
+                                    header=alt.Header(
+                                        title=subtopic, labelFontSize=10),
                                 ),
                                 tooltip=["pairs"],
                             )
@@ -641,7 +652,8 @@ def validation_app():
                 for i, alg in enumerate(taxonomy):
                     charts_ = nested_charts[i]
                     charts_concat_ = alt.hconcat(
-                        *[alt.hconcat(*charts_topic) for charts_topic in charts_],
+                        *[alt.hconcat(*charts_topic)
+                          for charts_topic in charts_],
                         title=f"Pairwise combinations - {alg}",
                     )
                     charts_concat.append(charts_concat_)
@@ -661,7 +673,8 @@ def validation_app():
             )
             next_level_selections = st.selectbox(
                 label="choose the next level",
-                options=count_hists[alg_selections][top_level_selections].keys(),
+                options=count_hists[alg_selections][top_level_selections].keys(
+                ),
                 index=0,
             )
 
@@ -688,7 +701,8 @@ def validation_app():
             )
             next_level_selections = st.selectbox(
                 label="choose the next level (percentage breakdown)",
-                options=frequency_hists[alg_selections][top_level_selections].keys(),
+                options=frequency_hists[alg_selections][top_level_selections].keys(
+                ),
                 index=0,
             )
 
@@ -739,7 +753,6 @@ def validation_app():
         taxonomy_class="cooccur",
         name_type="entity",
         level=level_choice,
-        long=True,
         n_top=35,
     )
 
@@ -747,7 +760,6 @@ def validation_app():
         taxonomy_class="cooccur",
         name_type="chatgpt",
         level=level_choice,
-        long=False,
         n_top=35,
     )
 

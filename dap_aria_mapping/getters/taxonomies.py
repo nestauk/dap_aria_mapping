@@ -85,7 +85,7 @@ def get_cooccurrence_taxonomy(
                 str(sample)),
             download_as="dataframe",
         )
-    
+
     elif postproc:
         return download_obj(
             BUCKET_NAME,
@@ -94,10 +94,10 @@ def get_cooccurrence_taxonomy(
         )
     else:
         return download_obj(
-                BUCKET_NAME,
-                "outputs/community_detection_taxonomy/tax.parquet",
-                download_as="dataframe",
-            )
+            BUCKET_NAME,
+            "outputs/community_detection_taxonomy/tax.parquet",
+            download_as="dataframe",
+        )
 
 
 def get_test_cooccurrence_taxonomy() -> pd.DataFrame:
@@ -184,7 +184,7 @@ def get_topic_names(
         if name_type != "chatgpt":
             return download_obj(
                 BUCKET_NAME,
-                f"outputs/topic_names/class_{taxonomy_class}_nametype_{name_type}_top_{str(n_top)}_level_{str(level)}.json",
+                f"outputs/topic_names/class_{taxonomy_class}_nametype_{name_type}_postproc_top_{str(n_top)}_level_{str(level)}.json",
                 download_as="dict",
             )
         else:

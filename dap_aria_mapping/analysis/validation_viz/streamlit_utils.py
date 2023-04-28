@@ -79,7 +79,8 @@ def get_frequency_histograms() -> Dict[str, Dict[str, Dict[str, str]]]:
                 ...,
             }
     """
-    hists = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict)))
+    hists = defaultdict(lambda: defaultdict(
+        lambda: defaultdict(lambda: defaultdict)))
     s3 = boto3.resource("s3")
     bucket = s3.Bucket("aria-mapping")
     files_to_get = [
@@ -186,7 +187,8 @@ def get_timeseries_data(df: pd.DataFrame, taxonomies: str, ratios: str) -> pd.Da
     Returns:
         pd.DataFrame: A dataframe with the distance outputs for plotting as TS.
     """
-    df = df.groupby(["level"], as_index=False).agg({"distance": ["mean", "std"]})
+    df = df.groupby(["level"], as_index=False).agg(
+        {"distance": ["mean", "std"]})
     df["lci"] = df["distance"]["mean"] - df["distance"]["std"]
     df["uci"] = df["distance"]["mean"] + df["distance"]["std"]
     df.columns = ["level", "mean", "std", "lci", "uci"]
@@ -292,8 +294,9 @@ def get_taxonomy_data() -> Dict[str, pd.DataFrame]:
         elif taxonomy == "centroids":
             df = get_semantic_taxonomy(cluster_object="centroids")
 
-        for level in range(1, 6):
-            level_names = get_topic_names(taxonomy, "entity", level)
+        for level in range(1, 4):
+            level_names = get_topic_names(
+                taxonomy_class=taxonomy, name_type="entity", level=level)
             df["Level_{}_Entity_Names".format(str(level))] = df[
                 "Level_{}".format(str(level))
             ].map(level_names)

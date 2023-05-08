@@ -586,9 +586,7 @@ with novelty_tab:
             st.dataframe(filtered_novelty_docs_pd.sort_values(by=["novelty"], ascending=True).head(50))
 
     with novelty_docs_tab:
-        st.subheader("Search for Novel Documents")
-        st.markdown(app_config["SEARCH_CSS"], unsafe_allow_html=True)
-
+        
         unique_keywords = get_unique_words(series=filtered_novelty_docs['document_name'])
 
         st.title("Search Articles")

@@ -2,7 +2,7 @@ import streamlit as st
 from PIL import Image
 import altair as alt
 from nesta_ds_utils.viz.altair import formatting
-from dap_aria_mapping import PROJECT_DIR, IMAGE_DIR, app_config
+from dap_aria_mapping import PROJECT_DIR, IMAGE_DIR
 from dap_aria_mapping.getters.app_tables.horizon_scanner import (
     volume_per_year,
     novelty_per_year,
@@ -11,7 +11,6 @@ from dap_aria_mapping.getters.app_tables.horizon_scanner import (
 
 from dap_aria_mapping.utils.app_utils import convert_to_pandas
 from dap_aria_mapping.getters.taxonomies import get_topic_names
-from dap_aria_mapping.getters.openalex import get_openalex_entities
 import polars as pl
 import pandas as pd
 import numpy as np

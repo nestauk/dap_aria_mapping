@@ -102,7 +102,7 @@ if __name__ == "__main__":
     )
 
     novelty_documents = pipe(
-        openalex_novelty_df.unique(subset=["work_id", "level"]),
+        openalex_novelty_df.unique(subset=["work_id", "topic"]),
         lambda dl: (
             dl[["work_id", "year", "topic", "level", "novelty"]]
             .filter(pl.col("level") == "topic")

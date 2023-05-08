@@ -2,7 +2,7 @@ import streamlit as st
 from PIL import Image
 import altair as alt
 from nesta_ds_utils.viz.altair import formatting
-from dap_aria_mapping import PROJECT_DIR, IMAGE_DIR
+from dap_aria_mapping import PROJECT_DIR, IMAGE_DIR, app_config
 from dap_aria_mapping.getters.app_tables.horizon_scanner import (
     volume_per_year,
     novelty_per_year,
@@ -11,10 +11,12 @@ from dap_aria_mapping.getters.app_tables.horizon_scanner import (
 
 from dap_aria_mapping.utils.app_utils import convert_to_pandas
 from dap_aria_mapping.getters.taxonomies import get_topic_names
+from dap_aria_mapping.getters.openalex import get_openalex_entities
 import polars as pl
 import pandas as pd
 import numpy as np
 from typing import List, Tuple
+from itertools import chain
 
 formatting.setup_theme()
 
@@ -123,7 +125,7 @@ def filter_by_area(
     unique_topics = volume_data["topic_name"].unique().to_list()
     return volume_data, alignment_data, novelty_data, unique_topics
 
-
+st.cache_data(show_spinner="Loading data")
 def group_emergence_by_level(
     _volume_data: pl.DataFrame, level: str, y_col: str
 ) -> pl.DataFrame:
@@ -146,7 +148,7 @@ def group_emergence_by_level(
     )
     return q.collect()
 
-
+st.cache_data(show_spinner="Filtering by topic")
 def group_alignment_by_level(_alignment_data: pl.DataFrame, level: str) -> pl.DataFrame:
     """groups the data for the alignment chart by the level specified by the filters.
     Also calculates the fraction of total documents per type to visualise in the chart.
@@ -188,7 +190,8 @@ def group_alignment_by_level(_alignment_data: pl.DataFrame, level: str) -> pl.Da
     return q.collect()
 
 
-def filter_novelty_by_level(_novelty_data: pl.DataFrame, level: str) -> pl.DataFrame:
+st.cache_data(show_spinner="Filtering by topic")
+def filter_novelty_by_level(_novelty_data: pl.DataFrame, _novelty_docs: pl.DataFrame, level: str, years: tuple) -> pl.DataFrame:
     """Groups the data for the novelty chart by the level specified by the filters
 
     Args:
@@ -198,7 +201,7 @@ def filter_novelty_by_level(_novelty_data: pl.DataFrame, level: str) -> pl.DataF
     Returns:
         pl.DataFrame: novelty data for chart
     """
-    return (
+    _novelty_data = (
         _novelty_data.unique(subset=[level, "year"])
         .select(
             ["year"] + [col for col in _novelty_data.columns if col.startswith(level)]
@@ -213,9 +216,32 @@ def filter_novelty_by_level(_novelty_data: pl.DataFrame, level: str) -> pl.DataF
                 f"{level}_entities": "entities",
             }
         )
+    ).filter((pl.col("year") >= years[0]) & (pl.col("year") <= years[1]))
+
+    # create dictionary of level ids as keys and names as values
+    _topic_map = (
+        _novelty_data.select([level, "name"])
+        .unique()
+        .to_pandas()
+        .set_index(level)
+        .to_dict()["name"]
     )
 
+    # Create unique novelty_docs dataframe and add name column from _topic_map
+    _novelty_docs = (
+        _novelty_docs.unique(subset=[level, "work_id"])
+        .select(["work_id", "display_name", "year", "novelty", level])
+        .filter((pl.col("year") >= years[0]) & (pl.col("year") <= years[1]))
+        .with_columns(pl.col(level).cast(str).map_dict(_topic_map).alias("name"))
+        .rename({"work_id": "document_link", "display_name": "document_name", "year": "document_year", "name": "topic_name"})
+        .select(["document_link", "document_name", "document_year", "topic_name", "novelty"])
+    )
 
+    return _novelty_data, _novelty_docs
+    # map {level_name} 
+        
+
+st.cache_data(show_spinner="Filtering by topic")
 def group_filter_novelty_counts(
     _novelty_data: pl.DataFrame,
     _novelty_docs: pl.DataFrame,
@@ -257,6 +283,9 @@ def group_filter_novelty_counts(
 
     return novelty_subdata, novelty_subdocs
 
+st.cache_data()
+def get_unique_words(series: pd.Series):
+    return list(set(list(chain(*[x.split(" ") for x in series if isinstance(x, str)]))))
 
 header1, header2 = st.columns([1, 10])
 with header1:
@@ -429,10 +458,13 @@ with novelty_tab:
     with novelty_charts_tab:
 
         st.subheader("Trends in Novelty")
+        st.markdown(
+            "View trends in novelty of content over time to detect emerging or stagnant areas of innovation"
+        )
 
-        filtered_novelty_data = filter_novelty_by_level(
-            _novelty_data=novelty_data, level=level_considered
-        ).filter((pl.col("year") >= years[0]) & (pl.col("year") <= years[1]))
+        filtered_novelty_data, filtered_novelty_docs = filter_novelty_by_level(
+            _novelty_data=novelty_data, _novelty_docs=novelty_docs, level=level_considered, years=years
+        )
 
         col1, col2 = st.columns([0.65, 0.35])
         with col1:
@@ -476,6 +508,7 @@ with novelty_tab:
             st.altair_chart(novelty_bump_chart, use_container_width=True)
 
         with col2:
+        
             novelty_bubbles, novelty_docs = group_filter_novelty_counts(
                 _novelty_data=filtered_novelty_data,
                 _novelty_docs=novelty_docs,
@@ -526,13 +559,66 @@ with novelty_tab:
 
             st.altair_chart(novelty_bubble_chart + labels, use_container_width=True)
 
-        st.dataframe(convert_to_pandas(novelty_docs).head(5))
+        # Display most novel articles
+        st.subheader("Relevant Articles")
+        filtered_novelty_docs_pd = convert_to_pandas(filtered_novelty_docs)
+        # Selectbox to allow user to select one among the df's many topic_names. Display only the corresponding topic_names.
+        novelty_docs_topic = st.selectbox(
+            "Select a topic to view the most novel articles",
+            ["All"] + sorted(filtered_novelty_docs_pd["topic_name"].unique()),
+        )
+
+        # Filter the df to display only the selected topic_name
+        if novelty_docs_topic != "All":
+            filtered_novelty_docs_pd = filtered_novelty_docs_pd[
+                filtered_novelty_docs_pd["topic_name"] == novelty_docs_topic
+            ]
+
+        col1, col2 = st.columns([0.5, 0.5])
+        with col1:
+            st.markdown(
+                "Most Novel Articles"
+            )
+            st.dataframe(filtered_novelty_docs_pd.sort_values(by=["novelty"], ascending=False).head(50))
+        with col2:
+            st.markdown(
+                "Least Novel Articles"
+            )
+            st.dataframe(filtered_novelty_docs_pd.sort_values(by=["novelty"], ascending=True).head(50))
 
     with novelty_docs_tab:
         st.subheader("Search for Novel Documents")
-        st.markdown(
-            "This would allow a user to search for novel documents within a topic"
-        )
+        st.markdown(app_config["SEARCH_CSS"], unsafe_allow_html=True)
+
+        unique_keywords = get_unique_words(series=filtered_novelty_docs['document_name'])
+
+        st.title("Search Articles")
+        col1, col2, col3, col4 = st.columns([0.6, 0.2, 0.1, 0.1])
+        with col1:
+            # query keywords, where each time 
+            query = st.multiselect("Keywords", unique_keywords)
+        with col2:
+            # ask for either all or at least one
+            all_or_any = st.radio("Match all or any keywords?", ["All", "Any"])
+        with col3:
+            # number of results
+            top_n = st.number_input("Number of results", min_value=1, max_value=100, value=10)
+        
+        if query:
+            if all_or_any == "All":
+                mask=filtered_novelty_docs["document_name"].apply(lambda title: any(keyword in title for keyword in query))
+            else:
+                mask=filtered_novelty_docs["document_name"].apply(lambda title: all(keyword in title for keyword in query))
+            _novelty_docs = convert_to_pandas(filtered_novelty_docs[mask])
+            sorted_articles = _novelty_docs.sort_values(by='novelty', ascending=False).head(top_n)
+            st.dataframe(sorted_articles)
+
+        with col4:
+            if not query:
+                matching_articles=0
+            else:
+                matching_articles = len(_novelty_docs)
+            st.markdown(f"Count: {matching_articles}")
 
 
 with overlaps_tab:

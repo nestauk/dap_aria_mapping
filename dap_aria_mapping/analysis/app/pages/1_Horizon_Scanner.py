@@ -623,40 +623,44 @@ with novelty_tab:
         unique_keywords = get_entities()
 
         st.title("Search Articles")
-        col1, col2, col3, col4 = st.columns([0.7, 0.1, 0.1, 0.1])
-        with col1:
-            # query keywords, where each time
-            query = st.multiselect("Keywords", unique_keywords)
-        with col2:
-            # ask for either all or at least one
-            all_or_any = st.radio("Match all or any keywords?", ["All", "Any"])
-        with col3:
-            # number of results
-            top_n = st.number_input(
-                "Number of results", min_value=1, max_value=100, value=10
-            )
-
-        if query:
-            if all_or_any == "All":
-                mask = filtered_novelty_docs["document_name"].apply(
-                    lambda title: any(keyword in title for keyword in query)
+        with st.form("my_form"):
+            col1, col2, col3= st.columns([0.8, 0.1, 0.1])
+            with col1:
+                # query keywords, where each time
+                query = st.multiselect("Keywords", unique_keywords)
+            with col2:
+                # ask for either all or at least one
+                all_or_any = st.radio("Match all or any keywords?", ["All", "Any"])
+            with col3:
+                # number of results
+                top_n = st.number_input(
+                    "Number of results", min_value=1, max_value=100, value=10
                 )
-            else:
-                mask = filtered_novelty_docs["document_name"].apply(
-                    lambda title: all(keyword in title for keyword in query)
-                )
-            _novelty_docs = convert_to_pandas(filtered_novelty_docs[mask])
-            sorted_articles = _novelty_docs.sort_values(
-                by="novelty", ascending=False
-            ).head(top_n)
-            st.dataframe(sorted_articles)
 
-        with col4:
-            if not query:
-                matching_articles = 0
-            else:
-                matching_articles = len(_novelty_docs)
-            st.markdown(f"Count: {matching_articles}")
+            submitted = st.form_submit_button("Submit")
+
+            if submitted:
+                if all_or_any == "All":
+                    mask = filtered_novelty_docs["document_name"].apply(
+                        lambda title: any(keyword.lower() in title.lower() for keyword in query)
+                    )
+                else:
+                    mask = filtered_novelty_docs["document_name"].apply(
+                        lambda title: all(keyword.lower() in title.lower() for keyword in query)
+                    )
+                # [TASK] keywords are dbpedia tags, which don't necessarily appear in title
+                _novelty_docs = convert_to_pandas(filtered_novelty_docs.filter(mask))
+                sorted_articles = _novelty_docs.sort_values(
+                    by="novelty", ascending=False
+                ).head(top_n)
+                st.dataframe(sorted_articles)
+
+        # with col4:
+        #     if not query:
+        #         matching_articles = 0
+        #     else:
+        #         matching_articles = len(_novelty_docs)
+        #     st.markdown(f"Count: {matching_articles}")
 
 
 with overlaps_tab:

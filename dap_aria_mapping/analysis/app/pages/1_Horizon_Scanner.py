@@ -590,12 +590,19 @@ with novelty_tab:
         # Display most novel articles
         st.subheader("Relevant Articles")
         filtered_novelty_docs_pd = convert_to_pandas(filtered_novelty_docs)
+
+        # Keep topic_name non-None
+        filtered_novelty_docs_pd = filtered_novelty_docs_pd[
+            filtered_novelty_docs_pd["topic_name"].notnull()
+        ]
+        
         # Selectbox to allow user to select one among the df's many topic_names. Display only the corresponding topic_names.
         novelty_docs_topic = st.selectbox(
             "Select a topic to view the most novel articles",
             ["All"] + sorted(filtered_novelty_docs_pd["topic_name"].unique()),
         )
 
+        # [TASK] These need to be turned into functions, otherwise they reload wahen searching.
         # Filter the df to display only the selected topic_name
         if novelty_docs_topic != "All":
             filtered_novelty_docs_pd = filtered_novelty_docs_pd[

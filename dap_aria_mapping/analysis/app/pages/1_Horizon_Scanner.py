@@ -620,12 +620,7 @@ with novelty_tab:
 
     with novelty_docs_tab:
 
-        from toolz import pipe
-
-        unique_keywords = pipe(
-            get_entities(),
-            lambda x: sorted(x["entity"].unique()),
-        )
+        unique_keywords = get_entities()
 
         st.title("Search Articles")
         col1, col2, col3, col4 = st.columns([0.7, 0.1, 0.1, 0.1])

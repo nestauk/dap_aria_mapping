@@ -1,6 +1,8 @@
 import polars as pl
 from nesta_ds_utils.loading_saving.S3 import download_obj
 from dap_aria_mapping import BUCKET_NAME
+from typing import Sequence
+import boto3
 
 
 def volume_per_year() -> pl.DataFrame:
@@ -59,3 +61,16 @@ def novelty_documents() -> pl.DataFrame:
             download_as="dataframe",
         )
     )
+
+
+def get_entities() -> Sequence[str]:
+    """Gets a list of entities
+
+    Returns:
+        Sequence[str]: A list of entities
+    """
+    s3 = boto3.client("s3")
+    response = s3.get_object(
+        Bucket=BUCKET_NAME, Key="outputs/app_data/horizon_scanner/entities.txt"
+    )
+    return response["Body"].read().decode("utf-8").split("\n")

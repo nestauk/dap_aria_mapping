@@ -7,6 +7,7 @@ from dap_aria_mapping.getters.app_tables.horizon_scanner import (
     volume_per_year,
     novelty_per_year,
     novelty_documents,
+    get_entities,
 )
 
 from dap_aria_mapping.utils.app_utils import convert_to_pandas
@@ -124,7 +125,10 @@ def filter_by_area(
     unique_topics = volume_data["topic_name"].unique().to_list()
     return volume_data, alignment_data, novelty_data, unique_topics
 
+
 st.cache_data(show_spinner="Loading data")
+
+
 def group_emergence_by_level(
     _volume_data: pl.DataFrame, level: str, y_col: str
 ) -> pl.DataFrame:
@@ -147,7 +151,10 @@ def group_emergence_by_level(
     )
     return q.collect()
 
+
 st.cache_data(show_spinner="Filtering by topic")
+
+
 def group_alignment_by_level(_alignment_data: pl.DataFrame, level: str) -> pl.DataFrame:
     """groups the data for the alignment chart by the level specified by the filters.
     Also calculates the fraction of total documents per type to visualise in the chart.
@@ -190,7 +197,11 @@ def group_alignment_by_level(_alignment_data: pl.DataFrame, level: str) -> pl.Da
 
 
 st.cache_data(show_spinner="Filtering by topic")
-def filter_novelty_by_level(_novelty_data: pl.DataFrame, _novelty_docs: pl.DataFrame, level: str, years: tuple) -> pl.DataFrame:
+
+
+def filter_novelty_by_level(
+    _novelty_data: pl.DataFrame, _novelty_docs: pl.DataFrame, level: str, years: tuple
+) -> pl.DataFrame:
     """Groups the data for the novelty chart by the level specified by the filters
 
     Args:
@@ -232,15 +243,26 @@ def filter_novelty_by_level(_novelty_data: pl.DataFrame, _novelty_docs: pl.DataF
         .select(["work_id", "display_name", "year", "novelty", level])
         .filter((pl.col("year") >= years[0]) & (pl.col("year") <= years[1]))
         .with_columns(pl.col(level).cast(str).map_dict(_topic_map).alias("name"))
-        .rename({"work_id": "document_link", "display_name": "document_name", "year": "document_year", "name": "topic_name"})
-        .select(["document_link", "document_name", "document_year", "topic_name", "novelty"])
+        .rename(
+            {
+                "work_id": "document_link",
+                "display_name": "document_name",
+                "year": "document_year",
+                "name": "topic_name",
+            }
+        )
+        .select(
+            ["document_link", "document_name", "document_year", "topic_name", "novelty"]
+        )
     )
 
     return _novelty_data, _novelty_docs
-    # map {level_name} 
-        
+    # map {level_name}
+
 
 st.cache_data(show_spinner="Filtering by topic")
+
+
 def group_filter_novelty_counts(
     _novelty_data: pl.DataFrame,
     _novelty_docs: pl.DataFrame,
@@ -282,9 +304,13 @@ def group_filter_novelty_counts(
 
     return novelty_subdata, novelty_subdocs
 
+
 st.cache_data()
+
+
 def get_unique_words(series: pd.Series):
     return list(set(list(chain(*[x.split(" ") for x in series if isinstance(x, str)]))))
+
 
 header1, header2 = st.columns([1, 10])
 with header1:
@@ -462,7 +488,10 @@ with novelty_tab:
         )
 
         filtered_novelty_data, filtered_novelty_docs = filter_novelty_by_level(
-            _novelty_data=novelty_data, _novelty_docs=novelty_docs, level=level_considered, years=years
+            _novelty_data=novelty_data,
+            _novelty_docs=novelty_docs,
+            level=level_considered,
+            years=years,
         )
 
         col1, col2 = st.columns([0.65, 0.35])
@@ -507,7 +536,7 @@ with novelty_tab:
             st.altair_chart(novelty_bump_chart, use_container_width=True)
 
         with col2:
-        
+
             novelty_bubbles, novelty_docs = group_filter_novelty_counts(
                 _novelty_data=filtered_novelty_data,
                 _novelty_docs=novelty_docs,
@@ -575,44 +604,61 @@ with novelty_tab:
 
         col1, col2 = st.columns([0.5, 0.5])
         with col1:
-            st.markdown(
-                "Most Novel Articles"
+            st.markdown("Most Novel Articles")
+            st.dataframe(
+                filtered_novelty_docs_pd.sort_values(
+                    by=["novelty"], ascending=False
+                ).head(50)
             )
-            st.dataframe(filtered_novelty_docs_pd.sort_values(by=["novelty"], ascending=False).head(50))
         with col2:
-            st.markdown(
-                "Least Novel Articles"
+            st.markdown("Least Novel Articles")
+            st.dataframe(
+                filtered_novelty_docs_pd.sort_values(
+                    by=["novelty"], ascending=True
+                ).head(50)
             )
-            st.dataframe(filtered_novelty_docs_pd.sort_values(by=["novelty"], ascending=True).head(50))
 
     with novelty_docs_tab:
-        
-        unique_keywords = get_unique_words(series=filtered_novelty_docs['document_name'])
+
+        from toolz import pipe
+
+        unique_keywords = pipe(
+            get_entities(),
+            lambda x: sorted(x["entity"].unique()),
+        )
 
         st.title("Search Articles")
-        col1, col2, col3, col4 = st.columns([0.6, 0.2, 0.1, 0.1])
+        col1, col2, col3, col4 = st.columns([0.7, 0.1, 0.1, 0.1])
         with col1:
-            # query keywords, where each time 
+            # query keywords, where each time
             query = st.multiselect("Keywords", unique_keywords)
         with col2:
             # ask for either all or at least one
             all_or_any = st.radio("Match all or any keywords?", ["All", "Any"])
         with col3:
             # number of results
-            top_n = st.number_input("Number of results", min_value=1, max_value=100, value=10)
-        
+            top_n = st.number_input(
+                "Number of results", min_value=1, max_value=100, value=10
+            )
+
         if query:
             if all_or_any == "All":
-                mask=filtered_novelty_docs["document_name"].apply(lambda title: any(keyword in title for keyword in query))
+                mask = filtered_novelty_docs["document_name"].apply(
+                    lambda title: any(keyword in title for keyword in query)
+                )
             else:
-                mask=filtered_novelty_docs["document_name"].apply(lambda title: all(keyword in title for keyword in query))
+                mask = filtered_novelty_docs["document_name"].apply(
+                    lambda title: all(keyword in title for keyword in query)
+                )
             _novelty_docs = convert_to_pandas(filtered_novelty_docs[mask])
-            sorted_articles = _novelty_docs.sort_values(by='novelty', ascending=False).head(top_n)
+            sorted_articles = _novelty_docs.sort_values(
+                by="novelty", ascending=False
+            ).head(top_n)
             st.dataframe(sorted_articles)
 
         with col4:
             if not query:
-                matching_articles=0
+                matching_articles = 0
             else:
                 matching_articles = len(_novelty_docs)
             st.markdown(f"Count: {matching_articles}")

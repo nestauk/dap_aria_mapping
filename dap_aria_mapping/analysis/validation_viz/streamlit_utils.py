@@ -293,7 +293,7 @@ def get_taxonomy_data() -> Dict[str, pd.DataFrame]:
             df = get_semantic_taxonomy(cluster_object="centroids")
 
         for level in range(1, 6):
-            level_names = get_topic_names(taxonomy, "entity", level)
+            level_names = get_topic_names(taxonomy, "entity", level, n_top=5, postproc=False)
             df["Level_{}_Entity_Names".format(str(level))] = df[
                 "Level_{}".format(str(level))
             ].map(level_names)

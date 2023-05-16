@@ -739,16 +739,16 @@ def validation_app():
         taxonomy_class="cooccur",
         name_type="entity",
         level=level_choice,
-        long=True,
         n_top=35,
+        postproc=False
     )
 
     new_topic_names = get_topic_names(
         taxonomy_class="cooccur",
         name_type="chatgpt",
         level=level_choice,
-        long=False,
         n_top=35,
+        postproc=False
     )
 
     new_entity_names = {

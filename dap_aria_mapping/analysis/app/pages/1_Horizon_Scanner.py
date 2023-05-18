@@ -43,11 +43,11 @@ def load_overview_data() -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, List
     loading_bar = st.progress(0, "Loading data")
     volume_data = volume_per_year()
 
-    loading_bar.progress((100/6)*1, text="Loading data")
+    loading_bar.progress((1/6)*1, text="Loading data")
     # generate a list of the unique domain names to use as the filter
     unique_domains = volume_data["domain_name"].unique().to_list()
     unique_domains.insert(0, "All")
-    loading_bar.progress((100/6)*2, text="Loading data")
+    loading_bar.progress((1/6)*2, text="Loading data")
     # reformat the patent/publication counts to long form for the alignment chart
     alignment_data = volume_data.melt(
         id_vars=[
@@ -72,14 +72,14 @@ def load_overview_data() -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, List
         "doc_type",
         "count",
     ]
-    loading_bar.progress((100/6)*3, text="Loading data")
+    loading_bar.progress((1/6)*3, text="Loading data")
 
     novelty_data = novelty_per_year()
-    loading_bar.progress((100/6)*4, text="Loading data")
+    loading_bar.progress((1/6)*4, text="Loading data")
     novelty_docs = novelty_documents()
-    loading_bar.progress((100/6)*5, text="Loading data")
+    loading_bar.progress((1/6)*5, text="Loading data")
     docs_with_entities = documents_with_entities()
-    loading_bar.progress((100/6)*6, text="Loading data")
+    loading_bar.progress((1/6)*6, text="Loading data")
 
     return (
         volume_data,

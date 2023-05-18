@@ -81,8 +81,7 @@ def load_overview_data() -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, List
 def load_novelty_data():
     novelty_data = novelty_per_year()
     novelty_docs = novelty_documents()
-    docs_with_entities = documents_with_entities()
-    return novelty_data, novelty_docs, docs_with_entities
+    return novelty_data, novelty_docs
 
 
 @st.cache_data(show_spinner="Filtering by domain")
@@ -309,15 +308,10 @@ def get_unique_words(series: pd.Series):
     return list(set(list(chain(*[x.split(" ") for x in series if isinstance(x, str)]))))
 
 
-def filter_documents_with_entities(
-    _novelty_docs: pl.DataFrame, docs_with_entities: pl.DataFrame, entities: list
-):
-    # filter docs_with_entities to only keep documents with entities in entities
-    docs_with_entities = docs_with_entities.filter(pl.col("entity_list").isin(entities))
-
-    # join novelty_docs and docs_with_entities only where there's match
-    docs_with_entities = _novelty_docs.join(
-        docs_with_entities, left_on="work_id", right_on="document_id", how="inner"
+def filter_documents_with_entities(_novelty_docs: pl.DataFrame, entities: list):
+    # filter docs_with_entities to only keep documents with entities in entities (note that column entity_list has lists of str)
+    docs_with_entities = _novelty_docs.filter(
+        pl.col("entity_list").map(lambda x: any([y in x for y in entities]))
     )
     return docs_with_entities
 
@@ -343,11 +337,7 @@ st.markdown(
     unique_domains,
 ) = load_overview_data()
 
-(
-    novelty_data,
-    novelty_docs,
-    docs_with_entities,
-) = load_novelty_data()
+(novelty_data, novelty_docs) = load_novelty_data()
 
 with st.sidebar:
     # filter for domains comes from unique domain names
@@ -663,11 +653,11 @@ with novelty_tab:
             if submitted:
                 if all_or_any == "All":
                     query_df = filter_documents_with_entities(
-                        filtered_novelty_docs, docs_with_entities, query
+                        filtered_novelty_docs, query
                     )
                 else:
                     query_df = filter_documents_with_entities(
-                        filtered_novelty_docs, docs_with_entities, query
+                        filtered_novelty_docs, query
                     )
 
                 query_df = query_df.sort_values(by="novelty", ascending=False).head(

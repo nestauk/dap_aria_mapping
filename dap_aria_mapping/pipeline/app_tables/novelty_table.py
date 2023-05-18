@@ -242,15 +242,6 @@ if __name__ == "__main__":
         "outputs/app_data/horizon_scanner/agg_novelty_documents.parquet",
     )
 
-    buffer = io.BytesIO()
-    novelty_documents.write_parquet(buffer)
-    buffer.seek(0)
-    s3.upload_fileobj(
-        buffer,
-        BUCKET_NAME,
-        "outputs/app_data/horizon_scanner/novelty_documents.parquet",
-    )
-
     logger.info("Create search list")
     search_df = pipe(
         get_openalex_entities(),
@@ -266,14 +257,24 @@ if __name__ == "__main__":
     )
 
     # merge work-id unique novelty_documents & display_name with the entity list, and explode
-    search_df = search_df.join(
-        novelty_documents[["work_id", "display_name"]].unique(subset=["work_id"]),
-        left_on="document_id",
-        right_on="work_id",
+    novelty_documents = novelty_documents.join(
+        search_df,
+        left_on="work_id",
+        right_on="document_id",
         how="left",
     )
 
+    buffer = io.BytesIO()
+    novelty_documents.write_parquet(buffer)
+    buffer.seek(0)
+    s3.upload_fileobj(
+        buffer,
+        BUCKET_NAME,
+        "outputs/app_data/horizon_scanner/novelty_documents.parquet",
+    )
+
     # create list of all unique entities in nested lists of "entity_list"
+    logger.info("Create search list")
     search_list = list(set([e for l in search_df["entity_list"] for e in l]))
 
     # save pickle list to s3
@@ -285,17 +286,4 @@ if __name__ == "__main__":
         buffer,
         BUCKET_NAME,
         "outputs/app_data/horizon_scanner/entity_list.pkl",
-    )
-
-    logger.info("Explode search dataframe")
-    search_df = search_df.explode("entity_list")
-
-    buffer = io.BytesIO()
-    search_df.write_parquet(buffer)
-    buffer.seek(0)
-    s3 = boto3.client("s3")
-    s3.upload_fileobj(
-        buffer,
-        BUCKET_NAME,
-        "outputs/app_data/horizon_scanner/entity_dataframe.parquet",
     )

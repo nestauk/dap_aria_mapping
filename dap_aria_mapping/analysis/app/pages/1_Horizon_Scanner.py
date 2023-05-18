@@ -77,7 +77,7 @@ def load_overview_data() -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, List
     )
 
 
-@st.cache_data()
+@st.cache_resource(show_spinner="Loading novelty data")
 def load_novelty_data():
     novelty_data = novelty_per_year()
     novelty_docs = novelty_documents()

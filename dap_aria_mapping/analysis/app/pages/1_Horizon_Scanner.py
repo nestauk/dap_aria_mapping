@@ -40,14 +40,11 @@ def load_overview_data() -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, List
         pl.DataFrame: same as above, but patent/publication counts are melted to long form
         List: unique domain names in dataset
     """
-    loading_bar = st.progress(0, "Loading data")
     volume_data = volume_per_year()
 
-    loading_bar.progress((1/6)*1, text="Loading data")
     # generate a list of the unique domain names to use as the filter
     unique_domains = volume_data["domain_name"].unique().to_list()
     unique_domains.insert(0, "All")
-    loading_bar.progress((1/6)*2, text="Loading data")
     # reformat the patent/publication counts to long form for the alignment chart
     alignment_data = volume_data.melt(
         id_vars=[
@@ -72,23 +69,20 @@ def load_overview_data() -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, List
         "doc_type",
         "count",
     ]
-    loading_bar.progress((1/6)*3, text="Loading data")
-
-    novelty_data = novelty_per_year()
-    loading_bar.progress((1/6)*4, text="Loading data")
-    novelty_docs = novelty_documents()
-    loading_bar.progress((1/6)*5, text="Loading data")
-    docs_with_entities = documents_with_entities()
-    loading_bar.progress((1/6)*6, text="Loading data")
 
     return (
         volume_data,
         alignment_data,
-        novelty_data,
-        novelty_docs,
         unique_domains,
-        docs_with_entities,
     )
+
+
+@st.cache_data()
+def load_novelty_data():
+    novelty_data = novelty_per_year()
+    novelty_docs = novelty_documents()
+    docs_with_entities = documents_with_entities()
+    return novelty_data, novelty_docs, docs_with_entities
 
 
 @st.cache_data(show_spinner="Filtering by domain")
@@ -141,7 +135,6 @@ def filter_by_area(
     return volume_data, alignment_data, novelty_data, unique_topics
 
 
-@st.cache_data
 def group_emergence_by_level(
     _volume_data: pl.DataFrame, level: str, y_col: str
 ) -> pl.DataFrame:
@@ -168,7 +161,6 @@ def group_emergence_by_level(
 st.cache_data(show_spinner="Filtering by topic")
 
 
-@st.cache_data
 def group_alignment_by_level(_alignment_data: pl.DataFrame, level: str) -> pl.DataFrame:
     """groups the data for the alignment chart by the level specified by the filters.
     Also calculates the fraction of total documents per type to visualise in the chart.
@@ -209,7 +201,7 @@ def group_alignment_by_level(_alignment_data: pl.DataFrame, level: str) -> pl.Da
     )
     return q.collect()
 
-@st.cache_data
+
 def filter_novelty_by_level(
     _novelty_data: pl.DataFrame, _novelty_docs: pl.DataFrame, level: str, years: tuple
 ) -> pl.DataFrame:
@@ -271,7 +263,6 @@ def filter_novelty_by_level(
     # map {level_name}
 
 
-@st.cache_data
 def group_filter_novelty_counts(
     _novelty_data: pl.DataFrame,
     _novelty_docs: pl.DataFrame,
@@ -314,12 +305,10 @@ def group_filter_novelty_counts(
     return novelty_subdata, novelty_subdocs
 
 
-@st.cache_data
 def get_unique_words(series: pd.Series):
     return list(set(list(chain(*[x.split(" ") for x in series if isinstance(x, str)]))))
 
 
-@st.cache_data
 def filter_documents_with_entities(
     _novelty_docs: pl.DataFrame, docs_with_entities: pl.DataFrame, entities: list
 ):
@@ -351,11 +340,14 @@ st.markdown(
 (
     volume_data,
     alignment_data,
+    unique_domains,
+) = load_overview_data()
+
+(
     novelty_data,
     novelty_docs,
-    unique_domains,
     docs_with_entities,
-) = load_overview_data()
+) = load_novelty_data()
 
 with st.sidebar:
     # filter for domains comes from unique domain names

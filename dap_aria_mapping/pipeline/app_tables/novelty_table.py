@@ -273,19 +273,19 @@ if __name__ == "__main__":
         how="left",
     )
 
-    # # create list of all unique entities in nested lists of "entity_list"
-    # search_list = list(set([e for l in search_df["entity_list"] for e in l]))
+    # create list of all unique entities in nested lists of "entity_list"
+    search_list = list(set([e for l in search_df["entity_list"] for e in l]))
 
-    # # save pickle list to s3
-    # buffer = io.BytesIO()
-    # pickle.dump(search_list, buffer)
-    # buffer.seek(0)
-    # s3 = boto3.client("s3")
-    # s3.upload_fileobj(
-    #     buffer,
-    #     BUCKET_NAME,
-    #     "outputs/app_data/horizon_scanner/entity_list.pkl",
-    # )
+    # save pickle list to s3
+    buffer = io.BytesIO()
+    pickle.dump(search_list, buffer)
+    buffer.seek(0)
+    s3 = boto3.client("s3")
+    s3.upload_fileobj(
+        buffer,
+        BUCKET_NAME,
+        "outputs/app_data/horizon_scanner/entity_list.pkl",
+    )
 
     logger.info("Explode search dataframe")
     search_df = search_df.explode("entity_list")

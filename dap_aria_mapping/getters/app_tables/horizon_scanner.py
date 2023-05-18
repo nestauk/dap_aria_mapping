@@ -55,11 +55,14 @@ def novelty_documents() -> pl.DataFrame:
         pl.DataFrame: A polars dataframe.
     """
     s3 = boto3.client("s3")
-    response = s3.get_object(
-        Bucket=BUCKET_NAME,
-        Key="outputs/app_data/horizon_scanner/novelty_documents.parquet",
+    fileobj = io.BytesIO()
+    s3.download_fileobj(
+        BUCKET_NAME,
+        "outputs/app_data/horizon_scanner/novelty_documents.parquet",
+        fileobj,
     )
-    return pl.DataFrame(response["Body"].read())
+    fileobj.seek(0)
+    return pl.read_parquet(fileobj)
 
 
 def documents_with_entities() -> pl.DataFrame:

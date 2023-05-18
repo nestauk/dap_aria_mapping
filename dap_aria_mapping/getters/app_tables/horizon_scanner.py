@@ -2,7 +2,7 @@ import polars as pl
 from nesta_ds_utils.loading_saving.S3 import download_obj
 from dap_aria_mapping import BUCKET_NAME
 from typing import Sequence
-import boto3
+import boto3, pickle, io
 
 
 def volume_per_year() -> pl.DataFrame:
@@ -63,6 +63,21 @@ def novelty_documents() -> pl.DataFrame:
     )
 
 
+def documents_with_entities() -> pl.DataFrame:
+    """Gets a polars dataframe with the documents and their entities
+
+    Returns:
+        pl.DataFrame: A polars dataframe.
+    """
+    return pl.DataFrame(
+        download_obj(
+            BUCKET_NAME,
+            "outputs/app_data/horizon_scanner/entity_dataframe.parquet",
+            download_as="dataframe",
+        )
+    )
+
+
 def get_entities() -> Sequence[str]:
     """Gets a list of entities
 
@@ -71,6 +86,9 @@ def get_entities() -> Sequence[str]:
     """
     s3 = boto3.client("s3")
     response = s3.get_object(
-        Bucket=BUCKET_NAME, Key="outputs/app_data/horizon_scanner/entities.txt"
+        Bucket=BUCKET_NAME, Key="outputs/app_data/horizon_scanner/entity_list.pkl"
     )
-    return response["Body"].read().decode("utf-8").split("\n")
+
+    # use pickle to read back to list
+    with io.BytesIO(response["Body"].read()) as bio:
+        return pickle.load(bio)

@@ -196,10 +196,6 @@ novelty_charts.check_documents_with_text(
 #
 # Note that in now way do we imply that topics with low novelty scores are not performing innovative research and improving the scientific knowlege. Rather, the novelty score indicates that the topic is associated with documents with more common topic combinations. This might be the case, for example, for topics associated with less interdisciplinary research - in those cases, the research can still be innovative, but it might be more confined within a single field of research.
 
-topic_novelty_df
-topic_novelty_df["topic_name"] = topic_novelty_df["topic_name"].apply(
-    lambda x: x["name"]
-)
 
 most_novel_topics_df = novelty_charts.get_top_novel_topics(
     topic_novelty_df,

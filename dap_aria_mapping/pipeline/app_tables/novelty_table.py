@@ -12,17 +12,22 @@ from dap_aria_mapping.getters.novelty import (
     get_openalex_novelty_scores,
 )
 from dap_aria_mapping.getters.taxonomies import get_topic_names
-from dap_aria_mapping.getters.openalex import get_openalex_topics, get_openalex_works
+from dap_aria_mapping.getters.openalex import (
+    get_openalex_topics,
+    get_openalex_entities,
+    get_openalex_works,
+)
+from dap_aria_mapping.utils.entity_selection import get_sample, filter_entities
 from dap_aria_mapping.getters.patents import get_patents, get_patent_topics
 from dap_aria_mapping.getters.taxonomies import get_topic_names
+from dap_aria_mapping.getters.app_tables.horizon_scanner import get_entities
 from dap_aria_mapping.utils.app_data_utils import count_documents, expand_topic_col
 import polars as pl
 import pandas as pd
 from toolz import pipe
 from functools import partial
 from dap_aria_mapping import BUCKET_NAME, logger
-import boto3
-import io
+import boto3, pickle, io
 
 LLABELS = {1: "domain", 2: "area", 3: "topic"}
 
@@ -64,25 +69,21 @@ if __name__ == "__main__":
     openalex_novelty_df = pl.concat(
         [get_openalex_novelty_df(level) for level in [1, 2, 3]]
     )
+    # iterate over get_topic_names to create a dictionary. remove rows with "topic" A-Z
+    name_dict = {}
+    for level in [1, 2, 3]:
+        for k, v in get_topic_names("cooccur", "chatgpt", level, n_top=35).items():
+            if k not in name_dict:
+                name_dict[k] = v["name"]
 
-    # iterate over get_topic_names to create a dictionary
     names = pl.DataFrame(
         pd.DataFrame.from_dict(
-            {
-                **{
-                    k: v["name"]
-                    for level in [1, 2, 3]
-                    for k, v in get_topic_names(
-                        "cooccur", "chatgpt", level, n_top=35
-                    ).items()
-                }
-            },
+            {**name_dict},
             orient="index",
         )
         .reset_index()
         .rename(columns={"index": "topic", 0: "name"})
     )
-
     # get top 5 entities
     entities = pl.DataFrame(
         pd.DataFrame.from_dict(
@@ -109,10 +110,9 @@ if __name__ == "__main__":
             .join(openalex_df[["work_id", "display_name"]], on="work_id", how="left")
         ),
         partial(expand_topic_col),
-    )
-    [["work_id", "year", "domain", "area", "topic", "novelty", "display_name"]]
+    )[["work_id", "year", "domain", "area", "topic", "novelty", "display_name"]]
 
-    # rename column
+    # Create document-based aggregate novelty metrics
     novelty_trends = pipe(
         # Create in-line results table
         result := (
@@ -249,4 +249,53 @@ if __name__ == "__main__":
         buffer,
         BUCKET_NAME,
         "outputs/app_data/horizon_scanner/novelty_documents.parquet",
+    )
+
+    logger.info("Create search list")
+    search_df = pipe(
+        get_openalex_entities(),
+        partial(get_sample, score_threshold=80, num_articles=-1),
+        partial(filter_entities, min_freq=10, max_freq=1_000_000, method="absolute"),
+    )
+
+    search_df = pl.DataFrame(
+        {
+            "document_id": [e for e in search_df],
+            "entity_list": [search_df[e] for e in search_df],
+        }
+    )
+
+    # merge work-id unique novelty_documents & display_name with the entity list, and explode
+    search_df = search_df.join(
+        novelty_documents[["work_id", "display_name"]].unique(subset=["work_id"]),
+        left_on="document_id",
+        right_on="work_id",
+        how="left",
+    )
+
+    # # create list of all unique entities in nested lists of "entity_list"
+    # search_list = list(set([e for l in search_df["entity_list"] for e in l]))
+
+    # # save pickle list to s3
+    # buffer = io.BytesIO()
+    # pickle.dump(search_list, buffer)
+    # buffer.seek(0)
+    # s3 = boto3.client("s3")
+    # s3.upload_fileobj(
+    #     buffer,
+    #     BUCKET_NAME,
+    #     "outputs/app_data/horizon_scanner/entity_list.pkl",
+    # )
+
+    logger.info("Explode search dataframe")
+    search_df = search_df.explode("entity_list")
+
+    buffer = io.BytesIO()
+    search_df.write_parquet(buffer)
+    buffer.seek(0)
+    s3 = boto3.client("s3")
+    s3.upload_fileobj(
+        buffer,
+        BUCKET_NAME,
+        "outputs/app_data/horizon_scanner/entity_dataframe.parquet",
     )

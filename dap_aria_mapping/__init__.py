@@ -51,3 +51,7 @@ chatgpt_args = get_yaml_config(_base_config_path)
 # manual checks
 _base_config_path = Path(__file__).parent.resolve() / "config/manual_checks.yaml"
 manual_checks = get_yaml_config(_base_config_path)
+
+# app config
+_base_config_path = Path(__file__).parent.resolve() / "config/app.yaml"
+app_config = get_yaml_config(_base_config_path)

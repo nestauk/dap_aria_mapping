@@ -97,8 +97,7 @@ def get_openalex_topics(tax: str = "cooccur", level: int = 1) -> Dict[str, List[
 
     return download_obj(
         BUCKET_NAME,
-        "outputs/docs_with_topics/{}/openalex/Level_{}.json".format(
-            tax, str(level)),
+        "outputs/docs_with_topics/{}/openalex/Level_{}.json".format(tax, str(level)),
         download_as="dict",
     )
 
@@ -126,6 +125,7 @@ def get_openalex_cd_scores(year: int) -> Dict[str, int]:
         "outputs/cd_index/openalex_cd_scores_{}.json".format(year),
         download_as="dict",
     )
+
 
 def get_openalex_institutes():
     return download_obj(
@@ -279,7 +279,7 @@ def get_openalex_cd_scores(year: int) -> Dict:
     """
     return download_obj(
         BUCKET_NAME,
-        f"outputs/openalex_cd_scores_{year}.json",
+        f"outputs/cd_index/openalex_cd_scores_{year}.json",
         download_as="dict",
     )
 

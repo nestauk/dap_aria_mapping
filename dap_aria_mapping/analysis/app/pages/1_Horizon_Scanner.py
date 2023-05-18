@@ -7,11 +7,12 @@ from dap_aria_mapping.getters.app_tables.horizon_scanner import (
     volume_per_year,
     novelty_per_year,
     novelty_documents,
+    documents_with_entities,
     get_entities,
 )
 
 from dap_aria_mapping.utils.app_utils import convert_to_pandas
-from dap_aria_mapping.getters.taxonomies import get_topic_names
+from dap_aria_mapping.getters.taxonomies import get_topic_names, get_entity_embeddings
 import polars as pl
 import pandas as pd
 import numpy as np
@@ -72,8 +73,16 @@ def load_overview_data() -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, List
 
     novelty_data = novelty_per_year()
     novelty_docs = novelty_documents()
+    docs_with_entities = documents_with_entities()
 
-    return volume_data, alignment_data, novelty_data, novelty_docs, unique_domains
+    return (
+        volume_data,
+        alignment_data,
+        novelty_data,
+        novelty_docs,
+        unique_domains,
+        docs_with_entities,
+    )
 
 
 @st.cache_data(show_spinner="Filtering by domain")
@@ -126,9 +135,7 @@ def filter_by_area(
     return volume_data, alignment_data, novelty_data, unique_topics
 
 
-st.cache_data(show_spinner="Loading data")
-
-
+@st.cache_data
 def group_emergence_by_level(
     _volume_data: pl.DataFrame, level: str, y_col: str
 ) -> pl.DataFrame:
@@ -155,6 +162,7 @@ def group_emergence_by_level(
 st.cache_data(show_spinner="Filtering by topic")
 
 
+@st.cache_data
 def group_alignment_by_level(_alignment_data: pl.DataFrame, level: str) -> pl.DataFrame:
     """groups the data for the alignment chart by the level specified by the filters.
     Also calculates the fraction of total documents per type to visualise in the chart.
@@ -199,6 +207,7 @@ def group_alignment_by_level(_alignment_data: pl.DataFrame, level: str) -> pl.Da
 st.cache_data(show_spinner="Filtering by topic")
 
 
+@st.cache_data
 def filter_novelty_by_level(
     _novelty_data: pl.DataFrame, _novelty_docs: pl.DataFrame, level: str, years: tuple
 ) -> pl.DataFrame:
@@ -260,9 +269,7 @@ def filter_novelty_by_level(
     # map {level_name}
 
 
-st.cache_data(show_spinner="Filtering by topic")
-
-
+@st.cache_data
 def group_filter_novelty_counts(
     _novelty_data: pl.DataFrame,
     _novelty_docs: pl.DataFrame,
@@ -305,11 +312,23 @@ def group_filter_novelty_counts(
     return novelty_subdata, novelty_subdocs
 
 
-st.cache_data()
-
-
+@st.cache_data
 def get_unique_words(series: pd.Series):
     return list(set(list(chain(*[x.split(" ") for x in series if isinstance(x, str)]))))
+
+
+@st.cache_data
+def filter_documents_with_entities(
+    _novelty_docs: pl.DataFrame, docs_with_entities: pl.DataFrame, entities: list
+):
+    # filter docs_with_entities to only keep documents with entities in entities
+    docs_with_entities = docs_with_entities.filter(pl.col("entity_list").isin(entities))
+
+    # join novelty_docs and docs_with_entities only where there's match
+    docs_with_entities = _novelty_docs.join(
+        docs_with_entities, left_on="work_id", right_on="document_id", how="inner"
+    )
+    return docs_with_entities
 
 
 header1, header2 = st.columns([1, 10])
@@ -333,6 +352,7 @@ st.markdown(
     novelty_data,
     novelty_docs,
     unique_domains,
+    docs_with_entities,
 ) = load_overview_data()
 
 with st.sidebar:
@@ -595,7 +615,7 @@ with novelty_tab:
         filtered_novelty_docs_pd = filtered_novelty_docs_pd[
             filtered_novelty_docs_pd["topic_name"].notnull()
         ]
-        
+
         # Selectbox to allow user to select one among the df's many topic_names. Display only the corresponding topic_names.
         novelty_docs_topic = st.selectbox(
             "Select a topic to view the most novel articles",
@@ -631,7 +651,7 @@ with novelty_tab:
 
         st.title("Search Articles")
         with st.form("my_form"):
-            col1, col2, col3= st.columns([0.8, 0.1, 0.1])
+            col1, col2, col3 = st.columns([0.8, 0.1, 0.1])
             with col1:
                 # query keywords, where each time
                 query = st.multiselect("Keywords", unique_keywords)
@@ -648,19 +668,18 @@ with novelty_tab:
 
             if submitted:
                 if all_or_any == "All":
-                    mask = filtered_novelty_docs["document_name"].apply(
-                        lambda title: any(keyword.lower() in title.lower() for keyword in query)
+                    query_df = filter_documents_with_entities(
+                        filtered_novelty_docs, docs_with_entities, query
                     )
                 else:
-                    mask = filtered_novelty_docs["document_name"].apply(
-                        lambda title: all(keyword.lower() in title.lower() for keyword in query)
+                    query_df = filter_documents_with_entities(
+                        filtered_novelty_docs, docs_with_entities, query
                     )
-                # [TASK] keywords are dbpedia tags, which don't necessarily appear in title
-                _novelty_docs = convert_to_pandas(filtered_novelty_docs.filter(mask))
-                sorted_articles = _novelty_docs.sort_values(
-                    by="novelty", ascending=False
-                ).head(top_n)
-                st.dataframe(sorted_articles)
+
+                query_df = query_df.sort_values(by="novelty", ascending=False).head(
+                    top_n
+                )
+                st.dataframe(query_df)
 
         # with col4:
         #     if not query:

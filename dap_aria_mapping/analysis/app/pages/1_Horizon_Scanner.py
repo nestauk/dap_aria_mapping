@@ -9,7 +9,7 @@ from dap_aria_mapping.getters.app_tables.horizon_scanner import (
     novelty_per_year,
     novelty_documents,
     documents_with_entities,
-    document_names,
+    get_document_names,
     get_entities,
 )
 
@@ -84,10 +84,10 @@ def load_overview_data() -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, List
 def load_novelty_data():
     novelty_data = novelty_per_year()
     novelty_docs = novelty_documents()
-    document_names = document_names()
+    document_names = get_document_names()
     entity_dict = documents_with_entities()
 
-    return novelty_data, novelty_docs, entity_dict
+    return novelty_data, novelty_docs, document_names, entity_dict
 
 
 # @st.cache_data(show_spinner="Filtering by domain")
@@ -310,7 +310,9 @@ def get_unique_words(series: pd.Series):
     return list(set(list(chain(*[x.split(" ") for x in series if isinstance(x, str)]))))
 
 
-def get_ranked_novelty_articles(_novelty_docs: pl.DataFrame, _topic: str):
+def get_ranked_novelty_articles(
+    _novelty_docs: pl.DataFrame, _doc_names: pl.DataFrame, _topic: str
+):
     if _topic != "All":
         _novelty_docs = _novelty_docs.filter(pl.col("topic_name") == _topic)
     else:
@@ -324,7 +326,7 @@ def get_ranked_novelty_articles(_novelty_docs: pl.DataFrame, _topic: str):
 
     # add column with document_names by joining
     _novelty_docs = _novelty_docs.join(
-        document_names.select(["work_id", "display_name"]),
+        _doc_names.select(["work_id", "display_name"]),
         left_on="document_link",
         right_on="work_id",
         how="left",
@@ -392,7 +394,7 @@ st.markdown(
     unique_domains,
 ) = load_overview_data()
 
-(novelty_data, novelty_docs, entity_dict) = load_novelty_data()
+(novelty_data, novelty_docs, document_names, entity_dict) = load_novelty_data()
 
 with st.sidebar:
     # filter for domains comes from unique domain names
@@ -682,7 +684,9 @@ if tabs == "Novelty":
         )
 
         filtered_topic_novelty_docs = get_ranked_novelty_articles(
-            _novelty_docs=filtered_novelty_docs, _topic=novelty_docs_topic
+            _novelty_docs=filtered_novelty_docs,
+            _doc_names=document_names,
+            _topic=novelty_docs_topic,
         )
         col1, col2 = st.columns([0.5, 0.5])
         filtered_topic_novelty_docs = convert_to_pandas(filtered_topic_novelty_docs)

@@ -48,7 +48,7 @@ def novelty_per_year() -> pl.DataFrame:
     )
 
 
-def document_names() -> pl.DataFrame:
+def get_document_names() -> pl.DataFrame:
     """Gets a polars dataframe with document names
 
     Returns:

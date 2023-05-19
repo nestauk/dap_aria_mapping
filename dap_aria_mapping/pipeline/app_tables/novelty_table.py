@@ -113,6 +113,13 @@ if __name__ == "__main__":
         partial(expand_topic_col),
     )[["work_id", "year", "domain", "area", "topic", "novelty", "display_name"]]
 
+    document_names = novelty_documents.unique(subset=["work_id"])[
+        ["work_id", "display_name"]
+    ]
+    novelty_documents = novelty_documents[
+        ["work_id", "year", "domain", "area", "topic", "novelty"]
+    ]
+
     # Create document-based aggregate novelty metrics
     novelty_trends = pipe(
         # Create in-line results table
@@ -243,12 +250,11 @@ if __name__ == "__main__":
     entity_to_article = defaultdict(list)
     for key, values in search_dict.items():
         for value in values:
-            entity_to_article[key].append(value.replace("https://openalex.org/", ""))
+            entity_to_article[value].append(key.replace("https://openalex.org/", ""))
 
     # create list of all unique entities in nested lists of "entity_list"
     logger.info("Create search list")
     search_list = list(entity_to_article.keys())
-
     logger.info("Uploading all files to S3")
 
     buffer = io.BytesIO()
@@ -268,6 +274,15 @@ if __name__ == "__main__":
         buffer,
         BUCKET_NAME,
         "outputs/app_data/horizon_scanner/novelty_documents.parquet",
+    )
+
+    buffer = io.BytesIO()
+    document_names.write_parquet(buffer)
+    buffer.seek(0)
+    s3.upload_fileobj(
+        buffer,
+        BUCKET_NAME,
+        "outputs/app_data/horizon_scanner/document_names.parquet",
     )
 
     buffer = io.BytesIO()

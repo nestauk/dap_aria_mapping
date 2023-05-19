@@ -1,4 +1,5 @@
 import streamlit as st
+from streamlit_option_menu import option_menu
 from PIL import Image
 import altair as alt
 from nesta_ds_utils.viz.altair import formatting
@@ -8,6 +9,7 @@ from dap_aria_mapping.getters.app_tables.horizon_scanner import (
     novelty_per_year,
     novelty_documents,
     documents_with_entities,
+    document_names,
     get_entities,
 )
 
@@ -82,6 +84,7 @@ def load_overview_data() -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, List
 def load_novelty_data():
     novelty_data = novelty_per_year()
     novelty_docs = novelty_documents()
+    document_names = document_names()
     entity_dict = documents_with_entities()
 
     return novelty_data, novelty_docs, entity_dict
@@ -244,20 +247,17 @@ def filter_novelty_by_level(
     # Create unique novelty_docs dataframe and add name column from _topic_map
     _novelty_docs = (
         _novelty_docs.unique(subset=[level, "work_id"])
-        .select(["work_id", "display_name", "year", "novelty", level])
+        .select(["work_id", "year", "novelty", level])
         .filter((pl.col("year") >= years[0]) & (pl.col("year") <= years[1]))
         .with_columns(pl.col(level).cast(str).map_dict(_topic_map).alias("name"))
         .rename(
             {
                 "work_id": "document_link",
-                "display_name": "document_name",
                 "year": "document_year",
                 "name": "topic_name",
             }
         )
-        .select(
-            ["document_link", "document_name", "document_year", "topic_name", "novelty"]
-        )
+        .select(["document_link", "document_year", "topic_name", "novelty"])
     )
 
     return _novelty_data, _novelty_docs
@@ -315,14 +315,20 @@ def get_ranked_novelty_articles(_novelty_docs: pl.DataFrame, _topic: str):
         _novelty_docs = _novelty_docs.filter(pl.col("topic_name") == _topic)
     else:
         _novelty_docs = (
-            _novelty_docs.groupby(
-                ["document_link", "document_name", "document_year", "novelty"]
-            )
+            _novelty_docs.groupby(["document_link", "document_year", "novelty"])
             .agg(
                 {"topic_name": pl.list("topic_name")}  # .apply(lambda x: ", ".join(x))
             )
             .rename({"topic_name": "topic_names"})
         )
+
+    # add column with document_names by joining
+    _novelty_docs = _novelty_docs.join(
+        document_names.select(["work_id", "display_name"]),
+        left_on="document_link",
+        right_on="work_id",
+        how="left",
+    )
 
     return _novelty_docs
 
@@ -416,10 +422,31 @@ with st.sidebar:
     years = st.slider("Select a range of years", 2007, 2022, (2007, 2022))
 
 
-overview_tab, disruption_tab, novelty_tab, overlaps_tab = st.tabs(
-    ["Overview", "Disruption", "Novelty", "Overlaps"]
+# overview_tab, disruption_tab, novelty_tab, overlaps_tab = st.tabs(
+#     ["Overview", "Disruption", "Novelty", "Overlaps"]
+# )
+
+tabs = option_menu(
+    None,
+    ["Overview", "Disruption", "Novelty", "Overlaps"],
+    icons=["house", "cloud-upload", "list-task", "gear"],
+    menu_icon="cast",
+    default_index=0,
+    orientation="horizontal",
+    styles={
+        "container": {"padding": "0!important", "background-color": "#fafafa"},
+        "icon": {"color": "orange", "font-size": "25px"},
+        "nav-link": {
+            "font-size": "25px",
+            "text-align": "left",
+            "margin": "0px",
+            "--hover-color": "#eee",
+        },
+        "nav-link-selected": {"background-color": "green"},
+    },
 )
-with overview_tab:
+
+if tabs == "Overview":
 
     st.subheader("Growth Over Time")
     st.markdown(
@@ -515,7 +542,7 @@ with overview_tab:
 
     st.altair_chart(alignment_chart)
 
-with disruption_tab:
+if tabs == "Disruption":
     disruption_trends, disruption_drilldown = st.columns(2)
 
     with disruption_trends:
@@ -530,7 +557,7 @@ with disruption_tab:
             "This would allow a user to select a topic and see the distribution of disruptiveness of papers within that topic"
         )
 
-with novelty_tab:
+if tabs == "Novelty":
 
     novelty_charts_tab, novelty_docs_tab = st.tabs(["Charts", "Search"])
     with novelty_charts_tab:
@@ -715,7 +742,7 @@ with novelty_tab:
         #     st.markdown(f"Count: {matching_articles}")
 
 
-with overlaps_tab:
+if tabs == "Overlaps":
     heatmap, overlap_drilldown = st.columns(2)
     with heatmap:
         st.subheader("Heatmap of Overlaps")

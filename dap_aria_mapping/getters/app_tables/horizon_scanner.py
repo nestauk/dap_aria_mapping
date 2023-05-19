@@ -48,6 +48,23 @@ def novelty_per_year() -> pl.DataFrame:
     )
 
 
+def document_names() -> pl.DataFrame:
+    """Gets a polars dataframe with document names
+
+    Returns:
+        pl.DataFrame: A polars dataframe.
+    """
+    s3 = boto3.client("s3")
+    fileobj = io.BytesIO()
+    s3.download_fileobj(
+        BUCKET_NAME,
+        "outputs/app_data/horizon_scanner/document_names.parquet",
+        fileobj,
+    )
+    fileobj.seek(0)
+    return pl.read_parquet(fileobj)
+
+
 def novelty_documents() -> pl.DataFrame:
     """Gets a polars dataframe with the novelty scores per document
 

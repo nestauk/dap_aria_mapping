@@ -370,9 +370,7 @@ def filter_documents_with_entities(
     # add "https://openalex.org/" prefix to each entity id
     document_ids = ["https://openalex.org/" + x for x in document_ids]
 
-    return _novelty_docs.filter(
-        lambda df: df["work_id"].apply(lambda x: x in document_ids)
-    )
+    return _novelty_docs.filter(pl.col("document_link").isin(document_ids))
 
 
 header1, header2 = st.columns([1, 10])

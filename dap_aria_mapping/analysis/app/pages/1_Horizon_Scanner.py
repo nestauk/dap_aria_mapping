@@ -87,7 +87,7 @@ def load_novelty_data():
     return novelty_data, novelty_docs, entity_dict
 
 
-@st.cache_data(show_spinner="Filtering by domain")
+# @st.cache_data(show_spinner="Filtering by domain")
 def filter_by_domain(
     domain: str,
     _volume_data: pl.DataFrame,
@@ -112,7 +112,7 @@ def filter_by_domain(
     return volume_data, alignment_data, novelty_data, unique_areas
 
 
-@st.cache_data(show_spinner="Filtering by area")
+# @st.cache_data(show_spinner="Filtering by area")
 def filter_by_area(
     area: str,
     _volume_data: pl.DataFrame,
@@ -137,7 +137,7 @@ def filter_by_area(
     return volume_data, alignment_data, novelty_data, unique_topics
 
 
-@st.cache_data
+# @st.cache_data
 def group_emergence_by_level(
     _volume_data: pl.DataFrame, level: str, y_col: str
 ) -> pl.DataFrame:
@@ -161,7 +161,7 @@ def group_emergence_by_level(
     return q.collect()
 
 
-@st.cache_data(show_spinner="Filtering by topic")
+# @st.cache_data(show_spinner="Filtering by topic")
 def group_alignment_by_level(_alignment_data: pl.DataFrame, level: str) -> pl.DataFrame:
     """groups the data for the alignment chart by the level specified by the filters.
     Also calculates the fraction of total documents per type to visualise in the chart.
@@ -202,8 +202,6 @@ def group_alignment_by_level(_alignment_data: pl.DataFrame, level: str) -> pl.Da
     )
     return q.collect()
 
-
-@st.cache_data
 def filter_novelty_by_level(
     _novelty_data: pl.DataFrame, _novelty_docs: pl.DataFrame, level: str, years: tuple
 ) -> pl.DataFrame:

@@ -317,9 +317,12 @@ def get_ranked_novelty_articles(_novelty_docs: pl.DataFrame, _topic: str):
     else:
         _novelty_docs = (
             _novelty_docs.groupby("document_link")
-            .agg(pl.first("document_name"), pl.first("document_year"))
-            .with_columns(
-                pl.col("topic_name").cast(str).groupby("document_link").agg(", ".join)
+            .agg(
+                {
+                    "document_name": pl.first(),
+                    "document_year": pl.first(),
+                    "topic_name": pl.list().apply(lambda x: ", ".join(x))
+                }
             )
             .rename({"topic_name": "topic_names"})
         )

@@ -21,6 +21,7 @@ import numpy as np
 from typing import List, Tuple
 from itertools import chain
 from collections import defaultdict
+from toolz import pipe
 
 formatting.setup_theme()
 
@@ -80,7 +81,7 @@ def load_overview_data() -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, List
     )
 
 
-@st.cache_resource(show_spinner="Loading novelty data")
+@st.cache_data(show_spinner="Loading novelty data")
 def load_novelty_data():
     novelty_data = novelty_per_year()
     novelty_docs = novelty_documents()
@@ -384,7 +385,7 @@ def filter_documents_with_entities(
         left_on="document_link",
         right_on="work_id",
         how="left",
-    )[["document_link", "document_year", "display_name", "novelty", "topic_names"]]
+    )[["document_link", "document_year", "display_name", "novelty"]]
 
     return _novelty_docs
 
@@ -727,7 +728,10 @@ with novelty_tab:
 
     with novelty_docs_tab:
 
-        unique_keywords = get_entities()
+        unique_keywords = pipe(
+            get_entities(),
+            lambda x: sorted(x)
+        )
 
         st.title("Search Articles")
         with st.form("my_form"):

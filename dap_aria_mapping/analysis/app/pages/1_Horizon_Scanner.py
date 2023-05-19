@@ -112,7 +112,7 @@ def filter_by_domain(
     return volume_data, alignment_data, novelty_data, unique_areas
 
 
-@st.cache_data(show_spinner="Filtering by area")
+# @st.cache_data(show_spinner="Filtering by area")
 def filter_by_area(
     area: str,
     _volume_data: pl.DataFrame,

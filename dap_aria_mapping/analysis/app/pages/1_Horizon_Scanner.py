@@ -748,7 +748,11 @@ with novelty_tab:
 
             if submitted:
                 query_df = filter_documents_with_entities(
-                    filtered_novelty_docs, entity_dict, query, all_or_any
+                    _novelty_docs=filtered_novelty_docs,
+                    _entity_dict=entity_dict,
+                    _doc_names=document_names,
+                    entities=query,
+                    all_or_any=all_or_any,
                 )
 
                 query_df = convert_to_pandas(query_df)

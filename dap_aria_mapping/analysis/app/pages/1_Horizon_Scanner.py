@@ -137,6 +137,7 @@ def filter_by_area(
     return volume_data, alignment_data, novelty_data, unique_topics
 
 
+@st.cache_data
 def group_emergence_by_level(
     _volume_data: pl.DataFrame, level: str, y_col: str
 ) -> pl.DataFrame:
@@ -160,9 +161,7 @@ def group_emergence_by_level(
     return q.collect()
 
 
-st.cache_data(show_spinner="Filtering by topic")
-
-
+@st.cache_data(show_spinner="Filtering by topic")
 def group_alignment_by_level(_alignment_data: pl.DataFrame, level: str) -> pl.DataFrame:
     """groups the data for the alignment chart by the level specified by the filters.
     Also calculates the fraction of total documents per type to visualise in the chart.
@@ -266,6 +265,7 @@ def filter_novelty_by_level(
     # map {level_name}
 
 
+@st.cache_data
 def group_filter_novelty_counts(
     _novelty_data: pl.DataFrame,
     _novelty_docs: pl.DataFrame,
@@ -308,10 +308,29 @@ def group_filter_novelty_counts(
     return novelty_subdata, novelty_subdocs
 
 
+@st.cache_data
 def get_unique_words(series: pd.Series):
     return list(set(list(chain(*[x.split(" ") for x in series if isinstance(x, str)]))))
 
 
+@st.cache_data
+def get_ranked_novelty_articles(_novelty_docs: pl.DataFrame, _topic: str):
+    if _topic != "All":
+        _novelty_docs = _novelty_docs.filter(pl.col("topic_name") == _topic)
+    else:
+        _novelty_docs = (
+            _novelty_docs.groupby("document_link")
+            .agg(pl.first("document_name"), pl.first("document_year"))
+            .with_columns(
+                pl.col("topic_name").cast(str).groupby("document_link").agg(", ".join)
+            )
+            .rename({"topic_name": "topic_names"})
+        )
+
+    return _novelty_docs
+
+
+@st.cache_data
 def filter_documents_with_entities(
     _novelty_docs: pl.DataFrame,
     _entity_dict: defaultdict,
@@ -341,7 +360,9 @@ def filter_documents_with_entities(
             )
         )
 
-    return _novelty_docs.filter(pl.col("work_id").isin(entity_ids))
+    return _novelty_docs.filter(
+        lambda df: df["work_id"].apply(lambda x: x in entity_ids)
+    )
 
 
 header1, header2 = st.columns([1, 10])
@@ -577,7 +598,6 @@ with novelty_tab:
                 year_end=years[1],
             )
 
-            print("ha")
             novelty_bubble_chart = (
                 alt.Chart(convert_to_pandas(novelty_bubbles))
                 .mark_circle()
@@ -622,38 +642,34 @@ with novelty_tab:
 
         # Display most novel articles
         st.subheader("Relevant Articles")
-        filtered_novelty_docs_pd = convert_to_pandas(filtered_novelty_docs)
-
-        # Keep topic_name non-None
-        filtered_novelty_docs_pd = filtered_novelty_docs_pd[
-            filtered_novelty_docs_pd["topic_name"].notnull()
-        ]
 
         # Selectbox to allow user to select one among the df's many topic_names. Display only the corresponding topic_names.
         novelty_docs_topic = st.selectbox(
-            "Select a topic to view the most novel articles",
-            ["All"] + sorted(filtered_novelty_docs_pd["topic_name"].unique()),
+            "Select a topic to view the most and least novel articles",
+            ["All"]
+            + sorted(
+                filtered_novelty_docs.filter(~pl.col("topic_name").is_null())[
+                    "topic_name"
+                ].unique()
+            ),
         )
 
-        # [TASK] These need to be turned into functions, otherwise they reload wahen searching.
-        # Filter the df to display only the selected topic_name
-        if novelty_docs_topic != "All":
-            filtered_novelty_docs_pd = filtered_novelty_docs_pd[
-                filtered_novelty_docs_pd["topic_name"] == novelty_docs_topic
-            ]
-
+        filtered_topic_novelty_docs = get_ranked_novelty_articles(
+            _novelty_docs=filtered_novelty_docs, _topic=novelty_docs_topic
+        )
         col1, col2 = st.columns([0.5, 0.5])
+
         with col1:
             st.markdown("Most Novel Articles")
             st.dataframe(
-                filtered_novelty_docs_pd.sort_values(
+                filtered_topic_novelty_docs.sort_values(
                     by=["novelty"], ascending=False
                 ).head(50)
             )
         with col2:
             st.markdown("Least Novel Articles")
             st.dataframe(
-                filtered_novelty_docs_pd.sort_values(
+                filtered_topic_novelty_docs.sort_values(
                     by=["novelty"], ascending=True
                 ).head(50)
             )

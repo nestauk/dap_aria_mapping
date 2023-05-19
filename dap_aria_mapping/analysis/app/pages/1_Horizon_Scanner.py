@@ -87,7 +87,7 @@ def load_novelty_data():
     return novelty_data, novelty_docs, entity_dict
 
 
-# @st.cache_data(show_spinner="Filtering by domain")
+@st.cache_data(show_spinner="Filtering by domain")
 def filter_by_domain(
     domain: str,
     _volume_data: pl.DataFrame,
@@ -112,7 +112,7 @@ def filter_by_domain(
     return volume_data, alignment_data, novelty_data, unique_areas
 
 
-# @st.cache_data(show_spinner="Filtering by area")
+@st.cache_data(show_spinner="Filtering by area")
 def filter_by_area(
     area: str,
     _volume_data: pl.DataFrame,
@@ -659,6 +659,7 @@ with novelty_tab:
             _novelty_docs=filtered_novelty_docs, _topic=novelty_docs_topic
         )
         col1, col2 = st.columns([0.5, 0.5])
+        filtered_topic_novelty_docs = convert_to_pandas(filtered_topic_novelty_docs)
 
         with col1:
             st.markdown("Most Novel Articles")

@@ -202,6 +202,7 @@ def group_alignment_by_level(_alignment_data: pl.DataFrame, level: str) -> pl.Da
     )
     return q.collect()
 
+
 def filter_novelty_by_level(
     _novelty_data: pl.DataFrame, _novelty_docs: pl.DataFrame, level: str, years: tuple
 ) -> pl.DataFrame:
@@ -314,14 +315,11 @@ def get_ranked_novelty_articles(_novelty_docs: pl.DataFrame, _topic: str):
         _novelty_docs = _novelty_docs.filter(pl.col("topic_name") == _topic)
     else:
         _novelty_docs = (
-            _novelty_docs.groupby("document_link")
+            _novelty_docs.groupby(
+                ["document_link", "document_name", "document_year", "novelty"]
+            )
             .agg(
-                {
-                    "document_name": pl.first(),
-                    "document_year": pl.first(),
-                    "novelty": pl.first(),
-                    "topic_name": pl.list("topic_name")#.apply(lambda x: ", ".join(x))
-                }
+                {"topic_name": pl.list("topic_name")}  # .apply(lambda x: ", ".join(x))
             )
             .rename({"topic_name": "topic_names"})
         )

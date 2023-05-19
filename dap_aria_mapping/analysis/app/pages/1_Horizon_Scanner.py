@@ -90,7 +90,7 @@ def load_novelty_data():
     return novelty_data, novelty_docs, document_names, entity_dict
 
 
-# @st.cache_data(show_spinner="Filtering by domain")
+@st.cache_data(show_spinner="Filtering by domain")
 def filter_by_domain(
     domain: str,
     _volume_data: pl.DataFrame,
@@ -115,7 +115,7 @@ def filter_by_domain(
     return volume_data, alignment_data, novelty_data, unique_areas
 
 
-# @st.cache_data(show_spinner="Filtering by area")
+@st.cache_data(show_spinner="Filtering by area")
 def filter_by_area(
     area: str,
     _volume_data: pl.DataFrame,
@@ -140,7 +140,7 @@ def filter_by_area(
     return volume_data, alignment_data, novelty_data, unique_topics
 
 
-# @st.cache_data
+@st.cache_data
 def group_emergence_by_level(
     _volume_data: pl.DataFrame, level: str, y_col: str
 ) -> pl.DataFrame:
@@ -164,7 +164,7 @@ def group_emergence_by_level(
     return q.collect()
 
 
-# @st.cache_data(show_spinner="Filtering by topic")
+@st.cache_data(show_spinner="Filtering by topic")
 def group_alignment_by_level(_alignment_data: pl.DataFrame, level: str) -> pl.DataFrame:
     """groups the data for the alignment chart by the level specified by the filters.
     Also calculates the fraction of total documents per type to visualise in the chart.
@@ -318,9 +318,7 @@ def get_ranked_novelty_articles(
     else:
         _novelty_docs = (
             _novelty_docs.groupby(["document_link", "document_year", "novelty"])
-            .agg(
-                {"topic_name": pl.list("topic_name")}  # .apply(lambda x: ", ".join(x))
-            )
+            .agg({"topic_name": pl.list("topic_name")})
             .rename({"topic_name": "topic_names"})
         )
 
@@ -330,7 +328,7 @@ def get_ranked_novelty_articles(
         left_on="document_link",
         right_on="work_id",
         how="left",
-    )
+    )[["document_link", "document_year", "display_name", "novelty", "topic_names"]]
 
     return _novelty_docs
 
@@ -344,15 +342,19 @@ def filter_documents_with_entities(
 
     if all_or_any == "All":
         # create unique list from entities that fetch corresponding key in entity_dict.
+        # _entity_dict = {str: Sequence[str], str: Sequence[str], ...}
         document_ids = list(
             set(
-                [
-                    _entity_dict[entity]
-                    for entity in entities
-                    if entity in _entity_dict.keys()
-                ]
+                chain(
+                    *[
+                        _entity_dict[entity]
+                        for entity in entities
+                        if entity in _entity_dict.keys()
+                    ]
+                )
             )
         )
+
     else:
         # only return values in list that were found in all "entities" keys
         document_ids = list(

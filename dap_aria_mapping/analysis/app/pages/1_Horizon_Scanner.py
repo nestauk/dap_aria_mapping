@@ -424,31 +424,32 @@ with st.sidebar:
     years = st.slider("Select a range of years", 2007, 2022, (2007, 2022))
 
 
-# overview_tab, disruption_tab, novelty_tab, overlaps_tab = st.tabs(
-#     ["Overview", "Disruption", "Novelty", "Overlaps"]
-# )
-
-tabs = option_menu(
-    None,
-    ["Overview", "Disruption", "Novelty", "Overlaps"],
-    icons=["house", "cloud-upload", "list-task", "gear"],
-    menu_icon="cast",
-    default_index=0,
-    orientation="horizontal",
-    styles={
-        "container": {"padding": "0!important", "background-color": "#fafafa"},
-        "icon": {"color": "orange", "font-size": "25px"},
-        "nav-link": {
-            "font-size": "25px",
-            "text-align": "left",
-            "margin": "0px",
-            "--hover-color": "#eee",
-        },
-        "nav-link-selected": {"background-color": "green"},
-    },
+overview_tab, disruption_tab, novelty_tab, overlaps_tab = st.tabs(
+    ["Overview", "Disruption", "Novelty", "Overlaps"]
 )
 
-if tabs == "Overview":
+# tabs = option_menu(
+#     None,
+#     ["Overview", "Disruption", "Novelty", "Overlaps"],
+#     icons=["house", "cloud-upload", "list-task", "gear"],
+#     menu_icon="cast",
+#     default_index=0,
+#     orientation="horizontal",
+#     styles={
+#         "container": {"padding": "0!important", "background-color": "#fafafa"},
+#         "icon": {"color": "orange", "font-size": "25px"},
+#         "nav-link": {
+#             "font-size": "25px",
+#             "text-align": "left",
+#             "margin": "0px",
+#             "--hover-color": "#eee",
+#         },
+#         "nav-link-selected": {"background-color": "green"},
+#     },
+# )
+
+# if tabs == "Overview":
+with overview_tab:
 
     st.subheader("Growth Over Time")
     st.markdown(
@@ -544,7 +545,8 @@ if tabs == "Overview":
 
     st.altair_chart(alignment_chart)
 
-if tabs == "Disruption":
+# if tabs == "Disruption":
+with disruption_tab:
     disruption_trends, disruption_drilldown = st.columns(2)
 
     with disruption_trends:
@@ -559,7 +561,8 @@ if tabs == "Disruption":
             "This would allow a user to select a topic and see the distribution of disruptiveness of papers within that topic"
         )
 
-if tabs == "Novelty":
+# if tabs == "Novelty":
+with novelty_tab:
 
     novelty_charts_tab, novelty_docs_tab = st.tabs(["Charts", "Search"])
     with novelty_charts_tab:
@@ -732,6 +735,8 @@ if tabs == "Novelty":
                     filtered_novelty_docs, entity_dict, query, all_or_any
                 )
 
+                query_df = convert_to_pandas(query_df)
+
                 query_df = query_df.sort_values(by="novelty", ascending=False).head(
                     top_n
                 )
@@ -746,7 +751,7 @@ if tabs == "Novelty":
         #     st.markdown(f"Count: {matching_articles}")
 
 
-if tabs == "Overlaps":
+# if tabs == "Overlaps":
     heatmap, overlap_drilldown = st.columns(2)
     with heatmap:
         st.subheader("Heatmap of Overlaps")

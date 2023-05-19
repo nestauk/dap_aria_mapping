@@ -87,7 +87,7 @@ def load_novelty_data():
     return novelty_data, novelty_docs, entity_dict
 
 
-@st.cache_data(show_spinner="Filtering by domain")
+# @st.cache_data(show_spinner="Filtering by domain")
 def filter_by_domain(
     domain: str,
     _volume_data: pl.DataFrame,

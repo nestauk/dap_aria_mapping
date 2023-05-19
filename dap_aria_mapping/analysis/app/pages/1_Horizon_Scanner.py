@@ -319,6 +319,7 @@ def get_ranked_novelty_articles(_novelty_docs: pl.DataFrame, _topic: str):
                 {
                     "document_name": pl.first(),
                     "document_year": pl.first(),
+                    "novelty": pl.first(),
                     "topic_name": pl.list("topic_name")#.apply(lambda x: ", ".join(x))
                 }
             )

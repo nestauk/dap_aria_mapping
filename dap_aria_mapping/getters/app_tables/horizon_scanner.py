@@ -66,18 +66,17 @@ def novelty_documents() -> pl.DataFrame:
 
 
 def documents_with_entities() -> pl.DataFrame:
-    """Gets a polars dataframe with the documents and their entities
+    """Gets a dictionary of entities to documents
 
     Returns:
-        pl.DataFrame: A polars dataframe.
+        defaultdict: A dictionary of entities to documents
     """
-    return pl.DataFrame(
-        download_obj(
-            BUCKET_NAME,
-            "outputs/app_data/horizon_scanner/entity_dataframe.parquet",
-            download_as="dataframe",
-        )
+    s3 = boto3.client("s3")
+    response = s3.get_object(
+        Bucket=BUCKET_NAME,
+        Key="outputs/app_data/horizon_scanner/entity_dict.pkl",
     )
+    return pickle.loads(response["Body"].read())
 
 
 def get_entities() -> Sequence[str]:

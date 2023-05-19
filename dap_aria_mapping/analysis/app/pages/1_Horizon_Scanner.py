@@ -18,6 +18,7 @@ import pandas as pd
 import numpy as np
 from typing import List, Tuple
 from itertools import chain
+from collections import defaultdict
 
 formatting.setup_theme()
 
@@ -81,7 +82,9 @@ def load_overview_data() -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, List
 def load_novelty_data():
     novelty_data = novelty_per_year()
     novelty_docs = novelty_documents()
-    return novelty_data, novelty_docs
+    entity_dict = documents_with_entities()
+
+    return novelty_data, novelty_docs, entity_dict
 
 
 @st.cache_data(show_spinner="Filtering by domain")
@@ -201,6 +204,7 @@ def group_alignment_by_level(_alignment_data: pl.DataFrame, level: str) -> pl.Da
     return q.collect()
 
 
+@st.cache_data
 def filter_novelty_by_level(
     _novelty_data: pl.DataFrame, _novelty_docs: pl.DataFrame, level: str, years: tuple
 ) -> pl.DataFrame:
@@ -308,12 +312,36 @@ def get_unique_words(series: pd.Series):
     return list(set(list(chain(*[x.split(" ") for x in series if isinstance(x, str)]))))
 
 
-def filter_documents_with_entities(_novelty_docs: pl.DataFrame, entities: list):
-    # filter docs_with_entities to only keep documents with entities in entities (note that column entity_list has lists of str)
-    docs_with_entities = _novelty_docs.filter(
-        pl.col("entity_list").map(lambda x: any([y in x for y in entities]))
-    )
-    return docs_with_entities
+def filter_documents_with_entities(
+    _novelty_docs: pl.DataFrame,
+    _entity_dict: defaultdict,
+    entities: list,
+    all_or_any: str = "All",
+):
+    if all_or_any == "All":
+        # create unique list from entities that fetch corresponding key in entity_dict.
+        entity_ids = list(
+            set(
+                [
+                    _entity_dict[entity]
+                    for entity in entities
+                    if entity in _entity_dict.keys()
+                ]
+            )
+        )
+    else:
+        # only return values in list that were found in all "entities" keys
+        entity_ids = list(
+            set.intersection(
+                *[
+                    set(_entity_dict[entity])
+                    for entity in entities
+                    if entity in _entity_dict.keys()
+                ]
+            )
+        )
+
+    return _novelty_docs.filter(pl.col("work_id").isin(entity_ids))
 
 
 header1, header2 = st.columns([1, 10])
@@ -337,7 +365,7 @@ st.markdown(
     unique_domains,
 ) = load_overview_data()
 
-(novelty_data, novelty_docs) = load_novelty_data()
+(novelty_data, novelty_docs, entity_dict) = load_novelty_data()
 
 with st.sidebar:
     # filter for domains comes from unique domain names
@@ -549,6 +577,7 @@ with novelty_tab:
                 year_end=years[1],
             )
 
+            print("ha")
             novelty_bubble_chart = (
                 alt.Chart(convert_to_pandas(novelty_bubbles))
                 .mark_circle()
@@ -651,18 +680,14 @@ with novelty_tab:
             submitted = st.form_submit_button("Submit")
 
             if submitted:
-                if all_or_any == "All":
-                    query_df = filter_documents_with_entities(
-                        filtered_novelty_docs, query
-                    )
-                else:
-                    query_df = filter_documents_with_entities(
-                        filtered_novelty_docs, query
-                    )
+                query_df = filter_documents_with_entities(
+                    filtered_novelty_docs, entity_dict, query, all_or_any
+                )
 
                 query_df = query_df.sort_values(by="novelty", ascending=False).head(
                     top_n
                 )
+
                 st.dataframe(query_df)
 
         # with col4:

@@ -24,6 +24,7 @@ from dap_aria_mapping.getters.app_tables.horizon_scanner import get_entities
 from dap_aria_mapping.utils.app_data_utils import count_documents, expand_topic_col
 import polars as pl
 import pandas as pd
+from collections import defaultdict
 from toolz import pipe
 from functools import partial
 from dap_aria_mapping import BUCKET_NAME, logger
@@ -231,7 +232,25 @@ if __name__ == "__main__":
         ],
     )
 
-    logger.info("Uploading file to S3")
+    logger.info("Create search list")
+    search_dict = pipe(
+        get_openalex_entities(),
+        partial(get_sample, score_threshold=80, num_articles=-1),
+        partial(filter_entities, min_freq=10, max_freq=1_000_000, method="absolute"),
+    )
+
+    # create dict of entity to article, remove 'https://openalex.org/' from article names
+    entity_to_article = defaultdict(list)
+    for key, values in search_dict.items():
+        for value in values:
+            entity_to_article[key].append(value.replace("https://openalex.org/", ""))
+
+    # create list of all unique entities in nested lists of "entity_list"
+    logger.info("Create search list")
+    search_list = list(entity_to_article.keys())
+
+    logger.info("Uploading all files to S3")
+
     buffer = io.BytesIO()
     novelty_trends.write_parquet(buffer)
     buffer.seek(0)
@@ -240,28 +259,6 @@ if __name__ == "__main__":
         buffer,
         BUCKET_NAME,
         "outputs/app_data/horizon_scanner/agg_novelty_documents.parquet",
-    )
-
-    logger.info("Create search list")
-    search_df = pipe(
-        get_openalex_entities(),
-        partial(get_sample, score_threshold=80, num_articles=-1),
-        partial(filter_entities, min_freq=10, max_freq=1_000_000, method="absolute"),
-    )
-
-    search_df = pl.DataFrame(
-        {
-            "document_id": [e for e in search_df],
-            "entity_list": [search_df[e] for e in search_df],
-        }
-    )
-
-    # merge work-id unique novelty_documents & display_name with the entity list, and explode
-    novelty_documents = novelty_documents.join(
-        search_df,
-        left_on="work_id",
-        right_on="document_id",
-        how="left",
     )
 
     buffer = io.BytesIO()
@@ -273,9 +270,15 @@ if __name__ == "__main__":
         "outputs/app_data/horizon_scanner/novelty_documents.parquet",
     )
 
-    # create list of all unique entities in nested lists of "entity_list"
-    logger.info("Create search list")
-    search_list = list(set([e for l in search_df["entity_list"] for e in l]))
+    buffer = io.BytesIO()
+    pickle.dump(entity_to_article, buffer)
+    buffer.seek(0)
+    s3 = boto3.client("s3")
+    s3.upload_fileobj(
+        buffer,
+        BUCKET_NAME,
+        "outputs/app_data/horizon_scanner/entity_dict.pkl",
+    )
 
     # save pickle list to s3
     buffer = io.BytesIO()

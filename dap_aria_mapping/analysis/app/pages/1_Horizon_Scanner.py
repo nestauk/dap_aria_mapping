@@ -205,7 +205,7 @@ def group_alignment_by_level(_alignment_data: pl.DataFrame, level: str) -> pl.Da
     )
     return q.collect()
 
-
+@st.cache_data
 def filter_novelty_by_level(
     _novelty_data: pl.DataFrame, _novelty_docs: pl.DataFrame, level: str, years: tuple
 ) -> pl.DataFrame:
@@ -263,7 +263,7 @@ def filter_novelty_by_level(
     return _novelty_data, _novelty_docs
     # map {level_name}
 
-
+@st.cache_data
 def group_filter_novelty_counts(
     _novelty_data: pl.DataFrame,
     _novelty_docs: pl.DataFrame,
@@ -305,11 +305,11 @@ def group_filter_novelty_counts(
 
     return novelty_subdata, novelty_subdocs
 
-
+@st.cache_data
 def get_unique_words(series: pd.Series):
     return list(set(list(chain(*[x.split(" ") for x in series if isinstance(x, str)]))))
 
-
+@st.cache_data
 def get_ranked_novelty_articles(
     _novelty_docs: pl.DataFrame, _doc_names: pl.DataFrame, _topic: str
 ):
@@ -332,7 +332,7 @@ def get_ranked_novelty_articles(
 
     return _novelty_docs
 
-
+@st.cache_data
 def filter_documents_with_entities(
     _novelty_docs: pl.DataFrame,
     _entity_dict: defaultdict,

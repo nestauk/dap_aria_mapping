@@ -265,7 +265,6 @@ def filter_novelty_by_level(
     # map {level_name}
 
 
-@st.cache_data
 def group_filter_novelty_counts(
     _novelty_data: pl.DataFrame,
     _novelty_docs: pl.DataFrame,
@@ -308,12 +307,10 @@ def group_filter_novelty_counts(
     return novelty_subdata, novelty_subdocs
 
 
-@st.cache_data
 def get_unique_words(series: pd.Series):
     return list(set(list(chain(*[x.split(" ") for x in series if isinstance(x, str)]))))
 
 
-@st.cache_data
 def get_ranked_novelty_articles(_novelty_docs: pl.DataFrame, _topic: str):
     if _topic != "All":
         _novelty_docs = _novelty_docs.filter(pl.col("topic_name") == _topic)
@@ -330,16 +327,16 @@ def get_ranked_novelty_articles(_novelty_docs: pl.DataFrame, _topic: str):
     return _novelty_docs
 
 
-@st.cache_data
 def filter_documents_with_entities(
     _novelty_docs: pl.DataFrame,
     _entity_dict: defaultdict,
     entities: list,
     all_or_any: str = "All",
 ):
+
     if all_or_any == "All":
         # create unique list from entities that fetch corresponding key in entity_dict.
-        entity_ids = list(
+        document_ids = list(
             set(
                 [
                     _entity_dict[entity]
@@ -350,7 +347,7 @@ def filter_documents_with_entities(
         )
     else:
         # only return values in list that were found in all "entities" keys
-        entity_ids = list(
+        document_ids = list(
             set.intersection(
                 *[
                     set(_entity_dict[entity])
@@ -360,8 +357,11 @@ def filter_documents_with_entities(
             )
         )
 
+    # add "https://openalex.org/" prefix to each entity id
+    document_ids = ["https://openalex.org/" + x for x in document_ids]
+
     return _novelty_docs.filter(
-        lambda df: df["work_id"].apply(lambda x: x in entity_ids)
+        lambda df: df["work_id"].apply(lambda x: x in document_ids)
     )
 
 

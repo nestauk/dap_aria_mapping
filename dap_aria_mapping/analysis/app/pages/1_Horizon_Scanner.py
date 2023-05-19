@@ -205,6 +205,7 @@ def group_alignment_by_level(_alignment_data: pl.DataFrame, level: str) -> pl.Da
     )
     return q.collect()
 
+
 @st.cache_data
 def filter_novelty_by_level(
     _novelty_data: pl.DataFrame, _novelty_docs: pl.DataFrame, level: str, years: tuple
@@ -263,6 +264,7 @@ def filter_novelty_by_level(
     return _novelty_data, _novelty_docs
     # map {level_name}
 
+
 @st.cache_data
 def group_filter_novelty_counts(
     _novelty_data: pl.DataFrame,
@@ -305,9 +307,11 @@ def group_filter_novelty_counts(
 
     return novelty_subdata, novelty_subdocs
 
+
 @st.cache_data
 def get_unique_words(series: pd.Series):
     return list(set(list(chain(*[x.split(" ") for x in series if isinstance(x, str)]))))
+
 
 @st.cache_data
 def get_ranked_novelty_articles(
@@ -332,10 +336,12 @@ def get_ranked_novelty_articles(
 
     return _novelty_docs
 
+
 @st.cache_data
 def filter_documents_with_entities(
     _novelty_docs: pl.DataFrame,
     _entity_dict: defaultdict,
+    _doc_names: pl.DataFrame,
     entities: list,
     all_or_any: str = "All",
 ):
@@ -370,7 +376,17 @@ def filter_documents_with_entities(
     # add "https://openalex.org/" prefix to each entity id
     document_ids = ["https://openalex.org/" + x for x in document_ids]
 
-    return _novelty_docs.filter(pl.col("document_link").is_in(document_ids))
+    _novelty_docs = _novelty_docs.filter(pl.col("document_link").is_in(document_ids))
+
+    # add display_names
+    _novelty_docs = _novelty_docs.join(
+        _doc_names.select(["work_id", "display_name"]),
+        left_on="document_link",
+        right_on="work_id",
+        how="left",
+    )[["document_link", "document_year", "display_name", "novelty", "topic_names"]]
+
+    return _novelty_docs
 
 
 header1, header2 = st.columns([1, 10])
@@ -750,8 +766,7 @@ with novelty_tab:
         #         matching_articles = len(_novelty_docs)
         #     st.markdown(f"Count: {matching_articles}")
 
-
-# if tabs == "Overlaps":
+    # if tabs == "Overlaps":
     heatmap, overlap_drilldown = st.columns(2)
     with heatmap:
         st.subheader("Heatmap of Overlaps")

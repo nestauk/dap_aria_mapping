@@ -47,8 +47,6 @@ st.markdown(
     unique_domains,
 ) = load_overview_data()
 
-(novelty_data, novelty_docs, document_names, entity_dict) = load_novelty_data()
-
 with st.sidebar:
     # filter for domains comes from unique domain names
     show_novelty = st.checkbox("Show Novelty")
@@ -226,6 +224,7 @@ with disruption_tab:
 
 # if tabs == "Novelty":
 if show_novelty:
+    (novelty_data, novelty_docs, document_names, entity_dict) = load_novelty_data()
     with novelty_tab:
 
         novelty_charts_tab, novelty_docs_tab = st.tabs(["Charts", "Search"])

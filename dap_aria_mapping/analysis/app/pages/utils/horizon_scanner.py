@@ -202,7 +202,7 @@ def group_alignment_by_level(_alignment_data: pl.DataFrame, level: str) -> pl.Da
     return q.collect()
 
 
-@st.cache_data(show_spinner="Filtering by level")
+@st.cache_data
 def filter_novelty_by_level(
     _novelty_data: pl.DataFrame, _novelty_docs: pl.DataFrame, level: str, years: tuple
 ) -> pl.DataFrame:
@@ -244,9 +244,8 @@ def filter_novelty_by_level(
     # Create unique novelty_docs dataframe and add name column from _topic_map
     _novelty_docs = (
         _novelty_docs.unique(subset=[level, "work_id"])
-        # .with_columns(pl.col("year").cast(int))
         .select(["work_id", "year", "novelty", level])
-        .filter((pl.col("year") >= int(years[0])) & (pl.col("year") <= int(years[1])))
+        .filter((pl.col("year") >= years[0]) & (pl.col("year") <= years[1]))
         .with_columns(pl.col(level).cast(str).map_dict(_topic_map).alias("name"))
         .rename(
             {
@@ -265,6 +264,7 @@ def filter_novelty_by_level(
 @st.cache_data
 def group_filter_novelty_counts(
     _novelty_data: pl.DataFrame,
+    _novelty_docs: pl.DataFrame,
     level: str,
     year_start: int,
     year_end: int,
@@ -295,7 +295,13 @@ def group_filter_novelty_counts(
         .join(_novelty_data.select([level, "name"]).unique(), on=level, how="left")
     )
 
-    return novelty_subdata
+    novelty_subdocs = (
+        _novelty_docs.filter(
+            (pl.col("year") >= year_start) & (pl.col("year") <= year_end)
+        )
+    ).sort(by="novelty", descending=True)
+
+    return novelty_subdata, novelty_subdocs
 
 
 @st.cache_data

@@ -244,6 +244,8 @@ if show_novelty:
                 years=years,
             )
 
+            st.dataframe(filtered_novelty_docs)
+
             col1, col2 = st.columns([0.65, 0.35])
             with col1:
 
@@ -327,6 +329,12 @@ if show_novelty:
                             alt.Tooltip("doc_counts", title="Number of documents"),
                         ],
                     )
+                    .properties(
+                        height=150
+                        * np.log(1 + filtered_novelty_data["name"].unique().shape[0]),
+                        # width=900,
+                        padding={"left": 50, "top": 10, "right": 10, "bottom": 50},
+                    )
                 )
 
                 labels = novelty_bubble_chart.mark_text(
@@ -343,14 +351,15 @@ if show_novelty:
             st.subheader("Relevant Articles")
 
             # Selectbox to allow user to select one among the df's many topic_names. Display only the corresponding topic_names.
+            if domain != "All" and area != "All":
+                topic_selection = unique_topics
+            elif domain != "All" and area == "All":
+                topic_selection = unique_areas
+            elif domain == "All" and area == "All":
+                topic_selection = unique_domains
             novelty_docs_topic = st.selectbox(
                 "Select a topic to view the most and least novel articles",
-                ["All"]
-                + sorted(
-                    filtered_novelty_docs.filter(~pl.col("topic_name").is_null())[
-                        "topic_name"
-                    ].unique()
-                ),
+                ["All"] + sorted(topic_selection, key=lambda x: x.lower()),
             )
 
             filtered_ranked_novelty_docs = get_ranked_novelty_articles(

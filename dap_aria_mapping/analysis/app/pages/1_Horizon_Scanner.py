@@ -50,6 +50,8 @@ st.markdown(
 with st.sidebar:
     # filter for domains comes from unique domain names
     show_novelty = st.checkbox("Show Novelty")
+    if show_novelty:
+        (novelty_data, novelty_docs, document_names, entity_dict) = load_novelty_data()
     st.markdown("---")
     domain = st.selectbox(label="Select a Domain", options=unique_domains)
     area = "All"
@@ -224,10 +226,10 @@ with disruption_tab:
 
 # if tabs == "Novelty":
 if show_novelty:
-    (novelty_data, novelty_docs, document_names, entity_dict) = load_novelty_data()
+
     with novelty_tab:
 
-        novelty_charts_tab, novelty_docs_tab = st.tabs(["Charts", "Search"])
+        novelty_charts_tab, novelty_query_tab = st.tabs(["Charts", "Search"])
         with novelty_charts_tab:
 
             st.subheader("Trends in Novelty")
@@ -290,7 +292,7 @@ if show_novelty:
 
                 novelty_bubbles, novelty_docs = group_filter_novelty_counts(
                     _novelty_data=filtered_novelty_data,
-                    _novelty_docs=novelty_docs,
+                    _novelty_docs=filtered_novelty_docs,
                     level=level_considered,
                     year_start=years[0],
                     year_end=years[1],
@@ -352,30 +354,32 @@ if show_novelty:
                 ),
             )
 
-            filtered_topic_novelty_docs = get_ranked_novelty_articles(
+            filtered_ranked_novelty_docs = get_ranked_novelty_articles(
                 _novelty_docs=filtered_novelty_docs,
                 _doc_names=document_names,
                 _topic=novelty_docs_topic,
             )
             col1, col2 = st.columns([0.5, 0.5])
-            filtered_topic_novelty_docs = convert_to_pandas(filtered_topic_novelty_docs)
+            filtered_ranked_novelty_docs = convert_to_pandas(
+                filtered_ranked_novelty_docs
+            )
 
             with col1:
                 st.markdown("Most Novel Articles")
                 st.dataframe(
-                    filtered_topic_novelty_docs.sort_values(
+                    filtered_ranked_novelty_docs.sort_values(
                         by=["novelty"], ascending=False
                     ).head(50)
                 )
             with col2:
                 st.markdown("Least Novel Articles")
                 st.dataframe(
-                    filtered_topic_novelty_docs.sort_values(
+                    filtered_ranked_novelty_docs.sort_values(
                         by=["novelty"], ascending=True
                     ).head(50)
                 )
 
-        with novelty_docs_tab:
+        with novelty_query_tab:
 
             unique_keywords = pipe(get_entities(), lambda x: sorted(x))
 
@@ -421,6 +425,7 @@ if show_novelty:
             #     st.markdown(f"Count: {matching_articles}")
 
     # if tabs == "Overlaps":
+with overlaps_tab:
     heatmap, overlap_drilldown = st.columns(2)
     with heatmap:
         st.subheader("Heatmap of Overlaps")

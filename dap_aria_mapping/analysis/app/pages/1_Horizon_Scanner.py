@@ -285,9 +285,6 @@ if show_novelty:
                     .add_selection(selection)
                 )
 
-                # selected_data = alt.data_transformers.get()(novelty_bump_chart.data)
-                # st.session_state.selected_category = selected_data['category'][0]
-
                 st.altair_chart(novelty_bump_chart, use_container_width=True)
 
             with col2:
@@ -342,8 +339,8 @@ if show_novelty:
                 st.altair_chart(
                     novelty_bubble_chart + labels,
                     use_container_width=True,
-                    height=150
-                    * np.log(1 + filtered_novelty_data["name"].unique().shape[0]),
+                    # height=150
+                    # * np.log(1 + filtered_novelty_data["name"].unique().shape[0]),
                 )
 
             # Display most novel articles

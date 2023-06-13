@@ -202,7 +202,7 @@ def group_alignment_by_level(_alignment_data: pl.DataFrame, level: str) -> pl.Da
     return q.collect()
 
 
-@st.cache_data
+@st.cache_data(show_spinner="Filtering by level")
 def filter_novelty_by_level(
     _novelty_data: pl.DataFrame, _novelty_docs: pl.DataFrame, level: str, years: tuple
 ) -> pl.DataFrame:

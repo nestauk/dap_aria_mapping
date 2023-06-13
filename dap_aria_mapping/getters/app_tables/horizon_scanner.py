@@ -58,7 +58,7 @@ def get_document_names() -> pl.DataFrame:
     fileobj = io.BytesIO()
     s3.download_fileobj(
         BUCKET_NAME,
-        "outputs/app_data/horizon_scanner/document_names.parquet",
+        "outputs/app_data/horizon_scanner/document_names_sample.parquet",
         fileobj,
     )
     fileobj.seek(0)
@@ -75,7 +75,7 @@ def get_novelty_documents() -> pl.DataFrame:
     fileobj = io.BytesIO()
     s3.download_fileobj(
         BUCKET_NAME,
-        "outputs/app_data/horizon_scanner/novelty_documents.parquet",
+        "outputs/app_data/horizon_scanner/novelty_documents_sample.parquet",
         fileobj,
     )
     fileobj.seek(0)
@@ -92,7 +92,7 @@ def get_entity_document_lists() -> pl.DataFrame:
     fileobj = io.BytesIO()
     s3.download_fileobj(
         BUCKET_NAME,
-        "outputs/app_data/horizon_scanner/entity_dict.parquet",
+        "outputs/app_data/horizon_scanner/entity_dict_sample.parquet",
         fileobj,
     )
     fileobj.seek(0)
@@ -113,3 +113,10 @@ def get_entities() -> Sequence[str]:
     # use pickle to read back to list
     with io.BytesIO(response["Body"].read()) as bio:
         return pickle.load(bio)
+
+
+# %% select a random sample of 10% of polars rows
+# df = df.sample(frac=0.1, replace=False, weights=None, seed=None, ignore_index=True)
+
+# filter polars rows in work_id from list of entities
+# df = df[df["work_id"].isin(entity_dict["entity_id"].to_list())]

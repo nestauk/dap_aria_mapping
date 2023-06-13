@@ -313,3 +313,9 @@ if __name__ == "__main__":
         BUCKET_NAME,
         "outputs/app_data/horizon_scanner/entity_list.pkl",
     )
+
+
+# %%
+# only store in the document lists those paper IDs in list "ltm"
+
+# %%

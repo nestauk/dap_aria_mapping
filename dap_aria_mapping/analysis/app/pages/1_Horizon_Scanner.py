@@ -50,6 +50,8 @@ st.markdown(
 with st.sidebar:
     # filter for domains comes from unique domain names
     show_novelty = st.checkbox("Show Novelty")
+    if show_novelty:
+        (novelty_data, novelty_docs, document_names, entity_dict) = load_novelty_data()
     st.markdown("---")
     domain = st.selectbox(label="Select a Domain", options=unique_domains)
     area = "All"
@@ -224,7 +226,6 @@ with disruption_tab:
 
 # if tabs == "Novelty":
 if show_novelty:
-    (novelty_data, novelty_docs, document_names, entity_dict) = load_novelty_data()
     with novelty_tab:
 
         novelty_charts_tab, novelty_docs_tab = st.tabs(["Charts", "Search"])
@@ -336,20 +337,26 @@ if show_novelty:
                     size=alt.Size(),
                 )
 
-                st.altair_chart(novelty_bubble_chart + labels, use_container_width=True)
+                st.altair_chart(
+                    novelty_bubble_chart + labels,
+                    use_container_width=True,
+                    height=150
+                    * np.log(1 + filtered_novelty_data["name"].unique().shape[0]),
+                )
 
             # Display most novel articles
             st.subheader("Relevant Articles")
 
             # Selectbox to allow user to select one among the df's many topic_names. Display only the corresponding topic_names.
+            if domain == "All":
+                topic_sel = unique_domains
+            elif domain != "All" and area == "All":
+                topic_sel = unique_areas
+            elif domain != "All" and area != "All":
+                topic_sel = unique_topics
             novelty_docs_topic = st.selectbox(
                 "Select a topic to view the most and least novel articles",
-                ["All"]
-                + sorted(
-                    filtered_novelty_docs.filter(~pl.col("topic_name").is_null())[
-                        "topic_name"
-                    ].unique()
-                ),
+                ["All"] + sorted(topic_sel, key=lambda x: x.lower()),
             )
 
             filtered_topic_novelty_docs = get_ranked_novelty_articles(

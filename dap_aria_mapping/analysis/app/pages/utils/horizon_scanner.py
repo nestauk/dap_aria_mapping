@@ -107,7 +107,6 @@ def filter_volume_by_area(
         area (str): domain selected by the filter
         _volume_data (pl.DataFrame): volume data for emergence chart
         _alignment_data (pl.DataFrame): alignment data for alignment chart
-        _novelty_data (pl.DataFrame): novelty data for novelty chart
 
     Returns:
         Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, List[str]]: updated dataframes filtered by an area, and a list of unique topics to populate topic filter

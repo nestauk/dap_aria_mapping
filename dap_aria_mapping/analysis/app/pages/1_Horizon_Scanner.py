@@ -340,8 +340,6 @@ if show_novelty:
                 st.altair_chart(
                     novelty_bubble_chart + labels,
                     use_container_width=True,
-                    height=150
-                    * np.log(1 + filtered_novelty_data["name"].unique().shape[0]),
                 )
 
             # Display most novel articles

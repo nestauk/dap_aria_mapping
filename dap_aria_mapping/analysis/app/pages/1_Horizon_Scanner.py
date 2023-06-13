@@ -343,90 +343,90 @@ if show_novelty:
                     # * np.log(1 + filtered_novelty_data["name"].unique().shape[0]),
                 )
 
-            # Display most novel articles
-            st.subheader("Relevant Articles")
+        #     # Display most novel articles
+        #     st.subheader("Relevant Articles")
 
-            # Selectbox to allow user to select one among the df's many topic_names. Display only the corresponding topic_names.
-            if domain != "All" and area != "All":
-                topic_selection = unique_topics
-            elif domain != "All" and area == "All":
-                topic_selection = unique_areas
-            elif domain == "All" and area == "All":
-                topic_selection = unique_domains
-            novelty_docs_topic = st.selectbox(
-                "Select a topic to view the most and least novel articles",
-                ["All"] + sorted(topic_selection, key=lambda x: x.lower()),
-            )
+        #     # Selectbox to allow user to select one among the df's many topic_names. Display only the corresponding topic_names.
+        #     if domain != "All" and area != "All":
+        #         topic_selection = unique_topics
+        #     elif domain != "All" and area == "All":
+        #         topic_selection = unique_areas
+        #     elif domain == "All" and area == "All":
+        #         topic_selection = unique_domains
+        #     novelty_docs_topic = st.selectbox(
+        #         "Select a topic to view the most and least novel articles",
+        #         ["All"] + sorted(topic_selection, key=lambda x: x.lower()),
+        #     )
 
-            filtered_ranked_novelty_docs = get_ranked_novelty_articles(
-                _novelty_docs=filtered_novelty_docs,
-                _doc_names=document_names,
-                _topic=novelty_docs_topic,
-            )
-            col1, col2 = st.columns([0.5, 0.5])
-            filtered_ranked_novelty_docs = convert_to_pandas(
-                filtered_ranked_novelty_docs
-            )
+        #     filtered_ranked_novelty_docs = get_ranked_novelty_articles(
+        #         _novelty_docs=filtered_novelty_docs,
+        #         _doc_names=document_names,
+        #         _topic=novelty_docs_topic,
+        #     )
+        #     col1, col2 = st.columns([0.5, 0.5])
+        #     filtered_ranked_novelty_docs = convert_to_pandas(
+        #         filtered_ranked_novelty_docs
+        #     )
 
-            with col1:
-                st.markdown("Most Novel Articles")
-                st.dataframe(
-                    filtered_ranked_novelty_docs.sort_values(
-                        by=["novelty"], ascending=False
-                    ).head(50)
-                )
-            with col2:
-                st.markdown("Least Novel Articles")
-                st.dataframe(
-                    filtered_ranked_novelty_docs.sort_values(
-                        by=["novelty"], ascending=True
-                    ).head(50)
-                )
+        #     with col1:
+        #         st.markdown("Most Novel Articles")
+        #         st.dataframe(
+        #             filtered_ranked_novelty_docs.sort_values(
+        #                 by=["novelty"], ascending=False
+        #             ).head(50)
+        #         )
+        #     with col2:
+        #         st.markdown("Least Novel Articles")
+        #         st.dataframe(
+        #             filtered_ranked_novelty_docs.sort_values(
+        #                 by=["novelty"], ascending=True
+        #             ).head(50)
+        #         )
 
-        with novelty_query_tab:
+        # with novelty_query_tab:
 
-            unique_keywords = pipe(get_entities(), lambda x: sorted(x))
+        #     unique_keywords = pipe(get_entities(), lambda x: sorted(x))
 
-            st.title("Search Articles")
-            with st.form("my_form"):
-                col1, col2, col3 = st.columns([0.8, 0.1, 0.1])
-                with col1:
-                    # query keywords, where each time
-                    query = st.multiselect("Keywords", unique_keywords)
-                with col2:
-                    # ask for either all or at least one
-                    all_or_any = st.radio("Match all or any keywords?", ["All", "Any"])
-                with col3:
-                    # number of results
-                    top_n = st.number_input(
-                        "Number of results", min_value=1, max_value=100, value=10
-                    )
+        #     st.title("Search Articles")
+        #     with st.form("my_form"):
+        #         col1, col2, col3 = st.columns([0.8, 0.1, 0.1])
+        #         with col1:
+        #             # query keywords, where each time
+        #             query = st.multiselect("Keywords", unique_keywords)
+        #         with col2:
+        #             # ask for either all or at least one
+        #             all_or_any = st.radio("Match all or any keywords?", ["All", "Any"])
+        #         with col3:
+        #             # number of results
+        #             top_n = st.number_input(
+        #                 "Number of results", min_value=1, max_value=100, value=10
+        #             )
 
-                submitted = st.form_submit_button("Submit")
+        #         submitted = st.form_submit_button("Submit")
 
-                if submitted:
-                    query_df = filter_documents_with_entities(
-                        _novelty_docs=filtered_novelty_docs,
-                        _entity_dict=entity_dict,
-                        _doc_names=document_names,
-                        entities=query,
-                        all_or_any=all_or_any,
-                    )
+        #         if submitted:
+        #             query_df = filter_documents_with_entities(
+        #                 _novelty_docs=filtered_novelty_docs,
+        #                 _entity_dict=entity_dict,
+        #                 _doc_names=document_names,
+        #                 entities=query,
+        #                 all_or_any=all_or_any,
+        #             )
 
-                    query_df = convert_to_pandas(query_df)
+        #             query_df = convert_to_pandas(query_df)
 
-                    query_df = query_df.sort_values(by="novelty", ascending=False).head(
-                        top_n
-                    )
+        #             query_df = query_df.sort_values(by="novelty", ascending=False).head(
+        #                 top_n
+        #             )
 
-                    st.dataframe(query_df)
+        #             st.dataframe(query_df)
 
-            # with col4:
-            #     if not query:
-            #         matching_articles = 0
-            #     else:
-            #         matching_articles = len(_novelty_docs)
-            #     st.markdown(f"Count: {matching_articles}")
+        # with col4:
+        #     if not query:
+        #         matching_articles = 0
+        #     else:
+        #         matching_articles = len(_novelty_docs)
+        #     st.markdown(f"Count: {matching_articles}")
 
     # if tabs == "Overlaps":
 with overlaps_tab:

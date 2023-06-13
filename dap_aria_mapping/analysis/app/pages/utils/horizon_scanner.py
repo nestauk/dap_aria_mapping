@@ -310,27 +310,27 @@ def get_unique_words(series: pd.Series):
 
 @st.cache_data
 def get_ranked_novelty_articles(
-    _novelty_docs: pl.DataFrame, _doc_names: pl.DataFrame, topic: str, years: tuple
+    novelty_docs: pl.DataFrame, _doc_names: pl.DataFrame, topic: str, years: tuple
 ):
-    _novelty_docs = (
-        _novelty_docs.groupby(["document_link", "document_year", "novelty"])
+    novelty_docs = (
+        novelty_docs.groupby(["document_link", "document_year", "novelty"])
         .agg({"topic_name": pl.list("topic_name")})
         .rename({"topic_name": "topic_names"})
     )
     if topic != "All":
-        _novelty_docs = _novelty_docs.filter(
-            _novelty_docs["topic_names"].apply(lambda x: topic in x)
+        novelty_docs = novelty_docs.filter(
+            novelty_docs["topic_names"].apply(lambda x: topic in x)
         )
 
     # add column with document_names by joining
-    _novelty_docs = _novelty_docs.join(
+    novelty_docs = novelty_docs.join(
         _doc_names.select(["work_id", "display_name"]),
         left_on="document_link",
         right_on="work_id",
         how="left",
     )[["document_link", "document_year", "display_name", "novelty", "topic_names"]]
 
-    return _novelty_docs
+    return novelty_docs
 
 
 @st.cache_data

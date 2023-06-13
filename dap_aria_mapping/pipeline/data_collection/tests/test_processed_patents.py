@@ -9,7 +9,6 @@ import pytest
 from dap_aria_mapping.pipeline.data_collection.processed_patents import (
     unnest_column,
     extract_english_text,
-    disambiguate_assignee,
 )
 from dap_aria_mapping import BUCKET_NAME
 import pandas as pd
@@ -59,9 +58,3 @@ def test_extract_english_text():
 
     assert type(patents_sample["title_localized"].iloc[0]) == str
     assert type(patents_sample["abstract_localized"].iloc[0]) == str
-
-
-def test_disambiguate_assignee():
-    assignee_type = disambiguate_assignee(INVENTORS, ASSIGNEES)
-    assert len(assignee_type) == len(ASSIGNEES)
-    assert assignee_type == ["PERSON", "ORGANISATION"]

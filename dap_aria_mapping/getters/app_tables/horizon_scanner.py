@@ -89,11 +89,14 @@ def get_entity_document_lists() -> pl.DataFrame:
         defaultdict: A dictionary of entities to documents
     """
     s3 = boto3.client("s3")
-    response = s3.get_object(
-        Bucket=BUCKET_NAME,
-        Key="outputs/app_data/horizon_scanner/entity_dict.parquet",
+    fileobj = io.BytesIO()
+    s3.download_fileobj(
+        BUCKET_NAME,
+        "outputs/app_data/horizon_scanner/entity_dict.parquet",
+        fileobj,
     )
-    return pickle.loads(response["Body"].read())
+    fileobj.seek(0)
+    return pl.read_parquet(fileobj)
 
 
 def get_entities() -> Sequence[str]:

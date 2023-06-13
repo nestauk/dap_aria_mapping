@@ -310,7 +310,7 @@ def get_unique_words(series: pd.Series):
 
 @st.cache_data
 def get_ranked_novelty_articles(
-    _novelty_docs: pl.DataFrame, _doc_names: pl.DataFrame, _topic: str
+    _novelty_docs: pl.DataFrame, _doc_names: pl.DataFrame, _topic: str, years: tuple
 ):
     if _topic != "All":
         _novelty_docs = _novelty_docs.filter(pl.col("topic_name") == _topic)
@@ -359,14 +359,17 @@ def filter_documents_with_entities(
     else:
         # only return values in list that were found in all "entities" keys
         document_ids = list(
-            set.intersection(
+            chain(
                 *[
-                    set(_entity_dict.filter(pl.col("entity") == entity)["documents"])
+                    _entity_dict.filter(pl.col("entity") == entity)[
+                        "document"
+                    ].to_list()
                     for entity in entities
                     if entity in _entity_dict["entity"]
                 ]
             )
         )
+        document_ids = list(set(document_ids[0]).intersection(*document_ids[1:]))
 
     # add "https://openalex.org/" prefix to each entity id
     document_ids = ["https://openalex.org/" + x for x in document_ids]

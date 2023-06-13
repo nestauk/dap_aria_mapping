@@ -80,7 +80,10 @@ with st.sidebar:
             level_considered = "topic"
 
     st.sidebar.markdown("---")
-    years = st.slider("Select a range of years", 2007, 2022, (2007, 2022))
+    if show_novelty:
+        years = st.slider("Select a range of years", 2007, 2022, (2007, 2022))
+    else:
+        years = (2007, 2022)
 
 if show_novelty:
     overview_tab, disruption_tab, novelty_tab, overlaps_tab = st.tabs(
@@ -361,6 +364,7 @@ if show_novelty:
                 _novelty_docs=filtered_novelty_docs,
                 _doc_names=document_names,
                 _topic=novelty_docs_topic,
+                years=years,
             )
             col1, col2 = st.columns([0.5, 0.5])
             filtered_topic_novelty_docs = convert_to_pandas(filtered_topic_novelty_docs)

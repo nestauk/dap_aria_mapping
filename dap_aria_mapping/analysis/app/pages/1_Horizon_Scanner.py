@@ -329,12 +329,6 @@ if show_novelty:
                             alt.Tooltip("doc_counts", title="Number of documents"),
                         ],
                     )
-                    .properties(
-                        height=150
-                        * np.log(1 + filtered_novelty_data["name"].unique().shape[0]),
-                        # width=900,
-                        padding={"left": 50, "top": 10, "right": 10, "bottom": 50},
-                    )
                 )
 
                 labels = novelty_bubble_chart.mark_text(
@@ -345,7 +339,12 @@ if show_novelty:
                     size=alt.Size(),
                 )
 
-                st.altair_chart(novelty_bubble_chart + labels, use_container_width=True)
+                st.altair_chart(
+                    novelty_bubble_chart + labels,
+                    use_container_width=True,
+                    height=150
+                    * np.log(1 + filtered_novelty_data["name"].unique().shape[0]),
+                )
 
             # Display most novel articles
             st.subheader("Relevant Articles")

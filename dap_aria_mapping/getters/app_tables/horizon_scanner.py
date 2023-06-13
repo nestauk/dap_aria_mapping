@@ -82,8 +82,8 @@ def get_novelty_documents() -> pl.DataFrame:
     return pl.read_parquet(fileobj)
 
 
-def documents_with_entities() -> pl.DataFrame:
-    """Gets a dictionary of entities to documents
+def get_entity_document_lists() -> pl.DataFrame:
+    """Gets a dataframes of entities to documents
 
     Returns:
         defaultdict: A dictionary of entities to documents
@@ -91,7 +91,7 @@ def documents_with_entities() -> pl.DataFrame:
     s3 = boto3.client("s3")
     response = s3.get_object(
         Bucket=BUCKET_NAME,
-        Key="outputs/app_data/horizon_scanner/entity_dict.pkl",
+        Key="outputs/app_data/horizon_scanner/entity_dict.parquet",
     )
     return pickle.loads(response["Body"].read())
 

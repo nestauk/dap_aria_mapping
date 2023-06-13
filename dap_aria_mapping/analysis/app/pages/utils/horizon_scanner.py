@@ -308,7 +308,6 @@ def get_unique_words(series: pd.Series):
     return list(set(list(chain(*[x.split(" ") for x in series if isinstance(x, str)]))))
 
 
-@st.cache_resource
 def get_ranked_novelty_articles(
     novelty_docs: pl.DataFrame, _doc_names: pl.DataFrame, topic: str, years: tuple
 ):

@@ -354,7 +354,7 @@ if show_novelty:
                 topic_sel = unique_topics
             novelty_docs_topic = st.selectbox(
                 "Select a topic to view the most and least novel articles",
-                ["All"] + sorted(topic_sel, key=lambda x: x.lower()),
+                sorted(topic_sel, key=lambda x: x.lower()),
             )
 
             filtered_topic_novelty_docs = get_ranked_novelty_articles(
@@ -425,7 +425,8 @@ if show_novelty:
             #         matching_articles = len(_novelty_docs)
             #     st.markdown(f"Count: {matching_articles}")
 
-    # if tabs == "Overlaps":
+    # if tabs == "Overlaps":ç
+with overlaps_tab:
     heatmap, overlap_drilldown = st.columns(2)
     with heatmap:
         st.subheader("Heatmap of Overlaps")

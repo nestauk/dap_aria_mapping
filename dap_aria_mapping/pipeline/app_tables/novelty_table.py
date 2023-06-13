@@ -252,6 +252,14 @@ if __name__ == "__main__":
         for value in values:
             entity_to_article[value].append(key.replace("https://openalex.org/", ""))
 
+    entity_to_article_list = []
+    for key, value in entity_to_article.items():
+        entity_to_article_list.append([key, value])
+
+    entity_to_article = pl.DataFrame(
+        entity_to_article_list, columns=["document", "entity"]
+    )
+
     # create list of all unique entities in nested lists of "entity_list"
     logger.info("Create search list")
     search_list = list(entity_to_article.keys())
@@ -286,13 +294,13 @@ if __name__ == "__main__":
     )
 
     buffer = io.BytesIO()
-    pickle.dump(entity_to_article, buffer)
+    entity_to_article.write_parquet(buffer)
     buffer.seek(0)
     s3 = boto3.client("s3")
     s3.upload_fileobj(
         buffer,
         BUCKET_NAME,
-        "outputs/app_data/horizon_scanner/entity_dict.pkl",
+        "outputs/app_data/horizon_scanner/entity_dict.parquet",
     )
 
     # save pickle list to s3

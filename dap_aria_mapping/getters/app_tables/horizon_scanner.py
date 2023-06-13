@@ -65,7 +65,7 @@ def get_document_names() -> pl.DataFrame:
     return pl.read_parquet(fileobj)
 
 
-def novelty_documents() -> pl.DataFrame:
+def get_novelty_documents() -> pl.DataFrame:
     """Gets a polars dataframe with the novelty scores per document
 
     Returns:

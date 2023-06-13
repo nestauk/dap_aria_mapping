@@ -1,8 +1,8 @@
 from dap_aria_mapping.getters.app_tables.horizon_scanner import (
     volume_per_year,
     novelty_per_year,
-    novelty_documents,
-    documents_with_entities,
+    get_novelty_documents,
+    get_entity_document_lists,
     get_document_names,
     get_entities,
 )
@@ -64,9 +64,9 @@ def load_overview_data() -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, List
 @st.cache_data(show_spinner="Loading novelty data")
 def load_novelty_data():
     novelty_data = novelty_per_year()
-    novelty_docs = novelty_documents()
+    novelty_docs = get_novelty_documents()
     document_names = get_document_names()
-    entity_dict = documents_with_entities()
+    entity_dict = get_entity_document_lists()
 
     return novelty_data, novelty_docs, document_names, entity_dict
 
@@ -223,9 +223,9 @@ def filter_novelty_by_level(
             {
                 f"{level}_name": "name",
                 f"{level}_doc_counts": "doc_counts",
-                f"{level}_novelty25": "novelty25",
+                # f"{level}_novelty25": "novelty25",
                 f"{level}_novelty50": "novelty50",
-                f"{level}_novelty75": "novelty75",
+                # f"{level}_novelty75": "novelty75",
                 f"{level}_entities": "entities",
             }
         )
@@ -341,16 +341,16 @@ def filter_documents_with_entities(
     all_or_any: str = "All",
 ):
 
-    if all_or_any == "All":
-        # create unique list from entities that fetch corresponding key in entity_dict.
-        # _entity_dict = {str: Sequence[str], str: Sequence[str], ...}
+    # _entity_dict is a polars dataframe with entity and documents columns, the latter a list.
+    if all_or_any == "Any":
+        # Select rows with any of the entities in the list, that appaer in column entity
         document_ids = list(
             set(
                 chain(
                     *[
-                        _entity_dict[entity]
+                        _entity_dict.filter(pl.col("entity") == entity)["documents"]
                         for entity in entities
-                        if entity in _entity_dict.keys()
+                        if entity in _entity_dict["entity"]
                     ]
                 )
             )
@@ -361,9 +361,9 @@ def filter_documents_with_entities(
         document_ids = list(
             set.intersection(
                 *[
-                    set(_entity_dict[entity])
+                    set(_entity_dict.filter(pl.col("entity") == entity)["documents"])
                     for entity in entities
-                    if entity in _entity_dict.keys()
+                    if entity in _entity_dict["entity"]
                 ]
             )
         )

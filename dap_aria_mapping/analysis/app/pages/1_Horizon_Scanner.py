@@ -363,7 +363,7 @@ if show_novelty:
             filtered_topic_novelty_docs = get_ranked_novelty_articles(
                 _novelty_docs=filtered_novelty_docs,
                 _doc_names=document_names,
-                _topic=novelty_docs_topic,
+                topic=novelty_docs_topic,
                 years=years,
             )
             col1, col2 = st.columns([0.5, 0.5])

@@ -318,9 +318,9 @@ def get_ranked_novelty_articles(
         .rename({"topic_name": "topic_names"})
     )
     if topic != "All":
-        _novelty_docs = _novelty_docs[
+        _novelty_docs = _novelty_docs.filter(
             _novelty_docs["topic_names"].apply(lambda x: topic in x)
-        ]
+        )
 
     # add column with document_names by joining
     _novelty_docs = _novelty_docs.join(

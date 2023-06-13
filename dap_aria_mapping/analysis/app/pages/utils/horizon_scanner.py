@@ -264,7 +264,6 @@ def filter_novelty_by_level(
 @st.cache_data
 def group_filter_novelty_counts(
     _novelty_data: pl.DataFrame,
-    _novelty_docs: pl.DataFrame,
     level: str,
     year_start: int,
     year_end: int,
@@ -295,13 +294,7 @@ def group_filter_novelty_counts(
         .join(_novelty_data.select([level, "name"]).unique(), on=level, how="left")
     )
 
-    novelty_subdocs = (
-        _novelty_docs.filter(
-            (pl.col("year") >= year_start) & (pl.col("year") <= year_end)
-        )
-    ).sort(by="novelty", descending=True)
-
-    return novelty_subdata, novelty_subdocs
+    return novelty_subdata
 
 
 @st.cache_data

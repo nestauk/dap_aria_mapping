@@ -290,9 +290,8 @@ if show_novelty:
 
             with col2:
 
-                novelty_bubbles, novelty_docs = group_filter_novelty_counts(
+                novelty_bubbles = group_filter_novelty_counts(
                     _novelty_data=filtered_novelty_data,
-                    _novelty_docs=filtered_novelty_docs,
                     level=level_considered,
                     year_start=years[0],
                     year_end=years[1],

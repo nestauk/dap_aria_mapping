@@ -244,7 +244,7 @@ def filter_novelty_by_level(
     # Create unique novelty_docs dataframe and add name column from _topic_map
     _novelty_docs = (
         _novelty_docs.unique(subset=[level, "work_id"])
-        .with_columns(pl.col("year").cast(int))
+        # .with_columns(pl.col("year").cast(int))
         .select(["work_id", "year", "novelty", level])
         .filter((pl.col("year") >= int(years[0])) & (pl.col("year") <= int(years[1])))
         .with_columns(pl.col(level).cast(str).map_dict(_topic_map).alias("name"))

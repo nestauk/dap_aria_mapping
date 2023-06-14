@@ -49,9 +49,16 @@ st.markdown(
 
 with st.sidebar:
     # filter for domains comes from unique domain names
+    show_disruption = st.checkbox("Show Disruption")
     show_novelty = st.checkbox("Show Novelty")
+    document_names, entity_dict = load_documents_data()
+    if show_disruption:
+        (disruption_data, disruption_docs) = load_disruption_data()
+        # add display names to disruption_docs
+        disruption_docs = disruption_docs.join(document_names, on="work_id", how="left")
+
     if show_novelty:
-        (novelty_data, novelty_docs, document_names, entity_dict) = load_novelty_data()
+        (novelty_data, novelty_docs) = load_novelty_data()
     st.markdown("---")
     domain = st.selectbox(label="Select a Domain", options=unique_domains)
     area = "All"
@@ -64,6 +71,8 @@ with st.sidebar:
         )
         if show_novelty:
             novelty_data = filter_novelty_by_domain(domain, novelty_data)
+        if show_disruption:
+            disruption_data = filter_disruption_by_domain(domain, disruption_data)
         unique_areas.insert(0, "All")
         # if a domain is selected, the plots that are being visualised are by area (i.e. level 2)
         level_considered = "area"
@@ -77,22 +86,30 @@ with st.sidebar:
             )
             if show_novelty:
                 novelty_data = filter_novelty_by_area(area, novelty_data)
+            if show_disruption:
+                disruption_data = filter_disruption_by_area(area, disruption_data)
             level_considered = "topic"
 
     st.sidebar.markdown("---")
-    if show_novelty:
+    if show_novelty or show_disruption:
         years = st.slider("Select a range of years", 2007, 2022, (2007, 2022))
     else:
         years = (2007, 2022)
 
-if show_novelty:
+if show_disruption and show_novelty:
     overview_tab, disruption_tab, novelty_tab, overlaps_tab = st.tabs(
         ["Overview", "Disruption", "Novelty", "Overlaps"]
     )
-else:
+if show_disruption and not show_novelty:
     overview_tab, disruption_tab, overlaps_tab = st.tabs(
         ["Overview", "Disruption", "Overlaps"]
     )
+if show_novelty and not show_disruption:
+    overview_tab, novelty_tab, overlaps_tab = st.tabs(
+        ["Overview", "Novelty", "Overlaps"]
+    )
+if not show_novelty and not show_disruption:
+    overview_tab, overlaps_tab = st.tabs(["Overview", "Overlaps"])
 
 # tabs = option_menu(
 #     None,
@@ -212,20 +229,124 @@ with overview_tab:
     st.altair_chart(alignment_chart)
 
 # if tabs == "Disruption":
-with disruption_tab:
-    disruption_trends, disruption_drilldown = st.columns(2)
+if show_disruption:
+    with disruption_tab:
+        disruption_charts_tab, disruption_docs_tab = st.tabs(["Charts", "Search"])
 
-    with disruption_trends:
-        st.subheader("Trends in Disruption")
-        st.markdown(
-            "This could show if certain domains/areas have been recently disrupted or have lacked disruption"
-        )
+        with disruption_charts_tab:
+            st.subheader("Trends in Disruption")
+            st.markdown(
+                "This could show if certain domains/areas have been recently disrupted or have lacked disruption"
+            )
 
-    with disruption_drilldown:
-        st.subheader("Drill Down in Disruption")
-        st.markdown(
-            "This would allow a user to select a topic and see the distribution of disruptiveness of papers within that topic"
-        )
+            (
+                filtered_disruption_data,
+                filtered_disruption_docs,
+            ) = filter_disruption_by_level(
+                _disruption_data=disruption_data,
+                _disruption_docs=disruption_docs,
+                level=level_considered,
+                years=years,
+            )
+            filtered_disruption_data, filtered_disruption_docs = (
+                convert_to_pandas(filtered_disruption_data),
+                convert_to_pandas(filtered_disruption_docs),
+            )
+
+            height = 150 * np.log(
+                1 + filtered_disruption_data["name"].unique().shape[0]
+            )
+            col1, col2 = st.columns([0.65, 0.35])
+            # with col1:
+
+            selection = alt.selection_single(
+                fields=["name"],  # on="click"
+            )  # bind="legend")#nearest=True, on='mouseover', empty="none")
+            disruption_bump_chart = (
+                alt.Chart(filtered_disruption_data)
+                .mark_line(point=True)
+                .encode(
+                    x=alt.X("year:O"),
+                    y="rank:Q",
+                    color=alt.Color(
+                        "name:N",
+                        title=None,
+                        legend=alt.Legend(
+                            labelFontSize=10,
+                            title=None,
+                            labelLimit=0,
+                            symbolSize=20,
+                        ),
+                    ),
+                    tooltip=["name:N", "doc_counts:Q", "entities:N"],
+                    opacity=alt.condition(selection, alt.value(1), alt.value(0.1)),
+                )
+                .transform_window(
+                    rank="rank()",
+                    sort=[alt.SortField("cd_score", order="ascending")],
+                    groupby=["year"],
+                )
+                .properties(height=height, width=650)
+                .add_selection(selection)
+            )
+
+            # st.altair_chart(disruption_bump_chart, use_container_width=True)
+
+            # with col2:
+            # disruption_dist_chart = (
+            #     alt.Chart(filtered_disruption_docs)
+            #     .transform_filter(
+            #         selection
+            #     )
+            #     .mark_bar().encode(
+            #         x=alt.X('cd_score:Q', bin=True),
+            #         y='count()'
+            #     )
+            # )
+            disruption_dist_chart = (
+                alt.Chart(filtered_disruption_docs)
+                .transform_filter(selection)
+                .transform_window(
+                    rank="rank()",
+                    sort=[alt.SortField("random")],
+                    groupby=["bin"],
+                )
+                .transform_filter(alt.datum.rank <= 5)
+                .transform_joinaggregate(
+                    display_names="values(display_name)",
+                    groupby=["bin"],
+                )
+                .mark_bar()
+                .encode(
+                    x=alt.X("cd_score:Q", bin=True),
+                    y="count()",
+                    tooltip=["display_names:N"],
+                )
+                .properties(
+                    width=350,
+                    height=height,
+                )
+            )
+
+            # st.altair_chart(
+            #     disruption_dist_chart,
+            #     use_container_width=True,
+            # )
+
+            st.altair_chart(
+                (disruption_bump_chart | disruption_dist_chart).properties(
+                    padding={"left": 50, "top": 10, "right": 10, "bottom": 50},
+                ),
+                use_container_width=True,
+            )
+            # st.altair_chart(disruption_bump_chart, use_container_width=True)
+            # st.altair_chart(disruption_dist_chart, use_container_width=True)
+
+        # with disruption_docs_tab:
+        #     st.subheader("Drill Down in Disruption")
+        #     st.markdown(
+        #         "This would allow a user to select a topic and see the distribution of disruptiveness of papers within that topic"
+        #     )
 
 # if tabs == "Novelty":
 if show_novelty:
@@ -284,10 +405,7 @@ if show_novelty:
                     )
                     .add_selection(selection)
                 )
-
-                # selected_data = alt.data_transformers.get()(novelty_bump_chart.data)
-                # st.session_state.selected_category = selected_data['category'][0]
-
+                st.write(str(selection))
                 st.altair_chart(novelty_bump_chart, use_container_width=True)
 
             with col2:
@@ -330,7 +448,6 @@ if show_novelty:
                             alt.Tooltip("doc_counts", title="Number of documents"),
                         ],
                     )
-                    # .properties(width='container')
                 )
 
                 labels = novelty_bubble_chart.mark_text(

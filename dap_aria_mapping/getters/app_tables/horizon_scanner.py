@@ -48,6 +48,21 @@ def novelty_per_year() -> pl.DataFrame:
     )
 
 
+def disruption_per_year() -> pl.DataFrame:
+    """Gets a polars dataframe with the disruption scores per topic/area/domain per year
+
+    Returns:
+        pl.DataFrame: A polars dataframe.
+    """
+    return pl.DataFrame(
+        download_obj(
+            BUCKET_NAME,
+            "outputs/app_data/horizon_scanner/agg_disruption_documents.parquet",
+            download_as="dataframe",
+        )
+    )
+
+
 def get_document_names() -> pl.DataFrame:
     """Gets a polars dataframe with document names
 
@@ -76,6 +91,23 @@ def get_novelty_documents() -> pl.DataFrame:
     s3.download_fileobj(
         BUCKET_NAME,
         "outputs/app_data/horizon_scanner/novelty_documents_sample.parquet",
+        fileobj,
+    )
+    fileobj.seek(0)
+    return pl.read_parquet(fileobj)
+
+
+def get_disruption_documents() -> pl.DataFrame:
+    """Gets a polars dataframe with the novelty scores per document
+
+    Returns:
+        pl.DataFrame: A polars dataframe.
+    """
+    s3 = boto3.client("s3")
+    fileobj = io.BytesIO()
+    s3.download_fileobj(
+        BUCKET_NAME,
+        "outputs/app_data/horizon_scanner/disruption_documents_sample.parquet",
         fileobj,
     )
     fileobj.seek(0)

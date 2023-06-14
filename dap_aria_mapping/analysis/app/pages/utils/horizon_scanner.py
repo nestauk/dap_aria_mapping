@@ -1,7 +1,9 @@
 from dap_aria_mapping.getters.app_tables.horizon_scanner import (
     volume_per_year,
     novelty_per_year,
+    disruption_per_year,
     get_novelty_documents,
+    get_disruption_documents,
     get_entity_document_lists,
     get_document_names,
     get_entities,
@@ -61,16 +63,6 @@ def load_overview_data() -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, List
     )
 
 
-@st.cache_data(show_spinner="Loading novelty data")
-def load_novelty_data():
-    novelty_data = novelty_per_year()
-    novelty_docs = get_novelty_documents()
-    document_names = get_document_names()
-    entity_dict = get_entity_document_lists()
-
-    return novelty_data, novelty_docs, document_names, entity_dict
-
-
 # Filter by domain
 @st.cache_data(show_spinner="Filtering by domain")
 def filter_volume_by_domain(
@@ -115,24 +107,6 @@ def filter_volume_by_area(
     alignment_data = _alignment_data.filter(pl.col("area_name") == area)
     unique_topics = volume_data["topic_name"].unique().to_list()
     return volume_data, alignment_data, unique_topics
-
-
-@st.cache_data(show_spinner="Filtering by domain")
-def filter_novelty_by_domain(
-    domain: str,
-    _novelty_data: pl.DataFrame,
-) -> pl.DataFrame:
-    novelty_data = _novelty_data.filter(pl.col("domain_name") == domain)
-    return novelty_data
-
-
-@st.cache_data(show_spinner="Filtering by area")
-def filter_novelty_by_area(
-    area: str,
-    _novelty_data: pl.DataFrame,
-) -> pl.DataFrame:
-    novelty_data = _novelty_data.filter(pl.col("area_name") == area)
-    return novelty_data
 
 
 @st.cache_data
@@ -201,6 +175,39 @@ def group_alignment_by_level(_alignment_data: pl.DataFrame, level: str) -> pl.Da
     return q.collect()
 
 
+@st.cache_data(show_spinner="Loading documents data")
+def load_documents_data():
+    document_names = get_document_names()
+    entity_dict = get_entity_document_lists()
+    return document_names, entity_dict
+
+
+@st.cache_data(show_spinner="Loading novelty data")
+def load_novelty_data():
+    novelty_data = novelty_per_year()
+    novelty_docs = get_novelty_documents()
+
+    return novelty_data, novelty_docs
+
+
+@st.cache_data(show_spinner="Filtering by domain")
+def filter_novelty_by_domain(
+    domain: str,
+    _novelty_data: pl.DataFrame,
+) -> pl.DataFrame:
+    novelty_data = _novelty_data.filter(pl.col("domain_name") == domain)
+    return novelty_data
+
+
+@st.cache_data(show_spinner="Filtering by area")
+def filter_novelty_by_area(
+    area: str,
+    _novelty_data: pl.DataFrame,
+) -> pl.DataFrame:
+    novelty_data = _novelty_data.filter(pl.col("area_name") == area)
+    return novelty_data
+
+
 @st.cache_data
 def filter_novelty_by_level(
     _novelty_data: pl.DataFrame, _novelty_docs: pl.DataFrame, level: str, years: tuple
@@ -250,10 +257,10 @@ def filter_novelty_by_level(
             {
                 "work_id": "document_link",
                 "year": "document_year",
-                "name": "topic_name",
+                # "name": "topic_name",
             }
         )
-        .select(["document_link", "document_year", "topic_name", "novelty"])
+        .select(["document_link", "document_year", "name", "novelty"])
     )
 
     return _novelty_data, _novelty_docs
@@ -313,12 +320,12 @@ def get_ranked_novelty_articles(
 ):
     novelty_docs = (
         novelty_docs.groupby(["document_link", "document_year", "novelty"])
-        .agg({"topic_name": pl.list("topic_name")})
-        .rename({"topic_name": "topic_names"})
+        .agg({"name": pl.list("name")})
+        .rename({"name": "names"})
     )
     if topic != "All":
         novelty_docs = novelty_docs.filter(
-            novelty_docs["topic_names"].apply(lambda x: topic in x)
+            novelty_docs["names"].apply(lambda x: topic in x)
         )
 
     # add column with document_names by joining
@@ -327,7 +334,7 @@ def get_ranked_novelty_articles(
         left_on="document_link",
         right_on="work_id",
         how="left",
-    )[["document_link", "document_year", "display_name", "novelty", "topic_names"]]
+    )[["document_link", "document_year", "display_name", "novelty", "names"]]
 
     return novelty_docs
 
@@ -385,3 +392,134 @@ def filter_documents_with_entities(
     )[["document_link", "document_year", "display_name", "novelty"]]
 
     return _novelty_docs
+
+
+@st.cache_data(show_spinner="Loading metrics data")
+def load_disruption_data():
+    disruption_data = disruption_per_year()
+    disruption_docs = get_disruption_documents()
+    return disruption_data, disruption_docs
+
+
+@st.cache_data(show_spinner="Filtering by domain")
+def filter_disruption_by_domain(
+    domain: str,
+    _disruption_data: pl.DataFrame,
+) -> pl.DataFrame:
+    disruption_data = _disruption_data.filter(pl.col("domain_name") == domain)
+    return disruption_data
+
+
+@st.cache_data(show_spinner="Filtering by area")
+def filter_disruption_by_area(
+    area: str,
+    _disruption_data: pl.DataFrame,
+) -> pl.DataFrame:
+    disruption_data = _disruption_data.filter(pl.col("area_name") == area)
+    return disruption_data
+
+
+@st.cache_data
+def filter_disruption_by_level(
+    _disruption_data: pl.DataFrame,
+    _disruption_docs: pl.DataFrame,
+    level: str,
+    years: tuple,
+) -> pl.DataFrame:
+    """Groups the data for the disruption chart by the level specified by the filters
+
+    Args:
+        _disruption_data (pl.DataFrame): data for backend of disruption chart
+        level (str): level to view, specified by domain/area filters
+
+    Returns:
+        pl.DataFrame: disruption data for chart
+    """
+    _disruption_data = (
+        _disruption_data.unique(subset=[level, "year"])
+        .select(
+            ["year"]
+            + [col for col in _disruption_data.columns if col.startswith(level)]
+        )
+        .rename(
+            {
+                f"{level}_name": "name",
+                f"{level}_doc_counts": "doc_counts",
+                # f"{level}_cd_score25": "cd_score25",
+                f"{level}_cd_score50": "cd_score",
+                # f"{level}_cd_score75": "cd_score75",
+                f"{level}_entities": "entities",
+            }
+        )
+    ).filter((pl.col("year") >= years[0]) & (pl.col("year") <= years[1]))
+
+    # create dictionary of level ids as keys and names as values
+    _topic_map = (
+        _disruption_data.select([level, "name"])
+        .unique()
+        .to_pandas()
+        .set_index(level)
+        .to_dict()["name"]
+    )
+
+    # Create unique disruption_docs dataframe and add name column from _topic_map
+    _disruption_docs = (
+        _disruption_docs.unique(subset=[level, "work_id"])
+        .select(["work_id", "display_name", "year", "cd_score", level])
+        .filter((pl.col("year") >= years[0]) & (pl.col("year") <= years[1]))
+        .with_columns(pl.col(level).cast(str).map_dict(_topic_map).alias("name"))
+        .rename(
+            {
+                "work_id": "document_link",
+                "year": "document_year",
+                # "name": "topic_name",
+            }
+        )
+        .select(["document_link", "display_name", "document_year", "name", "cd_score"])
+    )
+
+    return _disruption_data, _disruption_docs
+    # map {level_name}
+
+
+@st.cache_data
+def group_filter_disruption_counts(
+    _disruption_data: pl.DataFrame,
+    _disruption_docs: pl.DataFrame,
+    level: str,
+    year_start: int,
+    year_end: int,
+) -> pl.DataFrame:
+    """Groups the data for the disruption chart by the level specified by the filters
+
+    Args:
+        _disruption_data (pl.DataFrame): data for backend of disruption chart
+        level (str): level to view, specified by domain/area filters
+        year_start (int): start year for disruption chart
+        year_end (int): end year for disruption chart
+
+    Returns:
+        pl.DataFrame: disruption data for chart
+    """
+    disruption_subdata = (
+        _disruption_data.filter(
+            (pl.col("year") >= year_start) & (pl.col("year") <= year_end)
+        )
+        .groupby(level)
+        .agg(
+            [
+                pl.sum("doc_counts"),
+                (pl.col("cd_score") * pl.col("doc_counts")).sum()
+                / pl.col("doc_counts").sum(),
+            ]
+        )
+        .join(_disruption_data.select([level, "name"]).unique(), on=level, how="left")
+    )
+
+    disruption_subdocs = (
+        _disruption_docs.filter(
+            (pl.col("year") >= year_start) & (pl.col("year") <= year_end)
+        )
+    ).sort(by="cd_score", descending=True)
+
+    return disruption_subdata, disruption_subdocs

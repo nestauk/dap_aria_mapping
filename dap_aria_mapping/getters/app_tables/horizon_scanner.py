@@ -2,7 +2,9 @@ import polars as pl
 from nesta_ds_utils.loading_saving.S3 import download_obj
 from dap_aria_mapping import BUCKET_NAME
 from typing import Sequence
-import boto3, pickle, io
+import boto3
+import pickle
+import io
 
 
 def volume_per_year() -> pl.DataFrame:
@@ -147,6 +149,25 @@ def get_entities() -> Sequence[str]:
         return pickle.load(bio)
 
 
+def topic_commonness() -> pl.DataFrame:
+    """retrieves a polars dataframe of commonness between pairs of topics, areas, and domains for openalex publications
+
+    Returns:
+        pl.DataFrame: columns:
+            - year
+            - N_ij_t: count of publications
+            - commonness; commonness score
+            - topic_1_name
+            - topic_2_name
+
+    """
+    return pl.DataFrame(
+        download_obj(
+            BUCKET_NAME,
+            "outputs/app_data/horizon_scanner/heatmap.parquet",
+            download_as="dataframe",
+        )
+    )
 # %% select a random sample of 10% of polars rows
 # df = df.sample(frac=0.1, replace=False, weights=None, seed=None, ignore_index=True)
 

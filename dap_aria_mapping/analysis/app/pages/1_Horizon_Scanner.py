@@ -60,7 +60,9 @@ with st.sidebar:
     if show_novelty:
         (novelty_data, novelty_docs) = load_novelty_data()
     st.markdown("---")
-    domain = st.selectbox(label="Select a Domain", options=unique_domains)
+    domain = st.selectbox(
+        label="Select a Domain", options=sorted(unique_domains, key=lambda x: x.lower())
+    )
     area = "All"
     topic = "All"
     level_considered = "domain"
@@ -78,7 +80,10 @@ with st.sidebar:
         level_considered = "area"
 
         # if a domain is selected, allow user to filter by area
-        area = st.selectbox(label="Select an Area", options=unique_areas)
+        area = st.selectbox(
+            label="Select an Area",
+            options=sorted(unique_areas, key=lambda x: x.lower()),
+        )
         if area != "All":
             # if an area is selected, filter data to the area and present at topic level
             volume_data, alignment_data, unique_topics = filter_volume_by_area(
@@ -253,14 +258,31 @@ if show_disruption:
                 convert_to_pandas(filtered_disruption_docs),
             )
 
+            # Calculate mean and confidence intervals
+            grouped = filtered_disruption_docs.groupby(["name", "document_year"])[
+                "cd_score"
+            ]
+            confidence_interval = grouped.apply(
+                lambda x: pd.Series(np.percentile(x, [10, 90]))
+            )
+            mean = grouped.mean().reset_index(name="mean")
+            confidence_interval = confidence_interval.unstack().reset_index()
+            confidence_interval.columns = [
+                "name",
+                "document_year",
+                "ci_lower",
+                "ci_upper",
+            ]
+
+            # Merge mean and confidence intervals
+            distr_data = pd.merge(mean, confidence_interval)
+
             height = 150 * np.log(
                 1 + filtered_disruption_data["name"].unique().shape[0]
             )
-            col1, col2 = st.columns([0.65, 0.35])
-            # with col1:
 
             selection = alt.selection_single(
-                fields=["name"],  # on="click"
+                fields=["name"], on="click"
             )  # bind="legend")#nearest=True, on='mouseover', empty="none")
             disruption_bump_chart = (
                 alt.Chart(filtered_disruption_data)
@@ -276,6 +298,7 @@ if show_disruption:
                             title=None,
                             labelLimit=0,
                             symbolSize=20,
+                            orient="right",
                         ),
                     ),
                     tooltip=["name:N", "doc_counts:Q", "entities:N"],
@@ -290,42 +313,53 @@ if show_disruption:
                 .add_selection(selection)
             )
 
-            # st.altair_chart(disruption_bump_chart, use_container_width=True)
+            # Create line chart with confidence intervals
+            line_chart = (
+                alt.Chart(distr_data)
+                .transform_filter(selection)
+                .mark_line()
+                .encode(
+                    x=alt.X("mean:Q", scale=alt.Scale(domain=(-1, 1))),
+                    y=alt.Y("document_year:O"),
+                    color=alt.Color("name:N"),
+                )
+                .properties(height=height, width=350)
+            )
 
-            # with col2:
-            # disruption_dist_chart = (
-            #     alt.Chart(filtered_disruption_docs)
-            #     .transform_filter(
-            #         selection
-            #     )
-            #     .mark_bar().encode(
-            #         x=alt.X('cd_score:Q', bin=True),
-            #         y='count()'
-            #     )
-            # )
+            point_chart = (
+                alt.Chart(distr_data)
+                .transform_filter(selection)
+                .mark_point()
+                .encode(
+                    x=alt.X("mean:Q"),
+                    y=alt.Y("document_year:O"),
+                    color=alt.Color("name:N"),
+                )
+                .properties(height=height, width=350)
+            )
+
+            rule_chart = (
+                alt.Chart(distr_data)
+                .transform_filter(selection)
+                .mark_rule()
+                .encode(
+                    x=alt.X("ci_lower:Q", title="CD-score support"),
+                    x2="ci_upper:Q",
+                    y=alt.Y("document_year:O", title="Year"),
+                    color=alt.Color("name:N"),
+                )
+                .properties(height=height, width=350)
+            )
+
             disruption_dist_chart = (
                 alt.Chart(filtered_disruption_docs)
                 .transform_filter(selection)
-                .transform_window(
-                    rank="rank()",
-                    sort=[alt.SortField("random")],
-                    groupby=["bin"],
-                )
-                .transform_filter(alt.datum.rank <= 5)
-                .transform_joinaggregate(
-                    display_names="values(display_name)",
-                    groupby=["bin"],
-                )
                 .mark_bar()
                 .encode(
                     x=alt.X("cd_score:Q", bin=True),
                     y="count()",
-                    tooltip=["display_names:N"],
                 )
-                .properties(
-                    width=350,
-                    height=height,
-                )
+                .properties(height=height, width=350)
             )
 
             # st.altair_chart(
@@ -334,8 +368,9 @@ if show_disruption:
             # )
 
             st.altair_chart(
-                (disruption_bump_chart | disruption_dist_chart).properties(
-                    padding={"left": 50, "top": 10, "right": 10, "bottom": 50},
+                (
+                    (disruption_bump_chart | (rule_chart + point_chart + line_chart))
+                    & disruption_dist_chart
                 ),
                 use_container_width=True,
             )

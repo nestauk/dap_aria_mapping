@@ -29,7 +29,9 @@ def load_overview_data() -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, List
     volume_data = volume_per_year()
 
     # generate a list of the unique domain names to use as the filter
-    unique_domains = volume_data["domain_name"].unique().to_list()
+    unique_domains = sorted(
+        volume_data["domain_name"].unique().to_list(), key=lambda x: x.lower()
+    )
     unique_domains.insert(0, "All")
     # reformat the patent/publication counts to long form for the alignment chart
     alignment_data = volume_data.melt(
@@ -82,7 +84,9 @@ def filter_volume_by_domain(
         Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, List[str]]: updated dataframes filtered by a domain, and a list of unique areas to populate area filter
     """
     volume_data = _volume_data.filter(pl.col("domain_name") == domain)
-    unique_areas = volume_data["area_name"].unique().to_list()
+    unique_areas = sorted(
+        volume_data["area_name"].unique().to_list(), key=lambda x: x.lower()
+    )
     alignment_data = _alignment_data.filter(pl.col("domain_name") == domain)
     return volume_data, alignment_data, unique_areas
 
@@ -105,7 +109,9 @@ def filter_volume_by_area(
     """
     volume_data = _volume_data.filter(pl.col("area_name") == area)
     alignment_data = _alignment_data.filter(pl.col("area_name") == area)
-    unique_topics = volume_data["topic_name"].unique().to_list()
+    unique_topics = sorted(
+        volume_data["topic_name"].unique().to_list(), key=lambda x: x.lower()
+    )
     return volume_data, alignment_data, unique_topics
 
 

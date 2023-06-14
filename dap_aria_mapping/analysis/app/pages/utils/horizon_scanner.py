@@ -109,9 +109,7 @@ def filter_volume_by_area(
     """
     volume_data = _volume_data.filter(pl.col("area_name") == area)
     alignment_data = _alignment_data.filter(pl.col("area_name") == area)
-    unique_topics = sorted(
-        volume_data["topic_name"].unique().to_list(), key=lambda x: x.lower()
-    )
+    unique_topics = volume_data["topic_name"].unique().to_list()
     return volume_data, alignment_data, unique_topics
 
 
@@ -347,57 +345,73 @@ def get_ranked_novelty_articles(
 
 @st.cache_data
 def filter_documents_with_entities(
-    _novelty_docs: pl.DataFrame,
     _entity_dict: defaultdict,
     _doc_names: pl.DataFrame,
     entities: list,
+    _novelty_docs: pl.DataFrame = None,
+    _disruption_docs: pl.DataFrame = None,
     all_or_any: str = "All",
 ):
 
-    # _entity_dict is a polars dataframe with entity and documents columns, the latter a list.
-    if all_or_any == "Any":
-        # Select rows with any of the entities in the list, that appaer in column entity
-        document_ids = list(
-            set(
-                chain(
-                    *[
-                        _entity_dict.filter(pl.col("entity") == entity)["documents"]
-                        for entity in entities
-                        if entity in _entity_dict["entity"]
-                    ]
-                )
-            )
-        )
+    # # _entity_dict is a polars dataframe with entity and documents columns, the latter a list.
+    # if all_or_any == "Any":
+    #     # Select rows with any of the entities in the list, that appaer in column entity
+    #     document_ids = list(
+    #         chain(
+    #             *[
+    #                 _entity_dict.filter(pl.col("entity") == entity)["document"]
+    #                 for entity in entities
+    #                 if entity in _entity_dict["entity"]
+    #             ]
+    #         )
+    #     )
 
-    else:
-        # only return values in list that were found in all "entities" keys
-        document_ids = list(
-            chain(
-                *[
-                    _entity_dict.filter(pl.col("entity") == entity)[
-                        "document"
-                    ].to_list()
-                    for entity in entities
-                    if entity in _entity_dict["entity"]
-                ]
-            )
+    # else:
+    #     # only return values in list that were found in all "entities" keys
+    document_ids = list(
+        chain(
+            *[
+                _entity_dict.filter(pl.col("entity") == entity)["document"].to_list()
+                for entity in entities
+                if entity in _entity_dict["entity"]
+            ]
         )
+    )
+    if all_or_any == "All":
         document_ids = list(set(document_ids[0]).intersection(*document_ids[1:]))
+    else:
+        document_ids = list(set(chain(*document_ids)))
 
     # add "https://openalex.org/" prefix to each entity id
     document_ids = ["https://openalex.org/" + x for x in document_ids]
+    if _novelty_docs is not None:
+        _novelty_docs = _novelty_docs.filter(
+            pl.col("document_link").is_in(document_ids)
+        )
 
-    _novelty_docs = _novelty_docs.filter(pl.col("document_link").is_in(document_ids))
+        # add display_names
+        _novelty_docs = _novelty_docs.join(
+            _doc_names.select(["work_id", "display_name"]),
+            left_on="document_link",
+            right_on="work_id",
+            how="left",
+        )[["document_link", "document_year", "display_name", "novelty"]]
 
-    # add display_names
-    _novelty_docs = _novelty_docs.join(
-        _doc_names.select(["work_id", "display_name"]),
-        left_on="document_link",
-        right_on="work_id",
-        how="left",
-    )[["document_link", "document_year", "display_name", "novelty"]]
+        return _novelty_docs
+    elif _disruption_docs is not None:
+        _disruption_docs = _disruption_docs.filter(
+            pl.col("document_link").is_in(document_ids)
+        )
 
-    return _novelty_docs
+        # # add display_names
+        # _disruption_docs = _disruption_docs.join(
+        #     _doc_names.select(["work_id", "display_name"]),
+        #     left_on="document_link",
+        #     right_on="work_id",
+        #     how="left",
+        # )[["document_link", "document_year", "display_name", "cd_score", "cited_by_count"]]
+
+        return _disruption_docs
 
 
 @st.cache_data(show_spinner="Loading metrics data")
@@ -452,7 +466,8 @@ def filter_disruption_by_level(
                 f"{level}_name": "name",
                 f"{level}_doc_counts": "doc_counts",
                 # f"{level}_cd_score25": "cd_score25",
-                f"{level}_cd_score50": "cd_score",
+                f"{level}_cd_score_mean": "cd_score",
+                # f"{level}_cd_score50": "cd_score50",
                 # f"{level}_cd_score75": "cd_score75",
                 f"{level}_entities": "entities",
             }
@@ -471,7 +486,9 @@ def filter_disruption_by_level(
     # Create unique disruption_docs dataframe and add name column from _topic_map
     _disruption_docs = (
         _disruption_docs.unique(subset=[level, "work_id"])
-        .select(["work_id", "display_name", "year", "cd_score", level])
+        .select(
+            ["work_id", "display_name", "year", "cd_score", level, "cited_by_count"]
+        )
         .filter((pl.col("year") >= years[0]) & (pl.col("year") <= years[1]))
         .with_columns(pl.col(level).cast(str).map_dict(_topic_map).alias("name"))
         .rename(
@@ -481,7 +498,16 @@ def filter_disruption_by_level(
                 # "name": "topic_name",
             }
         )
-        .select(["document_link", "display_name", "document_year", "name", "cd_score"])
+        .select(
+            [
+                "document_link",
+                "display_name",
+                "document_year",
+                "name",
+                "cd_score",
+                "cited_by_count",
+            ]
+        )
     )
 
     return _disruption_data, _disruption_docs
@@ -529,3 +555,21 @@ def group_filter_disruption_counts(
     ).sort(by="cd_score", descending=True)
 
     return disruption_subdata, disruption_subdocs
+
+
+def get_display_names_in_bin(data):
+    # Get the bin start and end values from the data
+    bin_start = data["cd_score"][0]
+    bin_end = data["cd_score"][1]
+
+    # Filter the data to only include rows within the bin
+    filtered_data = data[data["cd_score"].between(bin_start, bin_end)]
+
+    # Get a random sub-sample of display_name values
+    sample_size = min(5, len(filtered_data))
+    display_names = filtered_data["display_name"].sample(sample_size).tolist()
+
+    # Format the display names as a string
+    display_names_str = ", ".join(display_names)
+
+    return {"display_names": display_names_str}

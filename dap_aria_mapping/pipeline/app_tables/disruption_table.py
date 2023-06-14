@@ -101,6 +101,7 @@ topic_cd_scores = (
             pl.col("cd_score").quantile(0.25).alias("cd_score25"),
             pl.col("cd_score").quantile(0.5).alias("cd_score50"),
             pl.col("cd_score").quantile(0.75).alias("cd_score75"),
+            pl.col("cd_score").mean().alias("cd_score_mean"),
         ]
     )
     .rename(
@@ -108,6 +109,7 @@ topic_cd_scores = (
             "cd_score25": "topic_cd_score25",
             "cd_score50": "topic_cd_score50",
             "cd_score75": "topic_cd_score75",
+            "cd_score_mean": "topic_cd_score_mean",
         }
     )
 )
@@ -120,6 +122,7 @@ area_cd_scores = (
             pl.col("cd_score").quantile(0.25).alias("cd_score25"),
             pl.col("cd_score").quantile(0.5).alias("cd_score50"),
             pl.col("cd_score").quantile(0.75).alias("cd_score75"),
+            pl.col("cd_score").mean().alias("cd_score_mean"),
         ]
     )
     .rename(
@@ -127,6 +130,7 @@ area_cd_scores = (
             "cd_score25": "area_cd_score25",
             "cd_score50": "area_cd_score50",
             "cd_score75": "area_cd_score75",
+            "cd_score_mean": "area_cd_score_mean",
         }
     )
 )
@@ -139,6 +143,7 @@ domain_cd_scores = (
             pl.col("cd_score").quantile(0.25).alias("cd_score25"),
             pl.col("cd_score").quantile(0.5).alias("cd_score50"),
             pl.col("cd_score").quantile(0.75).alias("cd_score75"),
+            pl.col("cd_score").mean().alias("cd_score_mean"),
         ]
     )
     .rename(
@@ -146,6 +151,7 @@ domain_cd_scores = (
             "cd_score25": "domain_cd_score25",
             "cd_score50": "domain_cd_score50",
             "cd_score75": "domain_cd_score75",
+            "cd_score_mean": "domain_cd_score_mean",
         }
     )
 )
@@ -207,6 +213,9 @@ openalex_disruption_df = (
         "topic_cd_score25",
         "topic_cd_score50",
         "topic_cd_score75",
+        "domain_cd_score_mean",
+        "area_cd_score_mean",
+        "topic_cd_score_mean",
         "domain_name",
         "area_name",
         "topic_name",
@@ -218,7 +227,10 @@ openalex_disruption_df = (
         "topic_doc_counts",
     ]
 ]
-
+# %%
+pubs_with_topics_df = pubs_with_topics_df.join(
+    openalex_df[["work_id", "cited_by_count"]], on="work_id", how="left"
+)
 # %%
 logger.info("Uploading all files to S3")
 
@@ -241,4 +253,5 @@ s3.upload_fileobj(
     BUCKET_NAME,
     "outputs/app_data/horizon_scanner/disruption_documents.parquet",
 )
+
 # %%

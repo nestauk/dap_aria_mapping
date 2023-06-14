@@ -101,6 +101,22 @@ with st.sidebar:
     else:
         years = (2007, 2022)
 
+if show_disruption:
+    filtered_disruption_data, filtered_disruption_docs = filter_disruption_by_level(
+        _disruption_data=disruption_data,
+        _disruption_docs=disruption_docs,
+        level=level_considered,
+        years=years,
+    )
+
+if show_novelty:
+    filtered_novelty_data, filtered_novelty_docs = filter_novelty_by_level(
+        _novelty_data=novelty_data,
+        _novelty_docs=novelty_docs,
+        level=level_considered,
+        years=years,
+    )
+
 if show_disruption and show_novelty:
     overview_tab, disruption_tab, novelty_tab, overlaps_tab = st.tabs(
         ["Overview", "Disruption", "Novelty", "Overlaps"]
@@ -240,28 +256,10 @@ if show_disruption:
 
         with disruption_charts_tab:
             st.subheader("Trends in Disruption")
-            st.markdown(
-                "This could show if certain domains/areas have been recently disrupted or have lacked disruption"
-            )
-
-            (
-                filtered_disruption_data,
-                filtered_disruption_docs,
-            ) = filter_disruption_by_level(
-                _disruption_data=disruption_data,
-                _disruption_docs=disruption_docs,
-                level=level_considered,
-                years=years,
-            )
-            filtered_disruption_data, filtered_disruption_docs = (
-                convert_to_pandas(filtered_disruption_data),
-                convert_to_pandas(filtered_disruption_docs),
-            )
 
             # Calculate mean and confidence intervals
-            grouped = filtered_disruption_docs.groupby(["name", "document_year"])[
-                "cd_score"
-            ]
+            grouped = convert_to_pandas(filtered_disruption_docs)
+            grouped = grouped.groupby(["name", "document_year"])["cd_score"]
             confidence_interval = grouped.apply(
                 lambda x: pd.Series(np.percentile(x, [10, 90]))
             )
@@ -285,7 +283,7 @@ if show_disruption:
                 fields=["name"], on="click"
             )  # bind="legend")#nearest=True, on='mouseover', empty="none")
             disruption_bump_chart = (
-                alt.Chart(filtered_disruption_data)
+                alt.Chart(convert_to_pandas(filtered_disruption_data))
                 .mark_line(point=True)
                 .encode(
                     x=alt.X("year:O"),
@@ -343,47 +341,89 @@ if show_disruption:
                 .transform_filter(selection)
                 .mark_rule()
                 .encode(
-                    x=alt.X("ci_lower:Q", title="CD-score support"),
+                    x=alt.X("ci_lower:Q", title="CD-score"),
                     x2="ci_upper:Q",
                     y=alt.Y("document_year:O", title="Year"),
                     color=alt.Color("name:N"),
                 )
                 .properties(height=height, width=350)
             )
+            import altair_transform
 
             disruption_dist_chart = (
-                alt.Chart(filtered_disruption_docs)
+                alt.Chart(convert_to_pandas(filtered_disruption_docs))
                 .transform_filter(selection)
                 .mark_bar()
                 .encode(
                     x=alt.X("cd_score:Q", bin=True),
                     y="count()",
                 )
-                .properties(height=height, width=350)
+                .properties(height=350, width=650)
             )
-
-            # st.altair_chart(
-            #     disruption_dist_chart,
-            #     use_container_width=True,
-            # )
-
+            scatter_data = filtered_disruption_docs.filter(
+                pl.col("cited_by_count") > 50
+            )
+            scatter_plot = (
+                alt.Chart(convert_to_pandas(scatter_data))
+                .transform_filter(selection)
+                .mark_point()
+                .encode(
+                    x=alt.X("cited_by_count:Q", title="Number of Citations"),
+                    y=alt.Y("cd_score:Q", title="CD Score"),
+                    color=alt.Color("name:N", title="Name"),
+                    tooltip=[
+                        alt.Tooltip("display_name:N", title="Display Name"),
+                        alt.Tooltip("name:N", title="Name"),
+                    ],
+                )
+            )
             st.altair_chart(
                 (
                     (disruption_bump_chart | (rule_chart + point_chart + line_chart))
-                    & disruption_dist_chart
+                    & (disruption_dist_chart | scatter_plot)
                 ),
                 use_container_width=True,
             )
-            # st.altair_chart(disruption_bump_chart, use_container_width=True)
-            # st.altair_chart(disruption_dist_chart, use_container_width=True)
 
-        # with disruption_docs_tab:
-        #     st.subheader("Drill Down in Disruption")
-        #     st.markdown(
-        #         "This would allow a user to select a topic and see the distribution of disruptiveness of papers within that topic"
-        #     )
+        with disruption_docs_tab:
 
-# if tabs == "Novelty":
+            unique_keywords = pipe(get_entities(), lambda x: sorted(x))
+
+            st.title("Search Articles")
+            with st.form("disruption_form"):
+                col1, col2, col3 = st.columns([0.8, 0.1, 0.1])
+                with col1:
+                    # query keywords, where each time
+                    query = st.multiselect("Keywords", unique_keywords)
+                with col2:
+                    # ask for either all or at least one
+                    all_or_any = st.radio("Match all or any keywords?", ["All", "Any"])
+                with col3:
+                    # number of results
+                    top_n = st.number_input(
+                        "Number of results", min_value=1, max_value=100, value=10
+                    )
+
+                submitted = st.form_submit_button("Submit")
+
+                if submitted:
+                    query_df = filter_documents_with_entities(
+                        _disruption_docs=filtered_disruption_docs,
+                        _entity_dict=entity_dict,
+                        _doc_names=document_names,
+                        entities=query,
+                        all_or_any=all_or_any,
+                    )
+
+                    query_df = convert_to_pandas(query_df)
+
+                    query_df = query_df.sort_values(
+                        by="cd_score", ascending=False
+                    ).head(top_n)
+
+                    st.dataframe(query_df)
+
+
 if show_novelty:
     with novelty_tab:
 
@@ -393,13 +433,6 @@ if show_novelty:
             st.subheader("Trends in Novelty")
             st.markdown(
                 "View trends in novelty of content over time to detect emerging or stagnant areas of innovation"
-            )
-
-            filtered_novelty_data, filtered_novelty_docs = filter_novelty_by_level(
-                _novelty_data=novelty_data,
-                _novelty_docs=novelty_docs,
-                level=level_considered,
-                years=years,
             )
 
             height = 150 * np.log(1 + filtered_novelty_data["name"].unique().shape[0])
@@ -440,7 +473,6 @@ if show_novelty:
                     )
                     .add_selection(selection)
                 )
-                st.write(str(selection))
                 st.altair_chart(novelty_bump_chart, use_container_width=True)
 
             with col2:

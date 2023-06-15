@@ -348,7 +348,6 @@ if show_disruption:
                 )
                 .properties(height=height, width=350)
             )
-            import altair_transform
 
             disruption_dist_chart = (
                 alt.Chart(convert_to_pandas(filtered_disruption_docs))

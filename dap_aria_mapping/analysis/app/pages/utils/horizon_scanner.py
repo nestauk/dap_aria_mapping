@@ -352,22 +352,6 @@ def filter_documents_with_entities(
     _disruption_docs: pl.DataFrame = None,
     all_or_any: str = "All",
 ):
-
-    # # _entity_dict is a polars dataframe with entity and documents columns, the latter a list.
-    # if all_or_any == "Any":
-    #     # Select rows with any of the entities in the list, that appaer in column entity
-    #     document_ids = list(
-    #         chain(
-    #             *[
-    #                 _entity_dict.filter(pl.col("entity") == entity)["document"]
-    #                 for entity in entities
-    #                 if entity in _entity_dict["entity"]
-    #             ]
-    #         )
-    #     )
-
-    # else:
-    #     # only return values in list that were found in all "entities" keys
     document_ids = list(
         chain(
             *[
@@ -382,7 +366,6 @@ def filter_documents_with_entities(
     else:
         document_ids = list(set(chain(*document_ids)))
 
-    # add "https://openalex.org/" prefix to each entity id
     document_ids = ["https://openalex.org/" + x for x in document_ids]
     if _novelty_docs is not None:
         _novelty_docs = _novelty_docs.filter(

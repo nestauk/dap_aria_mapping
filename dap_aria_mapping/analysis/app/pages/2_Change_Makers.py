@@ -392,5 +392,5 @@ st.markdown("")
 st.markdown("")
 
 white_space, logo, white_space = st.columns([1.5, 1, 1.5])
-with logo:
-    st.image(Image.open(f"{IMAGE_DIR}/igl_nesta_aria_logo.png"))
+# with logo:
+#     st.image(Image.open(f"{IMAGE_DIR}/igl_nesta_aria_logo.png"))

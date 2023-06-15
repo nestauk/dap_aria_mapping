@@ -60,9 +60,7 @@ with st.sidebar:
     if show_novelty:
         (novelty_data, novelty_docs) = load_novelty_data()
     st.markdown("---")
-    domain = st.selectbox(
-        label="Select a Domain", options=sorted(unique_domains, key=lambda x: x.lower())
-    )
+    domain = st.selectbox(label="Select a Domain", options=unique_domains)
     area = "All"
     topic = "All"
     level_considered = "domain"

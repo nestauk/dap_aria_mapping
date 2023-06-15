@@ -4,11 +4,15 @@ from streamlit.components.v1 import html
 from PIL import Image
 from nesta_ds_utils.viz.altair import formatting
 from dap_aria_mapping import PROJECT_DIR
-from dap_aria_mapping.utils.app_utils import img_to_bytes, nav_page_from_image, create_hover_class
+from dap_aria_mapping.utils.app_utils import (
+    img_to_bytes,
+    nav_page_from_image,
+    create_hover_class,
+)
 
 formatting.setup_theme()
 
-PAGE_TITLE = "Innovation Explorer"
+PAGE_TITLE = "DEMO - Innovation Explorer"
 
 IMAGE_DIR = f"{PROJECT_DIR}/dap_aria_mapping/analysis/app/images"
 
@@ -18,7 +22,7 @@ nesta_fav = Image.open(f"{IMAGE_DIR}/favicon.ico")
 # sets page configuration with favicon and title
 st.set_page_config(page_title=PAGE_TITLE, layout="wide", page_icon=nesta_fav)
 
-st.title("Welcome to the Innovation Explorer!")
+st.title("Welcome to the DEMO Innovation Explorer!")
 
 home_tab, data_tab, methods_tab = st.tabs(["Home", "About the Datasets", "Methodology"])
 
@@ -75,5 +79,5 @@ st.markdown("")
 st.markdown("")
 
 white_space, logo, white_space = st.columns([1.5, 1, 1.5])
-with logo:
-    st.image(Image.open(f"{IMAGE_DIR}/igl_nesta_aria_logo.png"))
+# with logo:
+#     st.image(Image.open(f"{IMAGE_DIR}/igl_nesta_aria_logo.png"))

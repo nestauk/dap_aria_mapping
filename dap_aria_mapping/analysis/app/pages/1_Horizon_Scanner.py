@@ -80,7 +80,7 @@ with st.sidebar:
         # if a domain is selected, allow user to filter by area
         area = st.selectbox(
             label="Select an Area",
-            options=sorted(unique_areas, key=lambda x: x.lower()),
+            options=unique_areas,
         )
         if area != "All":
             # if an area is selected, filter data to the area and present at topic level
@@ -130,27 +130,6 @@ if show_novelty and not show_disruption:
 if not show_novelty and not show_disruption:
     overview_tab, overlaps_tab = st.tabs(["Overview", "Overlaps"])
 
-# tabs = option_menu(
-#     None,
-#     ["Overview", "Disruption", "Novelty", "Overlaps"],
-#     icons=["house", "cloud-upload", "list-task", "gear"],
-#     menu_icon="cast",
-#     default_index=0,
-#     orientation="horizontal",
-#     styles={
-#         "container": {"padding": "0!important", "background-color": "#fafafa"},
-#         "icon": {"color": "orange", "font-size": "25px"},
-#         "nav-link": {
-#             "font-size": "25px",
-#             "text-align": "left",
-#             "margin": "0px",
-#             "--hover-color": "#eee",
-#         },
-#         "nav-link-selected": {"background-color": "green"},
-#     },
-# )
-
-# if tabs == "Overview":
 with overview_tab:
 
     st.subheader("Growth Over Time")
@@ -247,7 +226,6 @@ with overview_tab:
 
     st.altair_chart(alignment_chart)
 
-# if tabs == "Disruption":
 if show_disruption:
     with disruption_tab:
         disruption_charts_tab, disruption_docs_tab = st.tabs(["Charts", "Search"])
@@ -421,7 +399,6 @@ if show_disruption:
                     ).head(top_n)
 
                     st.dataframe(query_df)
-
 
 if show_novelty:
     with novelty_tab:
@@ -609,14 +586,6 @@ if show_novelty:
 
                     st.dataframe(query_df)
 
-            # with col4:
-            #     if not query:
-            #         matching_articles = 0
-            #     else:
-            #         matching_articles = len(_novelty_docs)
-            #     st.markdown(f"Count: {matching_articles}")
-
-    # if tabs == "Overlaps":ç
 with overlaps_tab:
     heatmap, overlap_drilldown = st.columns(2)
     with heatmap:

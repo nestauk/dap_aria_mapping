@@ -113,7 +113,6 @@ def filter_volume_by_area(
     return volume_data, alignment_data, unique_topics
 
 
-@st.cache_data
 def group_emergence_by_level(
     _volume_data: pl.DataFrame, level: str, y_col: str
 ) -> pl.DataFrame:
@@ -137,7 +136,6 @@ def group_emergence_by_level(
     return q.collect()
 
 
-@st.cache_data(show_spinner="Filtering by topic")
 def group_alignment_by_level(_alignment_data: pl.DataFrame, level: str) -> pl.DataFrame:
     """groups the data for the alignment chart by the level specified by the filters.
     Also calculates the fraction of total documents per type to visualise in the chart.
@@ -271,7 +269,6 @@ def filter_novelty_by_level(
     # map {level_name}
 
 
-@st.cache_data
 def group_filter_novelty_counts(
     _novelty_data: pl.DataFrame,
     _novelty_docs: pl.DataFrame,
@@ -381,19 +378,11 @@ def filter_documents_with_entities(
         )[["document_link", "document_year", "display_name", "novelty"]]
 
         return _novelty_docs
+
     elif _disruption_docs is not None:
         _disruption_docs = _disruption_docs.filter(
             pl.col("document_link").is_in(document_ids)
         )
-
-        # # add display_names
-        # _disruption_docs = _disruption_docs.join(
-        #     _doc_names.select(["work_id", "display_name"]),
-        #     left_on="document_link",
-        #     right_on="work_id",
-        #     how="left",
-        # )[["document_link", "document_year", "display_name", "cd_score", "cited_by_count"]]
-
         return _disruption_docs
 
 
@@ -497,7 +486,6 @@ def filter_disruption_by_level(
     # map {level_name}
 
 
-@st.cache_data
 def group_filter_disruption_counts(
     _disruption_data: pl.DataFrame,
     _disruption_docs: pl.DataFrame,

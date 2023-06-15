@@ -378,7 +378,9 @@ if show_disruption:
             )
             st.altair_chart(
                 (
-                    (disruption_bump_chart | (rule_chart + point_chart + line_chart))
+                    (
+                        disruption_bump_chart | (rule_chart + point_chart)
+                    )  # + line_chart))
                     & (disruption_dist_chart | scatter_plot)
                 ),
                 use_container_width=True,

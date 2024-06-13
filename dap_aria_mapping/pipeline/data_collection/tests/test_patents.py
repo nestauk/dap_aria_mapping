@@ -1,6 +1,6 @@
 """
 Tests that the final patents dataset is filtered appropriately based
-    on the filing date being between 2016 - 2021 and that at least
+    on the filing date being between 2007 - 2021 and that at least
     one inventor is based in GB.
 
 pytest dap_aria_mapping/pipeline/data_collection/tests/test_patents.py

@@ -16,6 +16,8 @@ To run the raw collection, execute the following:
 
 The `processed_openalex.py` file contains the pipeline for processing the raw publication data and the `processed_patents.py` file contains the pipeline for processing the raw patent data.
 
+UPDATE: The patents.py file has been modified to take a list of country codes to save patents to `inputs/data_collection/patents/eu_us_patents/`. To save just the UK, do pass it as a parameter in `--country_codes`. The `processed_patents.py generate_lookup` annontations step is currently hashed out.
+
 ## Raw Data Processing
 
 To run the processed collection, execute the following:

@@ -12,7 +12,7 @@ python dap_aria_mapping/pipeline/data_collection/processed_patents.py run
 import pandas as pd
 from typing import List, Union
 from metaflow import FlowSpec, step, Parameter
-from dap_aria_mapping import BUCKET_NAME
+from dap_aria_mapping import BUCKET_NAME, logger
 
 DATE_COLS = ["publication_date", "filing_date", "grant_date", "priority_date"]
 TEXT_COLS = ["title_localized", "abstract_localized"]
@@ -36,19 +36,6 @@ def extract_english_text(text_col: str) -> str:
             return text["text"]
 
 
-def disambiguate_assignee(inventors: List[str], assignees: List[str]) -> List[str]:
-    """Disambiguate assignees for entity type.
-    If assignee is also an inventor, define assignee
-    as 'person' else 'organisation'
-    """
-    inventors = set(inventors)
-    assignees = set(assignees)
-
-    orgs = assignees - inventors
-
-    return ["PERSON" if a not in orgs else "ORGANISATION" for a in assignees]
-
-
 class PatentsProcessedFlow(FlowSpec):
     raw_patents_path = Parameter(
         "raw_patents_path",
@@ -69,6 +56,8 @@ class PatentsProcessedFlow(FlowSpec):
         Loads raw patents parquet file from S3
         """
         from nesta_ds_utils.loading_saving.S3 import download_obj
+
+        logger.info(f"loading {self.raw_patents_path} from s3...")
 
         self.patents = download_obj(
             BUCKET_NAME, self.raw_patents_path, download_as="dataframe"
@@ -117,37 +106,26 @@ class PatentsProcessedFlow(FlowSpec):
         self.patents["cpc"] = self.patents["cpc"].apply(
             lambda x: [c["code"] for c in x]
         )
-        self.next(self.disambiguate_assignee)
-
-    @step
-    def disambiguate_assignee(self):
-        """
-        Disambiguate asignees
-        """
-        self.patents["assignee_harmonized_names_types"] = self.patents.apply(
-            lambda x: disambiguate_assignee(
-                x.inventor_harmonized_names, x.assignee_harmonized_names
-            ),
-            axis=1,
-        )
-        self.next(self.generate_lookup)
-
-    @step
-    def generate_lookup(self):
-        """
-        Create patent abstract look up for entity extraction
-        """
-        self.patents["abstract_localized"] = self.patents[
-            "abstract_localized"
-        ].str.replace("\n", "")
-        self.patents_lookup = list(
-            self.patents.rename(
-                columns={"publication_number": "id", "abstract_localized": "abstract"}
-            )[["id", "abstract"]]
-            .T.to_dict()
-            .values()
-        )
         self.next(self.save_data)
+
+    # ignore this step for collecting additional patents data
+
+    # @step
+    # def generate_lookup(self):
+    #     """
+    #     Create patent abstract look up for entity extraction
+    #     """
+    #     self.patents["abstract_localized"] = self.patents[
+    #         "abstract_localized"
+    #     ].str.replace("\n", "")
+    #     self.patents_lookup = list(
+    #         self.patents.rename(
+    #             columns={"publication_number": "id", "abstract_localized": "abstract"}
+    #         )[["id", "abstract"]]
+    #         .T.to_dict()
+    #         .values()
+    #     )
+    #     self.next(self.save_data)
 
     @step
     def save_data(self):
@@ -158,17 +136,20 @@ class PatentsProcessedFlow(FlowSpec):
         """
         from nesta_ds_utils.loading_saving.S3 import upload_obj
 
+        clean_patents_path = self.raw_patents_path.replace("raw", "clean")
+        # annotation_patents_path = self.raw_patents_path.replace('raw', 'for_annotation')
+
         upload_obj(
             self.patents,
             BUCKET_NAME,
-            "inputs/data_collection/patents/patents_clean.parquet",
+            clean_patents_path,
         )
 
-        upload_obj(
-            self.patents_lookup,
-            BUCKET_NAME,
-            "inputs/data_collection/patents/patents_for_annotation.json",
-        )
+        # upload_obj(
+        #     self.patents_lookup,
+        #     BUCKET_NAME,
+        #     annotation_patents_path,
+        # )
 
         self.next(self.end)
 
